@@ -1,0 +1,2 @@
+-r ../claude/requirements.txt
+-r ../claude/requirements-dev.txt
