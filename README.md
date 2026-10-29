@@ -1,4 +1,4 @@
-# dsh-solidworks
+[![M8ven Score](https://m8ven.ai/badge/mcp/tan000tan-dsh-solidworks-1fp274?v=2fbb2bd4427c142ad9548eb0b4c5e187)](https://m8ven.ai/mcp/tan000tan-dsh-solidworks-1fp274?s=readme)# dsh-solidworks
 
 ![SolidWorks](https://img.shields.io/badge/CAD-SolidWorks%202026-red)
 ![DSH](https://img.shields.io/badge/Integration-DeepSeek%20Harness-blue)
