@@ -45,9 +45,17 @@
 | 打包完整性（清单与工具表一致、许可证随包、无缓存垃圾、文档不泄露本机路径） | `node tests/package.test.js` | **11 passed / 0 failed** |
 | 审计链路（执行/拒绝/失败/确认各写一行、摘要稳定、不落参数与路径） | `node tests/audit.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **27 passed / 0 failed** |
 
-七个套件合计 **109 项断言**（11 + 8 + 16 + 27 + 9 + 11 + 27），全部通过。`npm test` 会依次运行
-不需要 Python 的 `package` 套件和其余六套件；`test:audit` / `test:host` / `test:crash` 三个套件需要一个
-可用的 Python（本机为 `D:\SWCAD-MCP\Python313\python.exe`）。
+七个套件合计 **109 项断言**（11 + 8 + 16 + 27 + 9 + 11 + 27），全部通过。一条命令跑完全部七个：
+
+```powershell
+$env:DSH_SOLIDWORKS_PYTHON = "D:\SWCAD-MCP\Python313\python.exe"
+npm run test:all          # exit 0 = 全绿；不需要 Python 的四个套件用 npm test
+```
+
+`npm test` 只跑不需要 CAD/Python 的四个套件（policy / mcp / schema / package，共 46 项），
+适合在没有装 Python 的机器上做静态检查；`test:all` 额外跑 `audit` / `host` / `crash`。
+三个依赖 Python 的套件都支持 `--python <exe>` 或环境变量 `DSH_SOLIDWORKS_PYTHON`（后者是
+`npm run test:host` 这类不带参数调用也能工作的原因）。
 
 `tests/host.test.js` 是"能不能真的用"的核心证据：它用一个记录 `register()` 的假 `ctx` 调用插件的
 `apply()`，连真实的内嵌服务器，断言：注册 18 个工具（2 meta + 16 只读）、`solidworks_status` 报

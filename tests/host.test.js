@@ -15,7 +15,7 @@ const root = join(here, '..')
 
 const htmlArgs = process.argv.slice(2)
 const pyIndex = htmlArgs.indexOf('--python')
-const pythonPath = pyIndex >= 0 ? htmlArgs[pyIndex + 1] : null
+const pythonPath = pyIndex >= 0 ? htmlArgs[pyIndex + 1] : (process.env.DSH_SOLIDWORKS_PYTHON || null)
 
 const failures = []
 // Set when the machine has no usable Python, so the exit code can say "environment", not "regression".

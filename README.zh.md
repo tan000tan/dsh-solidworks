@@ -135,6 +135,16 @@ DSH 的 `failOnStartupError` 是宿主对 **required bundle** 的策略：为 `t
 
 ## 7. 验证状态（诚实声明）
 
+**一条命令复现全部 109 项断言**（七个套件）：
+
+```powershell
+$env:DSH_SOLIDWORKS_PYTHON = "<你的 python.exe 完整路径>"
+npm run test:all      # exit 0 = 全绿
+```
+
+`npm test` 只跑不需要 Python 的四个套件（policy / mcp / schema / package，共 46 项），在没有装
+Python 的机器上也能跑。三个依赖 Python 的套件都认 `--python <exe>` 或 `DSH_SOLIDWORKS_PYTHON`。
+
 | 能力 | 状态 |
 | --- | --- |
 | 策略/授权/路径/审计单元测试 | **已通过**（11 项，`node tests/policy.test.js`） |

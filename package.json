@@ -52,6 +52,7 @@
     "test:crash": "node tests/crash.test.js",
     "test:package": "node tests/package.test.js",
     "probe": "node tests/probe-server.mjs",
-    "write-loop": "node tests/write-loop.mjs"
+    "write-loop": "node tests/write-loop.mjs",
+    "test:all": "node tests/policy.test.js && node tests/mcp.test.js && node tests/schema.test.js && node tests/package.test.js && node tests/audit.test.js && node tests/host.test.js && node tests/crash.test.js"
   }
 }

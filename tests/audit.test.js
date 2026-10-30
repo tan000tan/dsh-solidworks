@@ -16,9 +16,9 @@ const root = join(here, '..')
 
 const argv = process.argv.slice(2)
 const pyIndex = argv.indexOf('--python')
-const pythonPath = pyIndex >= 0 ? argv[pyIndex + 1] : null
+const pythonPath = pyIndex >= 0 ? argv[pyIndex + 1] : (process.env.DSH_SOLIDWORKS_PYTHON || null)
 if (!pythonPath) {
-  console.error('usage: node tests/audit.test.js --python <python.exe>')
+  console.error('usage: node tests/audit.test.js --python <python.exe>\n       (or set DSH_SOLIDWORKS_PYTHON)')
   process.exit(2)
 }
 
