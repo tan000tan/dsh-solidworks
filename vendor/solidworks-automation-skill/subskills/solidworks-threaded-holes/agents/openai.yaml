@@ -1,0 +1,4 @@
+interface:
+  display_name: "SolidWorks 螺纹孔"
+  short_description: "生成可审查的攻丝底孔与螺纹孔模型"
+  default_prompt: "Use $solidworks-threaded-holes to create an M6x1 blind threaded hole in a SolidWorks part."

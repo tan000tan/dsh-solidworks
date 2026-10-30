@@ -1,0 +1,9 @@
+{
+  "title": "SolidWorks",
+  "description": "Drive a local SolidWorks desktop: 66 CAD tools for parts, assemblies, drawings, DFM checks, and FEA. Read-only by default; saves and exports require an explicit one-shot approval.",
+  "tags": ["solidworks", "cad", "mechanical", "3d", "mcp"],
+  "entry": {
+    "summary": "SolidWorks tools run against your own desktop session. Start with solidworks_status, then solidworks_connect; read-only inspection is safe, modelling needs policy mode \"standard\", and saving/exporting needs mode \"full\" plus a solidworks_confirm grant.",
+    "setup": "Requires Windows, a licensed SolidWorks 2023-2026 desktop, and a Python 3.10+ interpreter with the mcp package. Run `node bin/dsh-solidworks.js doctor` to check all three."
+  }
+}

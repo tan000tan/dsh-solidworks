@@ -1,0 +1,357 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CAD Studio Automation Job",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schemaVersion", "id", "runId", "kind", "title", "detail", "status", "progress", "createdAt", "updatedAt"],
+  "allOf": [
+    {
+      "if": { "properties": { "schemaVersion": { "const": "2.0" } } },
+      "then": {
+        "required": ["projectId", "conversationId", "inputs", "stage", "capabilitySnapshot", "assumptions", "requiredArtifacts", "verificationEvidence"]
+      }
+    }
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0", "2.0"]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,96}$"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,120}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["create_shell", "import_model", "delivery_package", "dfm_review", "codex_task", "agent_task"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "detail": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "executor": {
+      "type": "string",
+      "enum": ["mock", "codex", "agent"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "passed", "review_required", "failed", "cancelled", "approval_required", "blocked"]
+    },
+    "progress": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "requestedBy": {
+      "type": "string"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "expectedOutput": {
+      "type": "string"
+    },
+    "strictRules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prompt": {
+      "type": "string",
+      "maxLength": 24000
+    },
+    "cwd": {
+      "type": "string"
+    },
+    "skillPath": {
+      "type": "string"
+    },
+    "projectPath": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,96}$"
+    },
+    "conversationId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,120}$"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["intake", "planning", "checking", "launching", "executing", "reviewing", "delivery", "blocked"]
+    },
+    "capabilitySnapshot": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "requiredArtifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verificationEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "preferredBackend": {
+      "type": "string",
+      "enum": ["auto", "headless", "solidworks", "autocad"]
+    },
+    "requiredOutputs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "nativeFormatRequired": {
+      "type": "boolean"
+    },
+    "fallbackPolicy": {
+      "type": "string",
+      "enum": ["allow_open_formats", "native_only", "blocked"]
+    },
+    "previewManifest": {
+      "type": "string"
+    },
+    "evidenceGraph": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "drawingEvidence": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "bomEvidence": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "dfmEvidence": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "reviewFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "artifactRelations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "lastMessage": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "targetSoftware": {
+      "type": "string"
+    },
+    "createdByAppVersion": {
+      "type": "string"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "runnerId": {
+      "type": "string"
+    },
+    "workerPid": {
+      "type": "integer"
+    },
+    "heartbeatAt": {
+      "type": "string"
+    },
+    "leaseUntil": {
+      "type": "string"
+    },
+    "cancelRequested": {
+      "type": "boolean"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approvalReasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approvedAt": {
+      "type": "string"
+    },
+    "approvedBy": {
+      "type": "string"
+    },
+    "approvedPolicyReasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reviewedAt": {
+      "type": "string"
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
+    "reviewDecision": {
+      "type": "string",
+      "enum": ["approved", "rejected"]
+    },
+    "reviewNote": {
+      "type": "string"
+    },
+    "artifactLedgerPath": {
+      "type": "string"
+    },
+    "reviewGatePath": {
+      "type": "string"
+    },
+    "reviewGate": {
+      "type": "object"
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sandbox": {
+          "type": "string",
+          "enum": ["read-only", "workspace-write", "danger-full-access"]
+        },
+        "approval": {
+          "type": "string",
+          "enum": ["never", "manual-required"]
+        },
+        "requireSkillRead": {
+          "type": "boolean"
+        },
+        "requireTests": {
+          "type": "boolean"
+        },
+        "requireCommit": {
+          "type": "boolean"
+        },
+        "requirePush": {
+          "type": "boolean"
+        },
+        "requireReviewerPass": {
+          "type": "boolean"
+        }
+      }
+    },
+    "uiConfig": {
+      "type": "object",
+      "properties": {
+        "agentRuntime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "providerName", "protocol"],
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": ["codex", "claude", "gemini", "opencode"]
+            },
+            "providerName": {
+              "type": "string"
+            },
+            "protocol": {
+              "type": "string",
+              "enum": ["codex-exec-v1", "claude-print-v1", "gemini-headless-v1", "opencode-jsonl-v1"]
+            },
+            "model": {
+              "type": "string"
+            }
+          }
+        },
+        "knowledgeBase": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cloudEnabled": {
+              "type": "boolean"
+            },
+            "localRoots": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "string"
+              }
+            },
+            "endpoint": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            },
+            "tokenEnv": {
+              "type": "string",
+              "const": "CAD_STUDIO_RAG_TOKEN"
+            },
+            "topK": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object"
+    },
+    "workerLog": {
+      "type": "array"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

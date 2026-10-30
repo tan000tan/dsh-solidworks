@@ -1,0 +1,20 @@
+# Loads the dsh-solidworks host component into a DSH profile.
+#
+# Defaults are deliberately safe: read-only policy (inspect + measure + review,
+# never create/save/export), the bundled MIT server, no path widening, and a
+# 5-minute per-call timeout (SolidWorks rebuilds are slow; the upstream default
+# mount uses the same value).
+#
+# To enable modelling, set mode: standard. To allow save/export/close, set
+# mode: full and expect one explicit `solidworks_confirm` per call.
+- insert:
+    - id: dsh-solidworks
+      name: dsh-solidworks
+      config:
+        mode: read-only
+        toolTimeoutMs: 300000
+        startTimeoutMs: 60000
+        grantTtlMs: 300000
+        allow: []
+        deny: []
+        allowedRoots: []

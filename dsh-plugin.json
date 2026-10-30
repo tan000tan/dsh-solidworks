@@ -1,0 +1,153 @@
+{
+  "$schema": "https://raw.githubusercontent.com/T-Auto/dsh-std/8a15541117cb3c13ddb8f2468308691b6051d162/packages/manifest/schema/dsh-plugin-0.15.schema.json",
+  "manifestVersion": "0.15",
+  "id": "dsh-solidworks.solidworks",
+  "name": "dsh-solidworks",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "facets": {
+    "host": {
+      "entry": "lib/index.js",
+      "apiVersion": "v1alpha1"
+    }
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "tools.dsh/v1alpha1",
+        "kind": "Tool"
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "name": "dsh-solidworks.process.spawn",
+      "scope": "subprocess",
+      "reason": "Start the bundled SolidWorks MCP server (Python over stdio) and the discovery probes that verify an interpreter can import mcp."
+    },
+    {
+      "name": "dsh-solidworks.fs.read",
+      "scope": "filesystem-read",
+      "reason": "Read the bundled server script and its working directory to confirm they exist before spawning."
+    },
+    {
+      "name": "dsh-solidworks.fs.write",
+      "scope": "dsh-home",
+      "reason": "Append the optional audit log (auditLog setting) that records every accepted, refused, and failed CAD call."
+    }
+  ],
+  "contributes": {
+    "x-display": [
+      {
+        "icon": "./docs/assets/icon.png",
+        "title": "dsh-solidworks",
+        "description": "Drive a local SolidWorks desktop: 66 CAD tools for parts, assemblies, drawings, DFM checks, and FEA, gated by a read-only-by-default risk policy.",
+        "locales": [
+          "docs/locale/en.json",
+          "docs/locale/zh.json"
+        ]
+      }
+    ],
+    "x-prompt-sections": [
+      {
+        "name": "dsh-solidworks:cad-policy",
+        "order": 3400,
+        "summary": "SolidWorks tools are policy-gated: read-only by default; high-risk calls need an explicit solidworks_confirm grant; solidworks_status explains a broken environment."
+      }
+    ],
+    "x-tool-namespaces": [
+      {
+        "serverName": "solidworks-cad",
+        "transport": "subprocess",
+        "source": "bundled SolidWorks MCP server (Python, stdio)",
+        "publicPrefix": "",
+        "shellPermission": "Per-call dsh-solidworks risk policy (read-only | standard | full) plus DSH sandbox policy for any file the CAD call touches",
+        "tools": [
+          "solidworks_status",
+          "solidworks_confirm",
+          "cadstudio_resolve_backend",
+          "cadstudio_write_open_format",
+          "cadstudio_build_dxf_preview_scene",
+          "cadstudio_check_dfm",
+          "cadstudio_check_routing",
+          "cadstudio_routing_preflight",
+          "solidworks_addin_host_status",
+          "cadstudio_fea_preflight",
+          "cadstudio_prepare_fea",
+          "cadstudio_run_fea",
+          "cadstudio_run_fea_convergence",
+          "cadstudio_review_advanced_geometry",
+          "cadstudio_create_ocp_loft",
+          "cadstudio_create_ocp_surface",
+          "solidworks_connect",
+          "solidworks_health_check",
+          "solidworks_recover",
+          "solidworks_new_document",
+          "solidworks_create_basic_part",
+          "solidworks_list_edges",
+          "solidworks_sketch_and_extrude",
+          "solidworks_revolve",
+          "solidworks_fillet",
+          "solidworks_chamfer",
+          "solidworks_shell",
+          "solidworks_pattern",
+          "solidworks_mirror_feature",
+          "solidworks_mass_properties",
+          "solidworks_bounding_box",
+          "solidworks_interference_check",
+          "solidworks_document_units",
+          "design_spec_validate",
+          "design_spec_build",
+          "solidworks_open_document",
+          "solidworks_add_component",
+          "solidworks_set_component_fixed",
+          "solidworks_save_document",
+          "solidworks_close_documents",
+          "solidworks_add_coincident_mate",
+          "solidworks_add_distance_mate",
+          "solidworks_add_concentric_mate",
+          "solidworks_set_appearance",
+          "solidworks_export_active",
+          "solidworks_inspect_configurations",
+          "solidworks_create_configuration",
+          "solidworks_activate_configuration",
+          "solidworks_update_dimension",
+          "solidworks_set_custom_properties",
+          "solidworks_batch_export_files",
+          "solidworks_export_assembly_bom",
+          "solidworks_pack_and_go",
+          "solidworks_review_active",
+          "solidworks_generate_drawing",
+          "solidworks_review_drawing",
+          "solidworks_inspect_drawing",
+          "solidworks_create_hole_feature",
+          "solidworks_inspect_hole_features",
+          "solidworks_add_rotary_motor",
+          "solidworks_inspect_motion_studies",
+          "solidworks_validate_motion_study",
+          "cadstudio_read_artifact",
+          "solidworks_inspect_native_geometry",
+          "solidworks_build_round_sweeps",
+          "solidworks_import_step_part",
+          "solidworks_replace_component_preserving_transform",
+          "solidworks_exclude_reviewed_bodies"
+        ]
+      }
+    ],
+    "x-components": [
+      {
+        "id": "dsh-solidworks-core",
+        "entry": "dsh-solidworks",
+        "defaultEnabled": true,
+        "platforms": ["win32"],
+        "architectures": ["x64", "arm64"],
+        "targets": ["win32-x64"],
+        "presentation": "66 CAD tools published on load; the set narrows to read-only under the default policy",
+        "runtime": "Python 3 interpreter with the mcp package, plus a local SolidWorks desktop session",
+        "tools": [],
+        "permissions": "Read-only by default; standard enables document edits; full enables save/export/close behind a one-shot solidworks_confirm grant; every call is audited"
+      }
+    ]
+  },
+  "subscriptions": []
+}

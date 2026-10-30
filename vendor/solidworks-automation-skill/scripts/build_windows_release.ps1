@@ -1,0 +1,117 @@
+param(
+    [string]$Version = "",
+    [switch]$SkipBuild
+)
+
+$ErrorActionPreference = "Stop"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$syncScript = Join-Path $PSScriptRoot "sync_bundled_skill.py"
+& python $syncScript
+if ($LASTEXITCODE -ne 0) { throw "Bundled skill synchronization failed." }
+$uiRoot = Join-Path $repoRoot "apps\workbench-ui"
+$tauriRoot = Join-Path $uiRoot "src-tauri"
+$releaseRoot = Join-Path $repoRoot "release-output"
+$resolvedReleaseRoot = [System.IO.Path]::GetFullPath($releaseRoot)
+$expectedReleaseRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "release-output"))
+if ($resolvedReleaseRoot -ne $expectedReleaseRoot -or -not $resolvedReleaseRoot.StartsWith([System.IO.Path]::GetFullPath($repoRoot), [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Unsafe release output path: $resolvedReleaseRoot"
+}
+$tauriConfig = Get-Content -LiteralPath (Join-Path $tauriRoot "tauri.conf.json") -Raw | ConvertFrom-Json
+$packageConfig = Get-Content -LiteralPath (Join-Path $uiRoot "package.json") -Raw | ConvertFrom-Json
+$cargoManifest = Get-Content -LiteralPath (Join-Path $tauriRoot "Cargo.toml") -Raw
+$appSource = Get-Content -LiteralPath (Join-Path $uiRoot "src\App.tsx") -Raw
+$configuredVersion = [string]$tauriConfig.version
+$cargoVersionMatch = [regex]::Match($cargoManifest, '(?m)^version\s*=\s*"([^"]+)"')
+if (-not $cargoVersionMatch.Success) { throw "Cannot read Cargo package version." }
+$cargoVersion = $cargoVersionMatch.Groups[1].Value
+$appVersionMatch = [regex]::Match($appSource, 'const APP_VERSION\s*=\s*"([^"]+)"')
+if (-not $appVersionMatch.Success) { throw "Cannot read frontend application version." }
+$appVersion = $appVersionMatch.Groups[1].Value
+if ([string]::IsNullOrWhiteSpace($Version)) { $Version = $configuredVersion }
+if ($Version -ne $configuredVersion -or $Version -ne [string]$packageConfig.version -or $Version -ne $cargoVersion -or $Version -ne $appVersion) {
+    throw "Version mismatch: requested=$Version, tauri=$configuredVersion, npm=$($packageConfig.version), cargo=$cargoVersion, app=$appVersion"
+}
+if ($env:GITHUB_REF -like "refs/tags/v*") {
+    $tagVersion = $env:GITHUB_REF.Substring("refs/tags/v".Length)
+    if ($tagVersion -ne $Version) {
+        throw "Release tag/version mismatch: tag=$tagVersion, package=$Version"
+    }
+}
+$portableName = "CAD-Studio-$Version-Windows-x64"
+$portableRoot = Join-Path $releaseRoot $portableName
+
+if (-not $SkipBuild) {
+    Push-Location $uiRoot
+    try {
+        npm run desktop:bundle
+        if ($LASTEXITCODE -ne 0) { throw "Tauri build failed." }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+$binary = Join-Path $tauriRoot "target\release\cad-studio.exe"
+$skill = Join-Path $tauriRoot "resources\skill"
+$installer = Get-Item -LiteralPath (Join-Path $tauriRoot "target\release\bundle\nsis\CAD Studio_${Version}_x64-setup.exe") -ErrorAction SilentlyContinue
+
+if (-not (Test-Path -LiteralPath $binary)) { throw "Missing release binary: $binary" }
+if (-not (Test-Path -LiteralPath (Join-Path $skill "SKILL.md"))) { throw "Missing bundled skill: $skill" }
+foreach ($required in @(
+    "apps\desktop\cad_workbench\queue_worker.py",
+    "apps\desktop\cad_workbench\schemas\automation_job.schema.json",
+    "examples\08_mini_fan_motion_assembly.py",
+    "mcp-server\server.py",
+    "mcp-server\register_all_ai_mcp.ps1",
+    "subskills\autocad-automation\SKILL.md",
+    "subskills\autocad-automation\scripts\acad_dotnet_regression.py",
+    "subskills\autocad-automation\dotnet\CadStudio.AutoCAD2024\CadStudio.AutoCAD2024.csproj",
+    "subskills\autocad-automation\dotnet\CadStudio.AutoCAD2024\CadStudioCommands.cs",
+    "subskills\autocad-automation\dotnet\CadStudio.AutoCAD2024\NuGet.Config"
+)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $skill $required))) { throw "Bundled skill is incomplete: $required" }
+}
+if (-not $installer) { throw "NSIS installer was not found." }
+$installerSignature = "$($installer.FullName).sig"
+if (-not (Test-Path -LiteralPath $installerSignature)) { throw "Updater signature was not found: $installerSignature" }
+
+if (Test-Path -LiteralPath $releaseRoot) {
+    Remove-Item -LiteralPath $releaseRoot -Recurse -Force
+}
+New-Item -ItemType Directory -Path $portableRoot -Force | Out-Null
+
+Copy-Item -LiteralPath $binary -Destination (Join-Path $portableRoot "CAD Studio.exe")
+Copy-Item -LiteralPath $skill -Destination (Join-Path $portableRoot "skill") -Recurse
+Copy-Item -LiteralPath (Join-Path $repoRoot "LICENSE") -Destination $portableRoot
+Copy-Item -LiteralPath (Join-Path $repoRoot "docs\CAD_STUDIO_USER_MANUAL.md") -Destination (Join-Path $portableRoot "USER_MANUAL.zh-CN.md")
+
+$portableZip = Join-Path $releaseRoot "$portableName-Portable.zip"
+Compress-Archive -Path (Join-Path $portableRoot "*") -DestinationPath $portableZip -CompressionLevel Optimal
+$setupPath = Join-Path $releaseRoot "CAD-Studio-$Version-Setup-x64.exe"
+Copy-Item -LiteralPath $installer.FullName -Destination $setupPath
+$signaturePath = "$setupPath.sig"
+Copy-Item -LiteralPath $installerSignature -Destination $signaturePath
+
+$latest = [ordered]@{
+    version = $Version
+    notes = "CAD Studio $Version improves desktop stability, queue recovery, model previews, and signed automatic updates."
+    pub_date = [DateTimeOffset]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    platforms = [ordered]@{
+        "windows-x86_64" = [ordered]@{
+            signature = (Get-Content -LiteralPath $signaturePath -Raw).Trim()
+            url = "https://github.com/wzyn20051216/solidworks-automation-skill/releases/download/v$Version/CAD-Studio-$Version-Setup-x64.exe"
+        }
+    }
+}
+$latestPath = Join-Path $releaseRoot "latest.json"
+$latestJson = $latest | ConvertTo-Json -Depth 5
+[System.IO.File]::WriteAllText($latestPath, $latestJson, (New-Object System.Text.UTF8Encoding($false)))
+
+$checksums = @($setupPath, $signaturePath, $portableZip, $latestPath) | ForEach-Object {
+    $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $_
+    "$($hash.Hash.ToLowerInvariant())  $([System.IO.Path]::GetFileName($_))"
+}
+$checksums | Set-Content -LiteralPath (Join-Path $releaseRoot "SHA256SUMS.txt") -Encoding ascii
+
+Write-Host "Release files generated: $releaseRoot"
+Get-ChildItem -LiteralPath $releaseRoot -File | Select-Object Name, Length

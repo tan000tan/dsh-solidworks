@@ -1,0 +1,7 @@
+interface:
+  display_name: "SolidWorks Fillet Chamfer CNC"
+  short_description: "Robust fillet/chamfer CNC part workflow"
+  default_prompt: "Use $solidworks-fillet-chamfer-cnc to build a SolidWorks CNC-style part with many fillets and chamfers reliably."
+
+policy:
+  allow_implicit_invocation: true

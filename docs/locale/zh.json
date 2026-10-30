@@ -1,0 +1,9 @@
+{
+  "title": "SolidWorks",
+  "description": "驱动本机 SolidWorks 桌面：66 个 CAD 工具，覆盖零件、装配、工程图、DFM 检查与 FEA。默认只读；保存与导出需要一次性显式授权。",
+  "tags": ["solidworks", "cad", "机械", "三维", "mcp"],
+  "entry": {
+    "summary": "SolidWorks 工具作用在你自己的桌面会话上。先调 solidworks_status，再 solidworks_connect；只读检查是安全的，建模需把策略档位设为 \"standard\"，保存/导出需设为 \"full\" 并用 solidworks_confirm 换取一次性授权。",
+    "setup": "需要 Windows、已授权的 SolidWorks 2023–2026 桌面版，以及装了 mcp 包的 Python 3.10+。运行 `node bin/dsh-solidworks.js doctor` 可一次性检查这三项。"
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+*.tgz
+*.log
+audit.jsonl
+.dsh-audit/
+coverage/
+.DS_Store
+Thumbs.db
+
+# Python bytecode: the vendored engine must never ship caches
+__pycache__/
+*.pyc
+
+# Local overrides used while testing the plugin by hand
+.local/
+scratch/

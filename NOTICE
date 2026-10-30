@@ -1,0 +1,53 @@
+dsh-solidworks
+Copyright (C) 2026 the dsh-solidworks contributors
+Licensed under the GNU Affero General Public License v3.0 only (see LICENSE).
+
+This distribution bundles third-party code. Everything below is required to stay
+with any redistribution of this package.
+
+-------------------------------------------------------------------------------
+1. SolidWorks MCP server and CAD script package — MIT
+-------------------------------------------------------------------------------
+Location : vendor/solidworks-automation-skill/
+License  : MIT (vendor/solidworks-automation-skill/LICENSE)
+Copyright: (c) 2026 SolidWorks Automation Skill Contributors
+Source   : https://github.com/tan000tan/solidworks-automation-skill @ d8b9547
+Files    : 83, byte-identical copies (verification in PROVENANCE.md)
+
+The MIT text is reproduced verbatim in vendor/solidworks-automation-skill/LICENSE.
+That subtree is distributed inside an AGPL-3.0-only package; the MIT terms
+continue to apply to the vendored files, including their warranty disclaimer.
+
+-------------------------------------------------------------------------------
+2. Python runtime dependencies — NOT bundled
+-------------------------------------------------------------------------------
+The plugin does not ship Python wheels. The user's interpreter must satisfy:
+
+  mcp>=1.27,<2          MIT
+  pydantic>=2           MIT
+  jsonschema>=4.20,<5   MIT
+  pywin32>=305          PSF-2.0
+  comtypes>=1.2.0       MIT
+  httpx                 BSD-3-Clause        (mcp transport dependency)
+  ezdxf, numpy, Pillow, lxml, openpyxl, python-docx, python-pptx, XlsxWriter
+                        (only for the DFM / DXF / FEA / report families)
+
+License identifiers above are the upstream projects' declared licenses as of
+2026-10-29; they are listed for operator information, not as a redistribution
+claim, because nothing here is redistributed. A distributor that bundles a
+Python environment must re-verify each license and ship the corresponding texts.
+
+-------------------------------------------------------------------------------
+3. SolidWorks and Microsoft COM
+-------------------------------------------------------------------------------
+SolidWorks is commercial software from Dassault Systèmes, not distributed here.
+The user must own and license a local SolidWorks installation. This plugin
+invokes it through the registered COM automation interface only.
+
+-------------------------------------------------------------------------------
+4. No code from the dsh-solidworks (AGPL) repository
+-------------------------------------------------------------------------------
+This package contains no source code from the separate `dsh-solidworks`
+repository. Policy tiers, one-shot grants, path gating, the stdio MCP client,
+the host entry point, CLI, tests, and documentation were written for this
+package. See PROVENANCE.md for the line-level comparison that supports this.
