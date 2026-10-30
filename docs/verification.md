@@ -79,7 +79,7 @@ npm run test:all          # exit 0 = 全绿；不需要 Python 的四个套件�
 | E6 | 宿主内加载 | 隔离 `DSH_HOME` → `dsh plugin --profile swweb add dsh-solidworks-0.1.0.tgz` → `dsh --profile swweb web --port 50997 --no-open` | 启动无 "did not activate" 告警；`Win32_Process` 里出现父进程为 DSH 宿主、命令行指向**安装后** `...\node_modules\dsh-solidworks\vendor\solidworks-automation-skill\mcp-server\server.py` 的 python 子进程 |
 | E7 | 只读真实调用 | `tests/host.test.js` 内调用 `solidworks_health_check` | 返回 `{status:"ok", checks:{python 3.13.16, missing_com_dependencies:[], solidworks_detected:true, server_path: ...\vendor\...}}` |
 | E8 | 失败可操作性 | 见 E2 | 错误信息包含每个候选与原因，用户可直接照 `nextSteps` 修 |
-| E9 | 打包 | `npm.cmd pack` | `dsh-solidworks-0.1.0.tgz`：202 files（压缩约 0.61 MiB / 解包约 2.2 MB）。压缩体积与 sha256 每次重新打包都会变，以 `.tgz` 实测为准 |
+| E9 | 打包 | `npm.cmd pack` | `dsh-solidworks-0.1.0.tgz`：204 files（压缩约 0.60 MiB / 解包约 2.2 MB）。压缩体积与 sha256 每次重新打包都会变，以 `.tgz` 实测为准 |
 | E10 | 卸载 | `dsh plugin --profile swweb remove dsh-solidworks` → 再次启动宿主 | 安装目录消失；宿主正常启动、stderr 无报错；`Win32_Process` 中不再出现指向 `vendor\...\server.py` 的 python 子进程。profile 里残留的 `- id: dsh-solidworks` 覆盖项**不报错**，只是不再生效 |
 | E11 | 进程回收 | 结束宿主进程后检查 `python.exe` | 无残留的 vendored 服务器进程（插件 teardown 关闭子进程） |
 | E12 | 参数外壳 | `tests/host.test.js`（stub 服务器）+ `tests/schema.test.js` | 服务器返回 `inputSchema: {properties:{params:{...}}, required:["params"]}` 时，宿主侧注册的是**解包后**的 schema；调用时参数再包回 `{"params": {...}}`；扁平工具原样透传 |
