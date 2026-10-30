@@ -3,7 +3,7 @@
 本文件记录 `dsh-solidworks` 在真实环境里**实际跑过**的东西，以及**没有跑过**的东西。
 只有本文件列出的证据才算"已验证"；源码里有函数、README 里有描述，都不算。
 
-- 验证日期：2026-10-29（Asia/Shanghai）；2026-10-30 全量复核（见 E17）；2026-10-30 打包完整性补测（见 E18）；2026-10-30 审计链路补测（见 E19）；2026-10-30 升级/回滚补测（见 E20）
+- 验证日期：2026-10-29（Asia/Shanghai）；2026-10-30 全量复核（见 E17）；2026-10-30 打包完整性补测（见 E18）；2026-10-30 审计链路补测（见 E19）；2026-10-30 升级/回滚补测（见 E20）；2026-10-30 中文/空格路径补测（见 E21）
 - 验证机器：Windows 11（`Windows-11-10.0.26200-SP0`）、x64
 - Node：v24.21.0 ｜ Python：`D:\SWCAD-MCP\Python313\python.exe` 3.13.16（`mcp` 1.30.0）
 - SolidWorks：2026，注册表 `HKLM\SOFTWARE\SolidWorks` 存在，`solidworks_health_check`
@@ -30,6 +30,7 @@
 | 审计日志：每次执行/拒绝/失败各一行，只存参数摘要与文件名，不存参数、绝对路径或凭据 | **已证实**（E19，`tests/audit.test.js` 27 项） |
 | 子进程回收（宿主退出后不留 python） | **已证实**（E11） |
 | 升级（同版本重装 / 换版本） | **已证实（安装层）**：同版本重装、`file:` 源重装、0.1.0 → 0.1.1 → 0.1.0 升级与回滚均通过（E20）；宿主内**运行时**升级未验证 |
+| Windows 中文/空格路径下定位并启动内嵌服务器 | **已证实**（E21） |
 
 ## 2. 单元测试
 
@@ -86,6 +87,8 @@
 | E19 | 审计链路（新增套件） | `node tests/audit.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **27 passed / 0 failed**。同一进程内起两个宿主形态实例（`mode: read-only` 与 `mode: full` + `allowedRoots`）连 `tests/stub-server.py`，让真实执行路径写 6 行 JSONL，然后对日志本身断言：四种事件（`call` / `refused` / `confirm` / `error`）都出现；每行有 ISO 时间戳与工具名；执行/拒绝行带 16 位十六进制参数摘要；同参数两次调用的摘要**相同**（无盐漂移）；拒绝行记下具体码（`PATH_OUTSIDE_ALLOWED_ROOTS` / `CONFIRMATION_REQUIRED`）；日志里**不出现参数名**（只有摘要）、**不出现绝对路径**、不出现 token/password/secret/api-key 形状的键；有 `target` 时只记文件名。另对纯函数 `auditTarget()` / `digest()` / `canonicalArgs()` 直接断言（路径只留 basename、无路径时为 null、键序无关） |
 
 | E20 | 升级与回滚（安装层） | 隔离 `DSH_HOME` + profile `swup`（`dsh --profile swup --from-default-profile web --dump-config` 创建），依次 `dsh plugin --profile swup add` 0.1.0 → 0.1.1 → 0.1.0 | 三步都 exit 0。0.1.0：version `0.1.0`、spec `file:D:/dsh-sw-test/up/v010.tgz`、203 文件；0.1.1：version `0.1.1`、spec 指向 `v011.tgz`、204 文件、仅 0.1.1 才有的 `docs/upgrade-marker-011.txt` **存在**；回滚到 0.1.0：version/spec/文件数回到原值、marker **消失**——说明升级是**整包替换**而非叠加，无残留文件。`dsh.profile.bundles` 三步都保持 `@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,dsh-solidworks`。**附带发现**：故意用带 BOM 的 `package.json` 打包再 add 时，宿主拒绝安装并自动回滚（`dsh: installation rejected: Cannot validate installed package dsh-solidworks: SyntaxError: Unexpected token '﻿'` + `dsh: restored package.json, pnpm-lock.yaml, and node_modules.`），profile 仍停在 0.1.0 可用状态——坏包不会把已验证的安装弄坏 |
+
+| E21 | 中文 + 空格路径 | 把 `vendor/` 整树复制到 `D:\dsh-sw-test\路径 测试\vendor\`，再 `node bin/dsh-solidworks.js list-tools --mode read-only --python "D:\SWCAD-MCP\Python313\python.exe" --server "D:\dsh-sw-test\路径 测试\vendor\solidworks-automation-skill\mcp-server\server.py"` | exit 0；服务器正常握手并报 `solidworks_mcp 1.30.0 (protocol 2025-06-18)`、`16 published / 50 withheld of 66`。说明三处都不受中文/空格影响：`spawn` 用参数数组传递路径、`serverCwd` 由脚本路径推导、`apps/` 包在同一父目录下的 `sys.path` 解析。反例也验到了：`--server` 指向不存在的文件时给出 `cannot start: SolidWorks MCP server script not found at …Set the "serverScript" setting` 并 exit 1（不是异常栈） |
 
 E17 的环境复现说明（**不是**新的插件缺陷）：在隔离 `DSH_HOME` 里用 `--from-default-profile web` 新建
 `swclean` profile → `dsh plugin add D:\dsh-sw-test\plugin.tgz`（纯 ASCII 路径）**成功**（`file:D:/dsh-sw-test/plugin.tgz`，
