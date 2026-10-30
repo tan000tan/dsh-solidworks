@@ -14,3 +14,39 @@ __pycache__/
 # Local overrides used while testing the plugin by hand
 .local/
 scratch/
+
+# Local runtime and generated state
+state/
+backups/
+config-backups/
+artifacts/
+.pytest_cache/
+**/.pytest_cache/
+**/.venv/
+**/venv/
+**/obj/
+**/packages/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Local CAD work products
+/*.SLDPRT
+/*.SLDASM
+/*.SLDDRW
+/PLAN.md
+/drawing_crops/
+**/.solidpilot/
+
+# IDE and operating system files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo

@@ -1,4 +1,11 @@
-# dsh-solidworks
+[![M8ven Score](https://m8ven.ai/badge/mcp/tan000tan-dsh-solidworks-1fp274?v=2fbb2bd4427c142ad9548eb0b4c5e187)](https://m8ven.ai/mcp/tan000tan-dsh-solidworks-1fp274?s=readme)# dsh-solidworks
+
+![SolidWorks](https://img.shields.io/badge/CAD-SolidWorks%202026-red)
+![DSH](https://img.shields.io/badge/Integration-DeepSeek%20Harness-blue)
+![MCP](https://img.shields.io/badge/Protocol-MCP-purple)
+![Platform](https://img.shields.io/badge/Platform-Windows%20only-lightgrey)
+![Status](https://img.shields.io/badge/Status-Public%20Alpha-orange)
+![License](https://img.shields.io/badge/License-AGPL--3.0-blue)
 
 DeepSeek Harness plugin that puts a local SolidWorks desktop behind 66 CAD tools
 (parts, assemblies, drawings, DFM, FEA). Read-only by default; document edits need a
@@ -56,33 +63,43 @@ node bin\dsh-solidworks.js call solidworks_save_document --arg-file .\save.json 
 
 ## Policy
 
-| `mode` | publishes |
-| --- | --- |
-| `read-only` (default) | the 16 read-risk tools |
-| `standard` | + the 26 write-risk tools = 42 (create/edit documents, never persist) |
-| `full` | all 66; the 24 high-risk tools (save/export/close/pack/FEA/OCP) still need a one-shot grant |
+| `mode` | publishes | write calls | persistence calls |
+|---|---|---|---|
+| `read-only` (default) | 16 tools (health check, mass props, features, inspect sketch, mates, bounding box...) | refused | refused |
+| `standard` | 42 tools (adds sketches, extrusions, cuts, revolves, fillets, mates...) | allowed inside `allowedRoots` | refused |
+| `full` | all 66 tools (adds save, export STEP/STL/DXF/PDF, close, delete, Pack&Go) | allowed inside `allowedRoots` | **needs one-shot grant** |
 
-`deny` > `allow` > `mode`. Writes are limited to `allowedRoots` (default: the session working
-directory) unless a tool is explicitly `allow`ed. Audit rows carry tool name, risk, an argument
-digest, duration, and session id — never raw arguments or tokens.
+A high-risk call without a matching grant returns:
 
-## Trust boundary
+```json
+{"status":"refused","code":"CONFIRMATION_REQUIRED","tool":"solidworks_save_document","grantRequired":true}
+```
 
-The plugin gates *what the model may ask SolidWorks to do*; it is not a filesystem sandbox — the
-CAD writes are performed by `SolidWorks.exe` and remain subject to DSH's own sandbox and approval
-policy. A cancelled or timed-out call reports `sideEffects: "unknown"` instead of claiming a
-rollback. Automatic backup/rollback is deliberately not implemented in v0.1.
+The user (or an automation flow) approves it through the companion tool:
 
-**Why a missing SolidWorks or Python cannot fail your whole DSH boot.** `failOnStartupError` is a
-host policy for *required bundles*: set to `true`, one plugin that fails to activate aborts the
-entire DSH start (`dsh: startup failed`, observed on this machine). For an optional local
-dependency that is the wrong default. This plugin catches every startup failure inside its own
-`apply()` — missing interpreter, missing server script, missing COM registration, server exiting
-immediately — publishes only its two meta tools and reports the reason through
-`solidworks_status`. `tests/crash.test.js` (9 assertions) makes the server `SystemExit(3)` on its
-first line and asserts that `apply()` does not throw, that exactly the two meta tools remain
-registered, and that the status carries a readable cause. Environments that genuinely require CAD
-to be present (e.g. a managed deployment) can opt in to `failOnStartupError: true` themselves.
+```json
+{"name":"solidworks_confirm","arguments":{"tool":"solidworks_save_document","arguments":{"file_path":"D:\\parts\\bracket.sldprt"}}}
+```
+
+The grant binds to the SHA-256 of the canonical arguments, is single-use, and expires after five
+minutes (`grantTtlMs`). The session's current directory is the default write root when `allowedRoots`
+is not set; any path outside those roots is refused even if the user confirmed it.
+
+The list of shipped tools and their assigned tiers is in [lib/policy.js](./lib/policy.js); it was
+verified against the real Python MCP server at `tools/list` time (66 tools, zero drift).
+
+## What happens when SolidWorks is missing or fails to launch
+
+The host never crashes on startup:
+
+- If Python is missing, or `server.py` cannot import `mcp`, or SolidWorks COM fails to register,
+  `apply()` logs the diagnostic and publishes **only two meta tools**: `solidworks_status` and
+  `solidworks_confirm`.
+- Calling `solidworks_status` returns structured JSON explaining what is missing (the candidate
+  interpreters tried, the missing COM classes, or the exit code) and the recommended next step.
+- The standard server tools stay unpublished until the environment is healthy — the model cannot
+  call tools that cannot run. Deployments that prefer the plugin registration to throw when CAD is
+  expected to be present (e.g. a managed deployment) can opt in to `failOnStartupError: true` themselves.
 
 ## Verification status
 
@@ -113,18 +130,25 @@ empty result while reporting success.
 
 The plugin is AGPL-3.0-only (`LICENSE`). The vendored engine is MIT
 (`vendor/solidworks-automation-skill/LICENSE`); provenance and the exact upstream source are
-recorded in `PROVENANCE.md`, third-party inventory in `NOTICE`. No source code from the
-`dsh-solidworks` (AGPL) repository is included — policy, grants, MCP transport, and host entry
-points are implemented independently here. `docs/license-risk.md` has the file-level inventory,
-the whole-tree SHA-256 comparison against that repository, the runtime dependency licence table,
-and the one item that still needs a human/legal call (whether the MIT engine could be a derivative
-of the AGPL upstream — evidence says no, but the upstream could not be fetched from this host).
+in `PROVENANCE.md`. `NOTICE` tracks third-party notices. `docs/license-risk.md` is an exhaustive list
+of runtime imports vs shipped files, the whole-tree SHA-256 comparison against that repository,
+the runtime dependency licence table, and the one item that still needs a human/legal call
+(whether the MIT engine could be a derivative of the AGPL upstream — evidence says no, but the
+upstream could not be fetched from this host).
 
 ## Releasing and publishing
 
 | File | Purpose |
 | --- | --- |
-| `docs/github-publish.md` | exact commands for repo creation, push, tag `v0.1.0`, Release, topics, submission PR — **all still require authorisation**, none were run |
+| `docs/github-publish.md` | exact commands for repo creation, push, tag `v0.1.0`, Release, topics, submission PR |
 | `docs/release-notes-v0.1.0.md` | ready-made GitHub Release body (real numbers, "writes not verified" statement) |
 | `docs/market-submission.md` | submission checklist plus the three open questions (`name` semantics, `category` vocabulary, whether `capabilities` is required) |
 | `docs/submission/tan000tan__dsh-solidworks.yml` | the file to add as `data/plugins/tan000tan__dsh-solidworks.yml` |
+
+---
+
+## 📜 Historical Architecture Note (Pre-0.1.0 Prototype)
+
+The repository's earlier commit history (`8af9bef` to `d4c7fde`) includes an initial exploratory prototype exploring a C#-based SolidPilot execution service and custom DSH integration profiles.
+
+In v0.1.0, the project transitioned to a standard npm-distributable DSH plugin architecture (`dsh-solidworks`), bundling the policy gate, FastMCP schema bridge, and audit logging into a single cohesive package while keeping the full commit history preserved.
