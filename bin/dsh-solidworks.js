@@ -102,7 +102,7 @@ async function listTools() {
     command: found.python.command,
     args: [...found.python.args, found.serverScript],
     cwd: found.serverCwd,
-    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
   });
   let init;
   let tools;
@@ -150,7 +150,7 @@ async function selftest() {
     command: found.python.command,
     args: [...found.python.args, found.serverScript],
     cwd: found.serverCwd,
-    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
     timeoutMs: 120_000,
   });
   try {
@@ -226,7 +226,7 @@ async function callTool() {
     command: found.python.command,
     args: [...found.python.args, found.serverScript],
     cwd: found.serverCwd,
-    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
     timeoutMs: 300_000,
   });
   try {

@@ -29,7 +29,7 @@ const mode = arg('mode', 'read-only');
 const found = await discover({
   pluginRoot: PLUGIN_ROOT,
   config: { pythonPath, serverScript: null },
-  env: process.env,
+  env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
 });
 if (!found.ok) {
   console.error(`discover failed: ${found.code} ${found.message}`);
@@ -40,7 +40,7 @@ const client = new McpClient({
   command: found.python.command,
   args: [...found.python.args, found.serverScript],
   cwd: found.serverCwd,
-  env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+  env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
 });
 
 let init;

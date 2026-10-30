@@ -13,7 +13,7 @@
 | 包里有 `dsh.bundle.patch` 指向的 `cordis.patch.yml` | dshmarket README（**已证实**） | ✅ 有，且被宿主接受（verification.md E3） |
 | 能按标准方式安装并被宿主加载 | 实测（E6/E7）；2026-10-30 复核 | ✅ 安装 + 加载 + 真实调用已验证（2026-10-29 隔离 profile）。2026-10-30 复核：`dsh plugin add <ascii 路径 tgz>` 仍成功、`--dump-config` 正确出现 `- id: dsh-solidworks`，但**重建实例的首次启动**受离线环境限制（拉不到 `@deepseek-ai/*` bundle），见 verification.md E17 说明 |
 | 对已装 profile 再 `add`/`remove` 不会弄坏 profile | 实测（2026-10-30） | ⚠️ **有坑**：`dsh plugin add/remove` 会按 `dependencies` 重算，把仅在 `dsh.profile.bundles` 里声明的 `@deepseek-ai/*` 剪掉，导致该 profile 后续启动报 `152 plugins failed to import`。规避：装插件后若 profile 起不来，`dsh rescue --from-default-profile <同名模板>` 重建，或改用桌面端市场安装（桌面 profile 由插件管理器维护，不受影响） |
-| 公开 GitHub 仓库 | 市场只从精选列表分发 | ❌ **当前工作目录不是 git 仓库**，需要建仓库并推送 |
+| 公开 GitHub 仓库 | 市场只从精选列表分发 | ⚠️ 本地仓库已建立：`git init` + 首次提交 `6f311b7`（203 文件，0.1.0 全部内容）。**尚未推送/公开**——推送需要授权 |
 | 仓库年龄 ≥ N 天 | README 提到有阈值，具体天数未核对 | **待确认** |
 | GitHub topic `dsh-plugin` | README 提到 | **待确认**（需线上改 topic，未授权不动） |
 | SPDX 许可证字段 | registry 里有 license | ✅ `AGPL-3.0-only`，LICENSE 全文在包内 |
@@ -59,8 +59,9 @@ capabilities:
 
 ## 4. 投稿前必须由用户执行/确认的步骤
 
-1. 把工作目录变成公开仓库（`git init` + 首次提交 + 推到 `tan000tan/dsh-solidworks` 或新仓库）。
-   —— 涉及 GitHub 推送，**未授权不执行**。
+1. 把本地仓库推到 `tan000tan/dsh-solidworks`（或你选定的新仓库）并设为公开。
+   —— 本地 `git init` + 首次提交已完成（`6f311b7`，`main` 分支）；**`git remote add` + `push` 需要授权**。
+   建议同时打 tag `v0.1.0`，让 Release 与 `package.json` 版本对齐。
 2. 决定发布通道：`npm publish dsh-solidworks`，或打到 GitHub Release 并用 `tarball` 字段。
 3. 线上仓库加 topic `dsh-plugin`；确认仓库年龄是否满足阈值。
 4. 用官方 contributing 模板核对分类名（`cad` / `automation` 是否是官方词表内的值，**待确认**）。
