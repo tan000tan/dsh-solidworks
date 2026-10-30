@@ -73,6 +73,17 @@ CAD writes are performed by `SolidWorks.exe` and remain subject to DSH's own san
 policy. A cancelled or timed-out call reports `sideEffects: "unknown"` instead of claiming a
 rollback. Automatic backup/rollback is deliberately not implemented in v0.1.
 
+**Why a missing SolidWorks or Python cannot fail your whole DSH boot.** `failOnStartupError` is a
+host policy for *required bundles*: set to `true`, one plugin that fails to activate aborts the
+entire DSH start (`dsh: startup failed`, observed on this machine). For an optional local
+dependency that is the wrong default. This plugin catches every startup failure inside its own
+`apply()` — missing interpreter, missing server script, missing COM registration, server exiting
+immediately — publishes only its two meta tools and reports the reason through
+`solidworks_status`. `tests/crash.test.js` (9 assertions) makes the server `SystemExit(3)` on its
+first line and asserts that `apply()` does not throw, that exactly the two meta tools remain
+registered, and that the status carries a readable cause. Environments that genuinely require CAD
+to be present (e.g. a managed deployment) can opt in to `failOnStartupError: true` themselves.
+
 ## Verification status
 
 `docs/verification.md` is the authoritative record; the short version:
@@ -80,11 +91,16 @@ rollback. Automatic backup/rollback is deliberately not implemented in v0.1.
 - 109 assertions across seven suites pass: policy 11, MCP client 8, argument-shape 16, packaging 11,
   audit trail 27, host-shaped end-to-end 27, crash isolation 9.
 - `tools/list` against the real Python server returns all 66 tools (protocol 2025-06-18); the
-  read-only tier publishes 16 + 2 meta tools and withholds the other 50.
+  read-only tier publishes 16 + 2 meta tools and withholds the other 50. The three modes were
+  measured against the live server: read-only 16, standard 42, full 66 published.
 - The plugin loads in a real DSH host from an installed copy, spawns the vendored server, serves
   a real `solidworks_health_check`, survives `dsh plugin remove`, and leaves no orphan Python.
 - **No modelling, assembly, drawing, save, or export call has been executed against a live
-  SolidWorks session yet.** Write paths are gated and unit-tested, not proven.
+  SolidWorks session yet.** Write paths are gated and unit-tested, not proven. The minimal loop is
+  ready to run the moment SolidWorks may be started:
+  `node tests/write-loop.mjs --python <python.exe> --authorised` — new blank part → sketch +
+  extrude → read the volume back → export one STEP file → close **without saving**. Without
+  `--authorised` it refuses to run (exit 2).
 
 One argument-shape detail is worth knowing if you extend the engine: FastMCP wraps every tool's
 arguments in `{"params": {...}}`. The plugin hoists that wrapper out of the schema the model sees

@@ -51,6 +51,7 @@
     "test:host": "node tests/host.test.js",
     "test:crash": "node tests/crash.test.js",
     "test:package": "node tests/package.test.js",
-    "probe": "node tests/probe-server.mjs"
+    "probe": "node tests/probe-server.mjs",
+    "write-loop": "node tests/write-loop.mjs"
   }
 }

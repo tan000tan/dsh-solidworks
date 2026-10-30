@@ -15,6 +15,7 @@
 | --- | --- |
 | 插件能被 DSH 宿主加载并注册工具 | **已证实**（E6） |
 | 只读档位下发布 16 个工具、扣留 50 个 | **已证实**（E5：风险表；E7：注册数 18 = 2 meta + 16） |
+| 三档位发布面：只读 16 / 标准 42 / 完整 66 | **已证实**（E22：三档都在真服务器上实测） |
 | 内嵌 Python MCP 服务器能在本机启动并列出 66 个工具 | **已证实**（E4：`tools/list` = 66，协议 2025-06-18） |
 | 真实只读调用（`health_check`）可用 | **已证实**（E7：`status: ok`） |
 | FastMCP 的 `params` 参数外壳被正确解包/回填 | **已证实**（E12；否则所有带参工具在真实宿主里都会返回 `{}`） |
@@ -90,6 +91,8 @@
 
 | E21 | 中文 + 空格路径 | 把 `vendor/` 整树复制到 `D:\dsh-sw-test\路径 测试\vendor\`，再 `node bin/dsh-solidworks.js list-tools --mode read-only --python "D:\SWCAD-MCP\Python313\python.exe" --server "D:\dsh-sw-test\路径 测试\vendor\solidworks-automation-skill\mcp-server\server.py"` | exit 0；服务器正常握手并报 `solidworks_mcp 1.30.0 (protocol 2025-06-18)`、`16 published / 50 withheld of 66`。说明三处都不受中文/空格影响：`spawn` 用参数数组传递路径、`serverCwd` 由脚本路径推导、`apps/` 包在同一父目录下的 `sys.path` 解析。反例也验到了：`--server` 指向不存在的文件时给出 `cannot start: SolidWorks MCP server script not found at …Set the "serverScript" setting` 并 exit 1（不是异常栈） |
 
+| E22 | 三档位发布面 | `node bin/dsh-solidworks.js list-tools --mode <read-only\\|standard\\|full> --python "…python.exe"`，同一台机器、同一个真服务器 | `read-only: 16 published / 50 withheld`；`standard: 42 published / 24 withheld`；`full: 66 published / 0 withheld`（三档均 exit 0）。与风险表 `{read:16, write:26, high:24}` 完全对上：只读=16，标准=16+26，完整=16+26+24——即"档位决定注册面"这一设计在**运行期**成立，不只是单元测试的口径 |
+
 E17 的环境复现说明（**不是**新的插件缺陷）：在隔离 `DSH_HOME` 里用 `--from-default-profile web` 新建
 `swclean` profile → `dsh plugin add D:\dsh-sw-test\plugin.tgz`（纯 ASCII 路径）**成功**（`file:D:/dsh-sw-test/plugin.tgz`，
 `bundles` 追加 `dsh-solidworks`），`--dump-config` 也能看到正确的 `- id: dsh-solidworks` 覆盖；
@@ -108,9 +111,12 @@ schema 传参、服务器按 `params` 解析，结果所有带参工具都会"�
 
 1. **任何真实写操作**：`mode: standard` 下的草图/拉伸/圆角/阵列/旋转、装配插入与配合、保存、导出
    （STEP/STL/DXF/PDF）、删除、Pack&Go、关闭文档——一次都没有在真实 SolidWorks 里执行。
-   风险评估基于源码与工具描述。
+   风险评估基于源码与工具描述。**最小闭环的脚本已就绪**：`tests/write-loop.mjs`（新建空白零件 →
+   草图+拉伸 → 读回体积 → 导出 STEP → **不保存**关闭；不带 `--authorised` 直接退出码 2），
+   授权启动 SolidWorks 后一条命令即可产出 E23。
 2. **`mode: full` + 真实高风险工具**：确认闭环在宿主内用 stub 验证过（E14），但没对真实
    `solidworks_save_document` / `solidworks_export_active` 跑过"拒绝 → 确认 → 放行 → 落盘"。
+   该链路已写进 `tests/write-loop.mjs` 的 `guarded()`（先断言 `CONFIRMATION_REQUIRED`，再确认、再放行）。
 3. **装配体与工程图**：`solidworks_generate_drawing` / `inspect_drawing` 只验证了"可被列出、
    只读类可调用"，没有生成过真实图纸。
 4. **DFM / FEA / OCP 后端**：`cadstudio_*` 系列只在 `tools/list` 与风险分级层面验证；`cadstudio_fea_run`

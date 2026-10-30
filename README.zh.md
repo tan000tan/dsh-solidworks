@@ -121,6 +121,18 @@ node bin\dsh-solidworks.js call solidworks_save_document --arg-file .\save.json 
 - 取消/超时后**副作用未知**：返回 `sideEffects: "unknown"`，要求先检查文档再重试，而不是假装回滚。
 - 没有自动备份/回滚：保存前的备份责任在用户/上层流程（这是相对 `dsh-solidworks` 旧实现的明确功能缺口）。
 
+**为什么缺 SolidWorks / Python 不会让整个 DSH 起不来**（`failOnStartupError` 的取舍）：
+
+DSH 的 `failOnStartupError` 是宿主对 **required bundle** 的策略：为 `true` 时任何一个 required 插件没激活，整机启动就失败
+（本机实测过这种现场：`4 required plugins did not activate` → `dsh: startup failed`，见 `docs/verification.md` E16/排错表）。
+对 SolidWorks 这种**可选的外部依赖**，这个默认值是错的：
+
+- 插件在自己的 `apply()` 里捕获**所有**启动失败（找不到 Python、服务器脚本缺失、COM 注册缺失、服务器启动即退出），
+  只降级为"两个 meta 工具可用 + `solidworks_status` 报原因"，**从不向宿主抛错**；`tests/crash.test.js`（9 项）让服务器
+  脚本第一行就 `SystemExit(3)`，断言宿主调用 `apply()` 不抛错、注册表只剩 2 个 meta 工具、状态里能读到原因。
+- 因此本插件**不要求**用户把 `failOnStartupError` 改成 `true`；需要"缺 CAD 就整体失败"的场景（例如科室统一部署的
+  受控环境）可以自己加，但那属于宿主的策略选择，不是插件的默认。
+
 ## 7. 验证状态（诚实声明）
 
 | 能力 | 状态 |
@@ -133,9 +145,10 @@ node bin\dsh-solidworks.js call solidworks_save_document --arg-file .\save.json 
 | 宿主形态端到端（真服务器 + stub 服务器，27 项） | **已通过**（`node tests/host.test.js`） |
 | 服务器启动即崩溃时不拖垮宿主 | **已通过**（9 项，`node tests/crash.test.js`） |
 | 内嵌服务器在真实 Python 上的 `tools/list` | **已通过**（66 个工具，见 `docs/verification.md`） |
+| 三档位发布面与风险表一致 | **已通过**（只读 16 / 标准 42 / 完整 66，E22） |
 | 在真实 DSH 宿主里加载、连上内嵌服务器并执行只读调用 | **已通过**（隔离 `DSH_HOME` + `swweb` profile，见 E6/E7） |
 | 卸载后目录消失、不留 python 子进程 | **已通过**（E10/E11） |
-| 真实 SolidWorks 上的建模/装配/工程图/DFM/FEA | **未验证**（需装 SolidWorks 的机器，属待批准动作） |
+| 真实 SolidWorks 上的建模/装配/工程图/DFM/FEA | **未验证**（需装 SolidWorks 的机器，属待批准动作）。最小写闭环的脚本已就绪：`node tests/write-loop.mjs --python <python.exe> --authorised`——新建空白零件 → 草图+拉伸 → 读回体积 → 导出 STEP → **不保存**关闭；不带 `--authorised` 会直接拒绝运行（退出码 2） |
 | 保存/导出/关闭、包与工程图导出 | **未验证** |
 | 换版本升级与回滚 | **已通过（安装层）**：0.1.0 → 0.1.1 → 0.1.0 整包替换、无残留（E20）；坏包会被宿主拒绝并自动回滚。宿主内运行时升级未验证 |
 | 市场端到端安装（发布后） | **未验证** |
