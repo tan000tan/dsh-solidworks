@@ -77,8 +77,8 @@ rollback. Automatic backup/rollback is deliberately not implemented in v0.1.
 
 `docs/verification.md` is the authoritative record; the short version:
 
-- 79 assertions across six suites pass: policy 11, MCP client 8, argument-shape 16, packaging 11,
-  host-shaped end-to-end 24, crash isolation 9.
+- 109 assertions across seven suites pass: policy 11, MCP client 8, argument-shape 16, packaging 11,
+  audit trail 27, host-shaped end-to-end 27, crash isolation 9.
 - `tools/list` against the real Python server returns all 66 tools (protocol 2025-06-18); the
   read-only tier publishes 16 + 2 meta tools and withholds the other 50.
 - The plugin loads in a real DSH host from an installed copy, spawns the vendored server, serves

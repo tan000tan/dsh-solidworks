@@ -129,14 +129,15 @@ node bin\dsh-solidworks.js call solidworks_save_document --arg-file .\save.json 
 | MCP 客户端（握手/列举/调用/超时/取消/关闭） | **已通过**（8 项，`node tests/mcp.test.js`，用 stub 服务器） |
 | FastMCP `params` 参数外壳的解包/回填 | **已通过**（16 项，`node tests/schema.test.js`） |
 | 发布包自洽（清单/工具表/许可证/文件白名单） | **已通过**（11 项，`node tests/package.test.js`） |
-| 宿主形态端到端（真服务器 + stub 服务器，24 项） | **已通过**（`node tests/host.test.js`） |
+| 审计日志（每调用一行、摘要稳定、不落参数/路径/凭据） | **已通过**（27 项，`node tests/audit.test.js`） |
+| 宿主形态端到端（真服务器 + stub 服务器，27 项） | **已通过**（`node tests/host.test.js`） |
 | 服务器启动即崩溃时不拖垮宿主 | **已通过**（9 项，`node tests/crash.test.js`） |
 | 内嵌服务器在真实 Python 上的 `tools/list` | **已通过**（66 个工具，见 `docs/verification.md`） |
 | 在真实 DSH 宿主里加载、连上内嵌服务器并执行只读调用 | **已通过**（隔离 `DSH_HOME` + `swweb` profile，见 E6/E7） |
 | 卸载后目录消失、不留 python 子进程 | **已通过**（E10/E11） |
 | 真实 SolidWorks 上的建模/装配/工程图/DFM/FEA | **未验证**（需装 SolidWorks 的机器，属待批准动作） |
 | 保存/导出/关闭、包与工程图导出 | **未验证** |
-| 换版本升级与回滚 | **未验证**（同版本重装已通过） |
+| 换版本升级与回滚 | **已通过（安装层）**：0.1.0 → 0.1.1 → 0.1.0 整包替换、无残留（E20）；坏包会被宿主拒绝并自动回滚。宿主内运行时升级未验证 |
 | 市场端到端安装（发布后） | **未验证** |
 
 ## 8. 排错
@@ -159,7 +160,7 @@ node bin\dsh-solidworks.js call solidworks_save_document --arg-file .\save.json 
 
 ## 9. 升级 / 停用 / 卸载
 
-- **升级**：市场内升级，或换 tgz 重装；配置项在 profile 的 `cordis.patch.yml` 中保留。
+- **升级**：市场内升级，或换 tgz 重装；配置项在 profile 的 `cordis.patch.yml` 中保留。整包替换已实测（E20：0.1.0 → 0.1.1 → 0.1.0，无残留文件）；若自己打包，`package.json` 不能带 BOM，否则宿主会拒绝安装并回滚。
 - **停用**：把 `insert` 项加 `disabled: true`，或市场里禁用；不会动 SolidWorks 与已有文档。
 - **卸载**：市场卸载 / `dsh plugin --profile web remove dsh-solidworks`；可选删除 `auditLog` 文件。卸载不影响任何 `.sldprt/.sldasm/.slddrw`，宿主退出时会一并关闭 Python 子进程（已实测无残留）。profile 的 `cordis.patch.yml` 里残留的 `- id: dsh-solidworks` 配置项不会报错，也可以一起删掉。
 - **回滚**：保留上一版 tgz 即可回退；插件自身不写注册表、不装服务、不改 SolidWorks 设置。

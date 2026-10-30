@@ -47,6 +47,7 @@
     "list-tools": "node bin/dsh-solidworks.js list-tools",
     "selftest": "node bin/dsh-solidworks.js selftest",
     "test": "node tests/policy.test.js && node tests/mcp.test.js && node tests/schema.test.js && node tests/package.test.js",
+    "test:audit": "node tests/audit.test.js",
     "test:host": "node tests/host.test.js",
     "test:crash": "node tests/crash.test.js",
     "test:package": "node tests/package.test.js",

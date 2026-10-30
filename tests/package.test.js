@@ -167,7 +167,24 @@ test('user-facing docs exist and state the tool count the code actually ships', 
     assert.ok(statSync(join(ROOT, rel)).size > 2000, `${rel} looks like a stub`);
   }
   assert.ok(read('docs/verification.md').includes(String(total)), 'verification.md must quote the real tool count');
-  assert.ok(read('docs/verification.md').includes('68'), 'verification.md must quote the assertion count');
+
+  // Every suite on disk must be described in the evidence log, and the two docs must
+  // agree on the total, so adding a suite cannot silently leave the docs behind.
+  const verification = read('docs/verification.md');
+  const suites = readdirSync(join(ROOT, 'tests')).filter((file) => file.endsWith('.test.js')).sort();
+  assert.ok(suites.length >= 7, `expected the seven suites on disk, found ${suites.length}`);
+  for (const suite of suites) {
+    assert.ok(verification.includes(suite), `docs/verification.md must describe the ${suite} suite`);
+  }
+
+  const totalFrom = (text, pattern) => {
+    const match = text.match(pattern);
+    return match ? Number(match[1]) : null;
+  };
+  const verificationTotal = totalFrom(verification, /合计\s*\*\*(\d+)\s*项断言\*\*/);
+  const readmeTotal = totalFrom(read('README.md'), /(\d+)\s+assertions across/);
+  assert.ok(Number.isInteger(verificationTotal), 'verification.md must state the total assertion count');
+  assert.equal(readmeTotal, verificationTotal, `README.md (${readmeTotal}) and verification.md (${verificationTotal}) disagree on the assertion count`);
 
   // Documentation must describe the shipped default, not an older plan.
   assert.match(read('cordis.patch.yml'), /mode:\s*read-only/);

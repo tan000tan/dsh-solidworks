@@ -3,7 +3,7 @@
 本文件记录 `dsh-solidworks` 在真实环境里**实际跑过**的东西，以及**没有跑过**的东西。
 只有本文件列出的证据才算"已验证"；源码里有函数、README 里有描述，都不算。
 
-- 验证日期：2026-10-29（Asia/Shanghai）；2026-10-30 全量复核（见 E17）；2026-10-30 打包完整性补测（见 E18）
+- 验证日期：2026-10-29（Asia/Shanghai）；2026-10-30 全量复核（见 E17）；2026-10-30 打包完整性补测（见 E18）；2026-10-30 审计链路补测（见 E19）；2026-10-30 升级/回滚补测（见 E20）
 - 验证机器：Windows 11（`Windows-11-10.0.26200-SP0`）、x64
 - Node：v24.21.0 ｜ Python：`D:\SWCAD-MCP\Python313\python.exe` 3.13.16（`mcp` 1.30.0）
 - SolidWorks：2026，注册表 `HKLM\SOFTWARE\SolidWorks` 存在，`solidworks_health_check`
@@ -27,8 +27,9 @@
 | 卸载（`dsh plugin remove`） | **已证实**（E10） |
 | 从 ASCII 路径干净安装到全新 DSH_HOME | **已证实**（E16，安装与 spec 记录；该 profile 的首次启动受离线环境影响，未验证） |
 | 发布包自洽（清单/许可证/工具表/文件白名单互相对得上） | **已证实**（E18，`tests/package.test.js` 11 项） |
+| 审计日志：每次执行/拒绝/失败各一行，只存参数摘要与文件名，不存参数、绝对路径或凭据 | **已证实**（E19，`tests/audit.test.js` 27 项） |
 | 子进程回收（宿主退出后不留 python） | **已证实**（E11） |
-| 升级（同版本重装 / 换版本） | **部分证实**：同版本重装、`file:` 源重装均通过；**换版本升级未验证** |
+| 升级（同版本重装 / 换版本） | **已证实（安装层）**：同版本重装、`file:` 源重装、0.1.0 → 0.1.1 → 0.1.0 升级与回滚均通过（E20）；宿主内**运行时**升级未验证 |
 
 ## 2. 单元测试
 
@@ -37,9 +38,14 @@
 | 策略（风险分级、模式、授权、路径门禁、审计脱敏） | `node tests/policy.test.js` | **11 passed / 0 failed** |
 | MCP 客户端（握手、列工具、超时、取消、错误映射、stub 服务器） | `node tests/mcp.test.js` | **8 passed / 0 failed** |
 | 参数外壳（`params` 解包/回填、schema 提升） | `node tests/schema.test.js` | **16 passed / 0 failed** |
-| 宿主形态端到端（load entry → `apply(ctx)` → 真服务器 + stub 服务器） | `node tests/host.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **24 passed / 0 failed** |
+| 宿主形态端到端（load entry → `apply(ctx)` → 真服务器 + stub 服务器） | `node tests/host.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **27 passed / 0 failed** |
 | 崩溃隔离（服务器启动即退出） | `node tests/crash.test.js "D:\SWCAD-MCP\Python313\python.exe"` | **9 passed / 0 failed** |
 | 打包完整性（清单与工具表一致、许可证随包、无缓存垃圾、文档不泄露本机路径） | `node tests/package.test.js` | **11 passed / 0 failed** |
+| 审计链路（执行/拒绝/失败/确认各写一行、摘要稳定、不落参数与路径） | `node tests/audit.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **27 passed / 0 failed** |
+
+七个套件合计 **109 项断言**（11 + 8 + 16 + 27 + 9 + 11 + 27），全部通过。`npm test` 会依次运行
+不需要 Python 的 `package` 套件和其余六套件；`test:audit` / `test:host` / `test:crash` 三个套件需要一个
+可用的 Python（本机为 `D:\SWCAD-MCP\Python313\python.exe`）。
 
 `tests/host.test.js` 是"能不能真的用"的核心证据：它用一个记录 `register()` 的假 `ctx` 调用插件的
 `apply()`，连真实的内嵌服务器，断言：注册 18 个工具（2 meta + 16 只读）、`solidworks_status` 报
@@ -77,6 +83,10 @@
 
 | E18 | 打包完整性（新增套件） | `node tests/package.test.js`（纯文件检查：不 spawn、不连 CAD、不需要 Python） | **11 passed / 0 failed**。断言：`package.json` 的 `dsh.bundle.patch`/`main`/`bin` 都指向真实文件且无 install 脚本；`files` 白名单覆盖全部运行时目录；`cordis.patch.yml` 的 config 键全部存在于 `DEFAULTS` 且默认 `mode: read-only`；`dsh-plugin.json` 的 68 条工具表 = 2 meta + `RISK_TABLE` 66 条（16 read / 26 write / 24 high）且无重复；清单里的图标、`docs/locale/*.json` 存在且非占位；`LICENSE` 是 AGPL-3.0 全文、`NOTICE` 与 `vendor/LICENSE` 标明 MIT 上游与固定提交；README 不含构建机路径。**顺带查出真实缺陷**：上一版 tgz 混进了 6 个 `__pycache__` / 46 个 `.pyc`（在本机跑服务器时生成在 vendor 里的字节码），使包从 202 文件涨到 247、体积从 0.61 MiB 涨到 1.02 MiB；已删除、写入 `.gitignore`，并加了"不得携带缓存或嵌套仓库"的断言 |
 
+| E19 | 审计链路（新增套件） | `node tests/audit.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **27 passed / 0 failed**。同一进程内起两个宿主形态实例（`mode: read-only` 与 `mode: full` + `allowedRoots`）连 `tests/stub-server.py`，让真实执行路径写 6 行 JSONL，然后对日志本身断言：四种事件（`call` / `refused` / `confirm` / `error`）都出现；每行有 ISO 时间戳与工具名；执行/拒绝行带 16 位十六进制参数摘要；同参数两次调用的摘要**相同**（无盐漂移）；拒绝行记下具体码（`PATH_OUTSIDE_ALLOWED_ROOTS` / `CONFIRMATION_REQUIRED`）；日志里**不出现参数名**（只有摘要）、**不出现绝对路径**、不出现 token/password/secret/api-key 形状的键；有 `target` 时只记文件名。另对纯函数 `auditTarget()` / `digest()` / `canonicalArgs()` 直接断言（路径只留 basename、无路径时为 null、键序无关） |
+
+| E20 | 升级与回滚（安装层） | 隔离 `DSH_HOME` + profile `swup`（`dsh --profile swup --from-default-profile web --dump-config` 创建），依次 `dsh plugin --profile swup add` 0.1.0 → 0.1.1 → 0.1.0 | 三步都 exit 0。0.1.0：version `0.1.0`、spec `file:D:/dsh-sw-test/up/v010.tgz`、203 文件；0.1.1：version `0.1.1`、spec 指向 `v011.tgz`、204 文件、仅 0.1.1 才有的 `docs/upgrade-marker-011.txt` **存在**；回滚到 0.1.0：version/spec/文件数回到原值、marker **消失**——说明升级是**整包替换**而非叠加，无残留文件。`dsh.profile.bundles` 三步都保持 `@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,dsh-solidworks`。**附带发现**：故意用带 BOM 的 `package.json` 打包再 add 时，宿主拒绝安装并自动回滚（`dsh: installation rejected: Cannot validate installed package dsh-solidworks: SyntaxError: Unexpected token '﻿'` + `dsh: restored package.json, pnpm-lock.yaml, and node_modules.`），profile 仍停在 0.1.0 可用状态——坏包不会把已验证的安装弄坏 |
+
 E17 的环境复现说明（**不是**新的插件缺陷）：在隔离 `DSH_HOME` 里用 `--from-default-profile web` 新建
 `swclean` profile → `dsh plugin add D:\dsh-sw-test\plugin.tgz`（纯 ASCII 路径）**成功**（`file:D:/dsh-sw-test/plugin.tgz`，
 `bundles` 追加 `dsh-solidworks`），`--dump-config` 也能看到正确的 `- id: dsh-solidworks` 覆盖；
@@ -104,11 +114,13 @@ schema 传参、服务器按 `params` 解析，结果所有带参工具都会"�
    等需要 CalculiX/Elmer 的场景未运行。
 5. **桌面 profile 与插件市场**：本轮安装在隔离 `DSH_HOME` 的 `swweb` profile；`desktop` profile 由
    桌面端独占（CLI 会报错），市场收录流程（`awesome-dsh-plugin` PR）未走。
-6. **换版本升级 / 回滚**：同版本重装与 `file:` 重装都通过，但没有"0.1.0 → 0.2.0 升级 + 回退"的证据。
+6. **宿主内运行时升级 / 降级**：安装层已证实（E20：0.1.0 → 0.1.1 → 0.1.0 整包替换、无残留，坏包被宿主拒绝并回滚）；
+   但"装新版 → 重启宿主 → 旧会话恢复 → 工具表更新"这条运行时链路没跑过。
 7. **兼容矩阵**：只在 SolidWorks 2026 / Python 3.13 / Node 24 / x64 上验证；2023–2025、arm64、
    Python 3.10–3.12 未验证（上游 `capabilities.yaml` 声明 2024/2026）。
 8. **并发、超时、取消、断连**：客户端层有实现与单元测试（cancel/timeout），真实宿主内未压测。
-9. **审计日志**：写盘路径与脱敏有单元测试，未在真实写操作后核对日志内容。
+9. **真实写操作之后的审计行**：日志格式、脱敏与摘要稳定性已在 stub 服务器场景逐行断言（E19）；但因为写操作本身
+   还没执行，也没有"真实保存/导出之后回看日志"的证据。
 
 ### 已知问题（不是"未验证"，是确认存在的缺陷或坑）
 
