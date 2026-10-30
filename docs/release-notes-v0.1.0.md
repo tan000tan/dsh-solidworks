@@ -62,5 +62,5 @@ and the exact upstream commit are recorded in `NOTICE` and `PROVENANCE.md`. No s
 AGPL `dsh-solidworks` upstream repository is included — the comparison method and its result are in
 `PROVENANCE.md`; that is evidence, not a legal opinion.
 
-**Package**: `dsh-solidworks-0.1.0.tgz`, 204 files, sha256 `7caeb96c32af718b679807aab54a4258be5a2392ad20ac89b0296d4b1d20c1e4`
+**Package**: `dsh-solidworks-0.1.0.tgz`, 208 files, sha256 `9c8746061415c394e25af18cccc900078d9d257d5e75f7559fa4889faca2a1f3`
 (re-hash after `npm pack`; the tarball is byte-stable only for identical inputs).

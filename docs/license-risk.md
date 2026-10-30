@@ -10,7 +10,7 @@
 | `lib/` `bin/` `tests/` `docs/`、`cordis.patch.yml`、`dsh-plugin.json`、两个 README | 31 | AGPL-3.0-only | `Copyright (C) 2026 the dsh-solidworks contributors`（`NOTICE` L2） | **已证实**：本包自写，不来自任何上游 |
 | `vendor/solidworks-automation-skill/` | 174 | MIT | `(c) 2026 SolidWorks Automation Skill Contributors`（`vendor/.../LICENSE` L3） | **已证实**：与 `d8b9547` 逐文件 SHA-256 相同 |
 | `LICENSE` | 1 | AGPL-3.0 全文 | 标准文本 | **已证实** |
-| 合计 | 204（tgz） | — | — | — |
+| 合计 | 208（tgz） | — | — | — |
 
 一致性：`package.json` `license: "AGPL-3.0-only"`、`dsh-plugin.json` `license: "AGPL-3.0-only"`、
 `LICENSE` 全文、`README` §10、`NOTICE` 第 1–3 行**四处一致**（**已证实**）。
@@ -57,7 +57,7 @@
 | `PyMuPDF`（`fitz`） | PDF 预览 | **AGPL-3.0** | ❌ | 否 | 若未来**随包分发**会强制整体 AGPL——本包已是 AGPL，无冲突；若改许可证则必须移除 |
 | `trimesh` | 3D 打印检查 | MIT | ❌ | 否 | 无 |
 
-要点：**这些包一个都没进 tarball**（`npm pack` 只含 204 个文件，全在 `lib/bin/tests/docs/vendor`）。
+要点：**这些包一个都没进 tarball**（`npm pack` 只含 208 个文件，全在 `lib/bin/tests/docs/vendor`）。
 用户自己 `pip install` 属于用户行为，不构成我们的分发。若将来做"一键装环境"的安装器，义务会变成真实的——
 **那时必须重新审这张表**（尤其 LGPL 的 OCP/PySide6 和 AGPL 的 PyMuPDF）。
 

@@ -19,7 +19,7 @@
 | SPDX 许可证字段 | registry 里有 license | ✅ `AGPL-3.0-only`，LICENSE 全文在包内 |
 | `capabilities` 声明 | registry 字段 | ⚠️ 见第 3 节，需要按真实能力写 |
 | 无安装期脚本 | 市场默认不跑 `postinstall` | ✅ 插件没有任何 install/postinstall 脚本 |
-| 包体大小 | 未见硬限制 | 204 个文件；约 0.60 MiB（tgz）/ 2.2 MB（解包） |
+| 包体大小 | 未见硬限制 | 208 个文件；约 0.61 MiB（tgz）/ 2.2 MB（解包） |
 
 ## 2. 投稿 YAML
 

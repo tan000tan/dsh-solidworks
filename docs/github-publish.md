@@ -18,7 +18,7 @@ Get-FileHash .\dsh-solidworks-0.1.0.tgz -Algorithm SHA256
 ```
 
 当前实测（2026-10-30 收尾）：`test:all` exit 0、110 断言通过、66 工具、
-`dsh-solidworks-0.1.0.tgz` **204 文件 / 633,018 B / sha256 `7caeb96c32af718b679807aab54a4258be5a2392ad20ac89b0296d4b1d20c1e4`**。
+`dsh-solidworks-0.1.0.tgz` **208 文件 / 641,457 B / sha256 `9c8746061415c394e25af18cccc900078d9d257d5e75f7559fa4889faca2a1f3`**。
 重新打包后 sha256 会变（`package.json` 里没有固定 mtime），以 `npm pack` 实际输出为准。
 
 ## 1. 建仓库并推送（需授权）
