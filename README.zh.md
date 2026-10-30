@@ -135,14 +135,14 @@ DSH 的 `failOnStartupError` 是宿主对 **required bundle** 的策略：为 `t
 
 ## 7. 验证状态（诚实声明）
 
-**一条命令复现全部 109 项断言**（七个套件）：
+**一条命令复现全部 110 项断言**（七个套件）：
 
 ```powershell
 $env:DSH_SOLIDWORKS_PYTHON = "<你的 python.exe 完整路径>"
 npm run test:all      # exit 0 = 全绿
 ```
 
-`npm test` 只跑不需要 Python 的四个套件（policy / mcp / schema / package，共 46 项），在没有装
+`npm test` 只跑不需要 Python 的四个套件（policy / mcp / schema / package，共 47 项），在没有装
 Python 的机器上也能跑。三个依赖 Python 的套件都认 `--python <exe>` 或 `DSH_SOLIDWORKS_PYTHON`。
 
 | 能力 | 状态 |
@@ -150,7 +150,7 @@ Python 的机器上也能跑。三个依赖 Python 的套件都认 `--python <ex
 | 策略/授权/路径/审计单元测试 | **已通过**（11 项，`node tests/policy.test.js`） |
 | MCP 客户端（握手/列举/调用/超时/取消/关闭） | **已通过**（8 项，`node tests/mcp.test.js`，用 stub 服务器） |
 | FastMCP `params` 参数外壳的解包/回填 | **已通过**（16 项，`node tests/schema.test.js`） |
-| 发布包自洽（清单/工具表/许可证/文件白名单） | **已通过**（11 项，`node tests/package.test.js`） |
+| 发布包自洽（清单/工具表/许可证/文件白名单） | **已通过**（12 项，`node tests/package.test.js`） |
 | 审计日志（每调用一行、摘要稳定、不落参数/路径/凭据） | **已通过**（27 项，`node tests/audit.test.js`） |
 | 宿主形态端到端（真服务器 + stub 服务器，27 项） | **已通过**（`node tests/host.test.js`） |
 | 服务器启动即崩溃时不拖垮宿主 | **已通过**（9 项，`node tests/crash.test.js`） |
@@ -194,3 +194,16 @@ Python 的机器上也能跑。三个依赖 Python 的套件都认 `--python <ex
 - `vendor/solidworks-automation-skill/`：MIT（`vendor/solidworks-automation-skill/LICENSE`），来源与改动见 `PROVENANCE.md`、`NOTICE`。
 - 本插件**不包含** `dsh-solidworks`（AGPL）的任何源代码：策略、授权、MCP 客户端、入口均为本包独立实现；两仓库的关系与不合并理由见产品化方案文档。
 - 分发时须同时保留 `LICENSE`、`NOTICE`、`vendor/**/LICENSE`。
+
+**来源与合规细节**：`docs/license-risk.md`（逐文件许可证清单、与 AGPL 上游的全量哈希比对结果、
+运行时依赖许可证表、5 条风险与处置、以及需要法律复核的待确认项）；
+第三方包清单在 `NOTICE`，上游固定提交与行级比对在 `PROVENANCE.md`。
+
+## 11. 发布与投稿（仓库维护者看）
+
+| 文件 | 用途 |
+| --- | --- |
+| `docs/github-publish.md` | 建仓库、push、tag `v0.1.0`、Release、topics、投稿 PR 的逐条命令（**全部需要授权**，本轮未执行） |
+| `docs/release-notes-v0.1.0.md` | GitHub Release 说明现成稿（含实测数字与"写操作未验证"声明） |
+| `docs/market-submission.md` | 投稿条件核对表 + 三处待核项（`name` 语义、`category` 词表、`capabilities` 是否必填） |
+| `docs/submission/tan000tan__dsh-solidworks.yml` | 正式投稿文件（目标 `data/plugins/tan000tan__dsh-solidworks.yml`） |

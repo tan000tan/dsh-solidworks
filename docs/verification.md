@@ -27,7 +27,7 @@
 | 桌面 profile / 插件市场安装路径 | **未验证**（只在隔离 `DSH_HOME` 的 `swweb` profile 里装过 tarball） |
 | 卸载（`dsh plugin remove`） | **已证实**（E10） |
 | 从 ASCII 路径干净安装到全新 DSH_HOME | **已证实**（E16，安装与 spec 记录；该 profile 的首次启动受离线环境影响，未验证） |
-| 发布包自洽（清单/许可证/工具表/文件白名单互相对得上） | **已证实**（E18，`tests/package.test.js` 11 项） |
+| 发布包自洽（清单/许可证/工具表/文件白名单互相对得上） | **已证实**（E18，`tests/package.test.js` 12 项） |
 | 审计日志：每次执行/拒绝/失败各一行，只存参数摘要与文件名，不存参数、绝对路径或凭据 | **已证实**（E19，`tests/audit.test.js` 27 项） |
 | 子进程回收（宿主退出后不留 python） | **已证实**（E11） |
 | 升级（同版本重装 / 换版本） | **已证实（安装层）**：同版本重装、`file:` 源重装、0.1.0 → 0.1.1 → 0.1.0 升级与回滚均通过（E20）；宿主内**运行时**升级未验证 |
@@ -42,10 +42,10 @@
 | 参数外壳（`params` 解包/回填、schema 提升） | `node tests/schema.test.js` | **16 passed / 0 failed** |
 | 宿主形态端到端（load entry → `apply(ctx)` → 真服务器 + stub 服务器） | `node tests/host.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **27 passed / 0 failed** |
 | 崩溃隔离（服务器启动即退出） | `node tests/crash.test.js "D:\SWCAD-MCP\Python313\python.exe"` | **9 passed / 0 failed** |
-| 打包完整性（清单与工具表一致、许可证随包、无缓存垃圾、文档不泄露本机路径） | `node tests/package.test.js` | **11 passed / 0 failed** |
+| 打包完整性（清单与工具表一致、许可证随包、无缓存垃圾、文档不泄露本机路径、NOTICE 文件数与实际一致） | `node tests/package.test.js` | **12 passed / 0 failed** |
 | 审计链路（执行/拒绝/失败/确认各写一行、摘要稳定、不落参数与路径） | `node tests/audit.test.js --python "D:\SWCAD-MCP\Python313\python.exe"` | **27 passed / 0 failed** |
 
-七个套件合计 **109 项断言**（11 + 8 + 16 + 27 + 9 + 11 + 27），全部通过。一条命令跑完全部七个：
+七个套件合计 **110 项断言**（11 + 8 + 16 + 27 + 9 + 12 + 27），全部通过。一条命令跑完全部七个：
 
 ```powershell
 $env:DSH_SOLIDWORKS_PYTHON = "D:\SWCAD-MCP\Python313\python.exe"

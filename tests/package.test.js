@@ -224,3 +224,13 @@ test('the evidence log is internally consistent', () => {
     assert.ok(has(script), `verification.md runs ${script}, which is not shipped`);
   }
 });
+
+test('NOTICE states the file count the vendor tree actually has', () => {
+  const countFiles = (dir) => readdirSync(join(ROOT, dir), { withFileTypes: true })
+    .reduce((n, e) => n + (e.isDirectory() ? countFiles(join(dir, e.name)) : 1), 0);
+
+  const actual = countFiles('vendor/solidworks-automation-skill');
+  const said = Number(read('NOTICE').match(/Files\s*:\s*(\d+)/)?.[1]);
+  assert.ok(Number.isFinite(said), 'NOTICE must state "Files : <n>" for the vendored tree');
+  assert.strictEqual(said, actual, `NOTICE says ${said} vendored files, tree has ${actual}`);
+});

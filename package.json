@@ -20,6 +20,21 @@
     "mcp"
   ],
   "license": "AGPL-3.0-only",
+  "author": {
+    "name": "tan000tan",
+    "url": "https://github.com/tan000tan"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tan000tan/dsh-solidworks.git"
+  },
+  "homepage": "https://github.com/tan000tan/dsh-solidworks#readme",
+  "bugs": {
+    "url": "https://github.com/tan000tan/dsh-solidworks/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22.12"
   },

@@ -12,7 +12,9 @@ Location : vendor/solidworks-automation-skill/
 License  : MIT (vendor/solidworks-automation-skill/LICENSE)
 Copyright: (c) 2026 SolidWorks Automation Skill Contributors
 Source   : https://github.com/tan000tan/solidworks-automation-skill @ d8b9547
-Files    : 83, byte-identical copies (verification in PROVENANCE.md)
+Files    : 174, byte-identical copies (verification in PROVENANCE.md):
+           mcp-server/ 8, scripts/ 72, apps/desktop/cad_workbench/ 23,
+           subskills/ 68, plus capabilities.yaml, manifest.json, LICENSE
 
 The MIT text is reproduced verbatim in vendor/solidworks-automation-skill/LICENSE.
 That subtree is distributed inside an AGPL-3.0-only package; the MIT terms

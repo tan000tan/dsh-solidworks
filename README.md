@@ -88,10 +88,10 @@ to be present (e.g. a managed deployment) can opt in to `failOnStartupError: tru
 
 `docs/verification.md` is the authoritative record; the short version:
 
-- 109 assertions across seven suites pass: policy 11, MCP client 8, argument-shape 16, packaging 11,
+- 110 assertions across seven suites pass: policy 11, MCP client 8, argument-shape 16, packaging 12,
   audit trail 27, host-shaped end-to-end 27, crash isolation 9. Reproduce everything with
   `$env:DSH_SOLIDWORKS_PYTHON = "<python.exe>"; npm run test:all` (exit 0 = all green); `npm test`
-  runs the four suites that need no Python (46 assertions).
+  runs the four suites that need no Python (47 assertions).
 - `tools/list` against the real Python server returns all 66 tools (protocol 2025-06-18); the
   read-only tier publishes 16 + 2 meta tools and withholds the other 50. The three modes were
   measured against the live server: read-only 16, standard 42, full 66 published.
@@ -115,4 +115,16 @@ The plugin is AGPL-3.0-only (`LICENSE`). The vendored engine is MIT
 (`vendor/solidworks-automation-skill/LICENSE`); provenance and the exact upstream source are
 recorded in `PROVENANCE.md`, third-party inventory in `NOTICE`. No source code from the
 `dsh-solidworks` (AGPL) repository is included — policy, grants, MCP transport, and host entry
-points are implemented independently here.
+points are implemented independently here. `docs/license-risk.md` has the file-level inventory,
+the whole-tree SHA-256 comparison against that repository, the runtime dependency licence table,
+and the one item that still needs a human/legal call (whether the MIT engine could be a derivative
+of the AGPL upstream — evidence says no, but the upstream could not be fetched from this host).
+
+## Releasing and publishing
+
+| File | Purpose |
+| --- | --- |
+| `docs/github-publish.md` | exact commands for repo creation, push, tag `v0.1.0`, Release, topics, submission PR — **all still require authorisation**, none were run |
+| `docs/release-notes-v0.1.0.md` | ready-made GitHub Release body (real numbers, "writes not verified" statement) |
+| `docs/market-submission.md` | submission checklist plus the three open questions (`name` semantics, `category` vocabulary, whether `capabilities` is required) |
+| `docs/submission/tan000tan__dsh-solidworks.yml` | the file to add as `data/plugins/tan000tan__dsh-solidworks.yml` |
