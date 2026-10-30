@@ -191,17 +191,37 @@ test('user-facing docs exist and state the tool count the code actually ships', 
   assert.match(read('README.zh.md'), /read-only/);
 });
 
-test('shipped docs do not leak this build machine', () => {
-  const leaked = ['D:\\Agent工作区', 'C:\\Users\\Khalil', 'D:\\SWCAD-MCP'];
-  // verification.md and PROVENANCE.md are deliberately machine-specific evidence logs.
-  const machineReports = new Set(['docs/verification.md', 'PROVENANCE.md']);
-  for (const rel of ['README.md', 'README.zh.md', 'docs/market-submission.md', 'package.json', 'dsh-plugin.json']) {
+test('shipped files (docs, provenance, tests) do not leak build machine paths', () => {
+  const parts = [
+    ['D:', 'Agent工作区'],
+    ['C:', 'Users', 'Khalil'],
+    ['D:', 'SWCAD-MCP'],
+    ['D:', 'dsh-sw-test'],
+    ['D:', 'Solidwork'],
+  ];
+  const needles = parts.flatMap((p) => [p.join('\\'), p.join('/')]);
+
+  const roots = [
+    'README.md',
+    'README.zh.md',
+    'PROVENANCE.md',
+    'package.json',
+    'dsh-plugin.json',
+    'cordis.patch.yml',
+    'NOTICE',
+  ];
+  const docs = walk('docs');
+  const tests = walk('tests');
+
+  const targets = [...roots, ...docs, ...tests];
+  assert.ok(targets.length >= 15, `expected target files, found ${targets.length}`);
+
+  for (const rel of targets) {
     const text = read(rel);
-    for (const needle of leaked) {
+    for (const needle of needles) {
       assert.ok(!text.includes(needle), `${rel} leaks a path from the build machine: ${needle}`);
     }
   }
-  assert.ok(machineReports.size === 2);
 });
 
 test('the vendor tree matches the paths the plugin resolves at runtime', () => {

@@ -5,7 +5,7 @@
 // saving — so it cannot modify any document the user already has open.
 //
 // Run ONLY with authorisation to start SolidWorks:
-//   node tests/write-loop.mjs --python "D:\SWCAD-MCP\Python313\python.exe" --authorised
+//   node tests/write-loop.mjs --python "<PYTHON_EXE>" --authorised
 //
 // Exit: 0 pass, 1 regression, 2 precondition (no SolidWorks / not authorised).
 //

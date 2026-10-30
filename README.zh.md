@@ -176,7 +176,7 @@ Python 的机器上也能跑。三个依赖 Python 的套件都认 `--python <ex
 | `PATH_OUTSIDE_ALLOWED_ROOTS` | 写操作目标不在允许目录。改 `allowedRoots` 或把文件放进会话目录。 |
 | `TIMEOUT` | 超过 `toolTimeoutMs`。SolidWorks 可能在后台仍在运算——先查文档状态再重试。 |
 | 工具不在列表里 | 被 `mode`/`deny` 扣留。`list-tools --mode <档位>` 可看扣留清单与原因。 |
-| 宿主启动失败，报 `4 required plugins did not activate` / `152 plugins failed to import` | 该 profile 的 `@deepseek-ai/*` bundle 被 `dsh plugin add/remove` 按 `dependencies` 重算时剪掉了（2026-10-30 实测复现；与插件本身无关）。恢复：桌面端在插件管理器里修复/重装该 profile 的依赖，或新建一个 profile 再装插件（新建 profile 的 bundle 由宿主联网拉取，离线环境下会失败）。本插件在服务器起不来时**不会**让宿主失败（`apply()` 吞掉启动异常，只发布 2 个 meta 工具并报 `environment.state: failed`）。 |
+| 宿主启动失败，报 `4 required plugins did not activate` / `152 plugins failed to import` / `Cannot find package '@deepseek-ai/dsh-plugin-manager'` | 常见于迁移 `DSH_HOME` 到隔离测试目录时宿主安装锚点（`installAnchor`）未生效，导致无法解析 in-box 的 `@deepseek-ai/*` bundle（此前曾怀疑为 pnpm 依赖裁剪，现已证实 `@deepseek-ai/*` 本不在 profile 的 `pnpm-lock.yaml` 中，空 profile 在隔离目录下同样复现，真实默认 home 下解析正常；与插件本身无关）。恢复：在真实默认 home 或桌面端正常使用该 profile 即可。本插件在服务器起不来时**不会**让宿主失败（`apply()` 吞掉启动异常，只发布 2 个 meta 工具并报 `environment.state: failed`）。 |
 | `dsh plugin --profile X add` 后 profile 里出现乱码 `file:D:/Agent宸ヤ綔鍖?/...` | 安装包路径含中文时 DSH 记录的 spec 会乱码。把 tgz 放到纯 ASCII 路径重装；市场按 npm 包名安装不受影响。 |
 | `select a profile only once` | 正确语法是 `dsh --profile <name> web --port N`（profile 在子命令前），不是 `dsh web --profile <name>`。 |
 | 在受限沙箱里跑测试全部 `EPERM` | `tests/host.test.js`、`tests/mcp.test.js`、`tests/crash.test.js` 要 spawn 子进程（管道 stdio），必须在普通终端或 danger-full-access 下跑。 |

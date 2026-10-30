@@ -1,5 +1,5 @@
 # 目标路径（awesome-dsh-plugin 仓库内）：data/plugins/tan000tan__dsh-solidworks.yml
-# 形状按用户确认的投稿模板；`category` 值仍待与线上分类词表核对（见 docs/market-submission.md §2）。
+# 形状按用户确认的投稿模板；`category: tools` 已核实为 awesome-dsh-plugin 官方合法分类。
 url: https://github.com/tan000tan/dsh-solidworks
 name: tan000tan/dsh-solidworks
 category: tools

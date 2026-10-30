@@ -20,7 +20,7 @@ tree (SHA-256 per file, 174/174 identical, 0 missing, 0 modified):
 
 ## Where it came from
 
-- Source path: `D:\Agent工作区\DSH配置\github-upload-staging\solidworks-automation-skill`
+- Source path: `<DSH_WORKSPACE>\github-upload-staging\solidworks-automation-skill`
 - Git commit: `d8b9547` — "SolidWorks 自动化技能（自本机仓库同步）" (single-commit local mirror)
 - Declared remote: `https://github.com/tan000tan/solidworks-automation-skill.git`
 - License file: MIT, "Copyright (c) 2026 SolidWorks Automation Skill Contributors"
@@ -33,7 +33,7 @@ vendoring time. `__pycache__` directories produced by local runs are deleted, ne
 `npm pack --dry-run`). Re-verify with:
 
 ```powershell
-$src = 'D:\Agent工作区\DSH配置\github-upload-staging\solidworks-automation-skill'
+$src = '<UPSTREAM_SOURCE_DIR>\solidworks-automation-skill'
 $vnd = 'vendor\solidworks-automation-skill'
 Get-ChildItem $vnd -Recurse -File | ForEach-Object {
   $rel = $_.FullName.Substring((Resolve-Path $vnd).Path.Length).TrimStart('\')

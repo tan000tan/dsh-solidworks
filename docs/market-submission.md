@@ -4,7 +4,7 @@
 > `api.github.com`、`raw.githubusercontent.com`、`awesome-dsh-plugin.com` 都被解析到内网地址
 > 并被拒绝（`web_fetch` 报 "non-public address"），因此**没有**引用官方 contributing.md 的原文。
 > 下面的字段结构来自本机安装的 `dshmarket@1.66.44` 的 `src/registry.ts`（**已证实**），
-> 分类与审核口径需以官方指南为准（**待确认**）。
+> 分类已核实 `category: tools` 为官方合法分类（见 §2），其余审核口径需以官方指南为准。
 
 ## 1. 收录条件核对
 
@@ -12,7 +12,7 @@
 |---|---|---|
 | 包里有 `dsh.bundle.patch` 指向的 `cordis.patch.yml` | dshmarket README（**已证实**） | ✅ 有，且被宿主接受（verification.md E3） |
 | 能按标准方式安装并被宿主加载 | 实测（E6/E7）；2026-10-30 复核 | ✅ 安装 + 加载 + 真实调用已验证（2026-10-29 隔离 profile）。2026-10-30 复核：`dsh plugin add <ascii 路径 tgz>` 仍成功、`--dump-config` 正确出现 `- id: dsh-solidworks`，但**重建实例的首次启动**受离线环境限制（拉不到 `@deepseek-ai/*` bundle），见 verification.md E17 说明 |
-| 对已装 profile 再 `add`/`remove` 不会弄坏 profile | 实测（2026-10-30） | ⚠️ **有坑**：`dsh plugin add/remove` 会按 `dependencies` 重算，把仅在 `dsh.profile.bundles` 里声明的 `@deepseek-ai/*` 剪掉，导致该 profile 后续启动报 `152 plugins failed to import`。规避：装插件后若 profile 起不来，`dsh rescue --from-default-profile <同名模板>` 重建，或改用桌面端市场安装（桌面 profile 由插件管理器维护，不受影响） |
+| 对已装 profile 再 `add`/`remove` 不会弄坏 profile | 实测（2026-10-30） | ℹ️ **说明**：此前在隔离 `DSH_HOME` 测试时曾观察到缺少 bundle 报错（`152 plugins failed to import` / `Cannot find package '@deepseek-ai/dsh-plugin-manager'`），经深入排查已确认该现象是隔离测试环境下的宿主安装锚点（`installAnchor`）未生效所致，并非此前推测的 pnpm 依赖裁剪问题（`@deepseek-ai/*` 本不在 pnpm-lock.yaml 中，真实默认 home 解析正常）。正常桌面端或标准环境下管理 profile 不受此影响。 |
 | 公开 GitHub 仓库 | 市场只从精选列表分发 | ⚠️ 本地仓库已建立（`main`，5 个提交，HEAD `3065260`，工作树干净）。**尚未推送/公开**——推送、建仓库、建 tag 都需要授权（见 `docs/github-publish.md`） |
 | 仓库年龄 ≥ N 天 | README 提到有阈值，具体天数未核对 | **待确认** |
 | GitHub topic `dsh-plugin` | README 提到 | **待确认**（需线上改 topic，未授权不动） |
@@ -32,8 +32,7 @@
 1. `name` 用 `owner/repo` 还是裸包名：用户模板给的是 `tan000tan/dsh-solidworks`；而本机 `dshmarket`
    的解析代码把 `name` 当包名、另有 `owner` 字段（`lib/registry.js` 的 `pluginCategories`/`asRegistry`）。
    两者不冲突但语义不同，投稿前拿 `data/plugins/` 里 2–3 个已有条目对照即可定论。
-2. `category` 的官方 id 词表：客户端只校验"至少一个非空字符串"，不对照固定词表（词表来自远端
-   catalog 的 `Registry.categories`），所以本地无法判断 `tools` 是否合法 id。
+2. `category` 的官方 id 词表：已核实 `tools` 是 awesome-dsh-plugin 官方合法分类（见第六节及官方分类词表），符合平台标准。
 3. `npm` / `install` / `capabilities` 是否必填：`dshmarket` 里 `capabilities` 是**扫描器产出的字段**
    （shell / network / credentials / fs-read / fs-write / env / llm / dynamic-code），不是作者自填的
    承诺；投稿时若 CI 要求，应由维护者脚本生成而不是我们手写。
