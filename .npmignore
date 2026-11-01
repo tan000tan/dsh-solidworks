@@ -1,0 +1,31 @@
+# ============================================================
+# dsh-solidworks npm 发布忽略规则 (.npmignore)
+# 严格排除 Python 编译缓存、字节码及本地调试临时文件
+# ============================================================
+
+# Python 编译字节码与缓存目录
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*$py.class
+.pytest_cache/
+**/.pytest_cache/
+
+# 临时与备份文件
+*.bak
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
+
+# 本地运行时与调试日志
+audit.jsonl
+*.log
+.dsh-audit/
+
+# 本地测试与临时生成目录
+测试代码/sandbox_benchmark/
+scratch/
+.local/

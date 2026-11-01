@@ -1,76 +1,130 @@
-# 投稿到 awesome-dsh-plugin 的准备材料
+# 投稿到 awesome-dsh-plugin 的正式准备材料
 
-> 本文件只是**草案 + 核对表**。所有需要联网的确认项都标了「待确认」——本机
-> `api.github.com`、`raw.githubusercontent.com`、`awesome-dsh-plugin.com` 都被解析到内网地址
-> 并被拒绝（`web_fetch` 报 "non-public address"），因此**没有**引用官方 contributing.md 的原文。
-> 下面的字段结构来自本机安装的 `dshmarket@1.66.44` 的 `src/registry.ts`（**已证实**），
-> 分类已核实 `category: tools` 为官方合法分类（见 §2），其余审核口径需以官方指南为准。
+> 本文档于 2026-10-30 结合 `awesome-dsh-plugin/awesome-dsh-plugin` 官方仓库的最新实际规范、CI 脚本（`check-submission.mjs`、`lib/entries.mjs`）以及近期合并的 PR 案例更新。所有收录要求、投稿机制和字段规范均已核实闭环。
 
-## 1. 收录条件核对
+---
 
-| 条件 | 依据 | 当前状态 |
-|---|---|---|
-| 包里有 `dsh.bundle.patch` 指向的 `cordis.patch.yml` | dshmarket README（**已证实**） | ✅ 有，且被宿主接受（verification.md E3） |
-| 能按标准方式安装并被宿主加载 | 实测（E6/E7）；2026-10-30 复核 | ✅ 安装 + 加载 + 真实调用已验证（2026-10-29 隔离 profile）。2026-10-30 复核：`dsh plugin add <ascii 路径 tgz>` 仍成功、`--dump-config` 正确出现 `- id: dsh-solidworks`，但**重建实例的首次启动**受离线环境限制（拉不到 `@deepseek-ai/*` bundle），见 verification.md E17 说明 |
-| 对已装 profile 再 `add`/`remove` 不会弄坏 profile | 实测（2026-10-30） | ℹ️ **说明**：此前在隔离 `DSH_HOME` 测试时曾观察到缺少 bundle 报错（`152 plugins failed to import` / `Cannot find package '@deepseek-ai/dsh-plugin-manager'`），经深入排查已确认该现象是隔离测试环境下的宿主安装锚点（`installAnchor`）未生效所致，并非此前推测的 pnpm 依赖裁剪问题（`@deepseek-ai/*` 本不在 pnpm-lock.yaml 中，真实默认 home 解析正常）。正常桌面端或标准环境下管理 profile 不受此影响。 |
-| 公开 GitHub 仓库 | 市场只从精选列表分发 | ⚠️ 本地仓库已建立（`main`，5 个提交，HEAD `3065260`，工作树干净）。**尚未推送/公开**——推送、建仓库、建 tag 都需要授权（见 `docs/github-publish.md`） |
-| 仓库年龄 ≥ N 天 | README 提到有阈值，具体天数未核对 | **待确认** |
-| GitHub topic `dsh-plugin` | README 提到 | **待确认**（需线上改 topic，未授权不动） |
-| SPDX 许可证字段 | registry 里有 license | ✅ `AGPL-3.0-only`，LICENSE 全文在包内 |
-| `capabilities` 声明 | registry 字段 | ⚠️ 见第 3 节，需要按真实能力写 |
-| 无安装期脚本 | 市场默认不跑 `postinstall` | ✅ 插件没有任何 install/postinstall 脚本 |
-| 包体大小 | 未见硬限制 | 208 个文件；约 0.61 MiB（tgz）/ 2.2 MB（解包） |
+## 1. 官方收录规范与投稿机制
 
-## 2. 投稿 YAML
+### 投稿机制
+- **单文件投稿**：仅在官方仓库的 `data/plugins/` 下添加单个 YAML 文件，命名规范为 `<owner>__<repo>.yml`。
+  - 本项目对应的文件名为：`data/plugins/tan000tan__dsh-solidworks.yml`
+- **严禁手工编辑两个 README**：
+  - `README.md` 与 `README.zh.md` 由官方脚本 `scripts/generate-readme.mjs` 在 `main` 分支合入后自动生成。
+  - 手工改动 README 会触发 CI `pr-check.yml` 严格比对报错。
+- **单 PR 限制**：
+  - 单个 PR 仅能提交 1 个插件条目（硬上限为 3 个，超出直接打回）。
 
-**正式草稿文件**：`docs/submission/tan000tan__dsh-solidworks.yml`（目标路径 `data/plugins/tan000tan__dsh-solidworks.yml`）。
-只有 `url / name / category / description{en,zh}` 四个字段，形状按用户确认的模板；其余字段一律先不加，
-等线上条目核对后再补——多写的字段一旦不在 schema 里，CI 会直接失败。
+### 官方字段白名单（ENTRY_KEYS）
+仅允许声明以下键：`url`, `name`, `category`, `description`, `icon`, `tarball`。
+声明任何额外字段（如 `sha256`, `license`, `npm` 等）均会导致 `validateEntries` 判定失败。
 
-**三处待核（网络可达时逐条确认，别照本文件猜）**
+| 字段 | 类型 / 格式 | 约束与说明 | 本项目填写值 |
+|---|---|---|---|
+| `url` | 字符串 | 必须是 `https://github.com/owner/repo` 格式 | `https://github.com/tan000tan/dsh-solidworks` |
+| `name` | 字符串 | 若包含 `/` 必须严格等于 repo 名 | `tan000tan/dsh-solidworks` |
+| `category` | 枚举 | 必须属于官方 `CAT_IDS` 词表 | `tools` |
+| `tarball` | 字符串（可选） | 必须是 GitHub Release 托管的 `.tgz` 或 `.tar.gz` 直链 | `https://github.com/tan000tan/dsh-solidworks/releases/download/v0.1.0/dsh-solidworks-0.1.0.tgz` |
+| `description.en` | 字符串（必填） | 单行、无换行、以句号结尾、客观功能描述不夸大 | `Connects DeepSeek Harness to a local SolidWorks install through an MCP server, with a read-only default mode and per-call confirmation for high-risk operations.` |
+| `description.zh` | 字符串（可选） | 单行、无换行、以句号结尾 | `通过 MCP 服务器把 DeepSeek Harness 接入本机 SolidWorks，默认只读模式，高风险操作逐次确认。` |
 
-1. `name` 用 `owner/repo` 还是裸包名：用户模板给的是 `tan000tan/dsh-solidworks`；而本机 `dshmarket`
-   的解析代码把 `name` 当包名、另有 `owner` 字段（`lib/registry.js` 的 `pluginCategories`/`asRegistry`）。
-   两者不冲突但语义不同，投稿前拿 `data/plugins/` 里 2–3 个已有条目对照即可定论。
-2. `category` 的官方 id 词表：已核实 `tools` 是 awesome-dsh-plugin 官方合法分类（见第六节及官方分类词表），符合平台标准。
-3. `npm` / `install` / `capabilities` 是否必填：`dshmarket` 里 `capabilities` 是**扫描器产出的字段**
-   （shell / network / credentials / fs-read / fs-write / env / llm / dynamic-code），不是作者自填的
-   承诺；投稿时若 CI 要求，应由维护者脚本生成而不是我们手写。
+---
 
-字段名取自 `dshmarket` 的 registry 解析代码（`name / owner / url / category / description / npm / tarball / install / added / capabilities`）。
-`description` 是 i18n 记录；`category` 允许字符串或数组。
+## 2. 仓库收录资格核查结果
 
-（上一版草案把 `name/owner/npm/install/capabilities/added` 一次写全，已废弃：这些字段的必填性与语义
-未核对，多写会直接挂 CI。正式草稿只保留四字段，见 `docs/submission/tan000tan__dsh-solidworks.yml`。）
+| 条件 | 官方标准要求 | 本项目核查结果 | 状态 |
+|---|---|---|---|
+| **公开可见** | 仓库必须是 Public，且未归档 | `visibility: public`, `archived: false` | ✅ 达标 |
+| **仓库年龄** | 创建时间 ≥ 1 天 (`MIN_AGE_DAYS = 1`) | 2026-10-25T13:30:05Z 创建，已满 5 天 | ✅ 达标 |
+| **官方 Topic** | 必须包含 `dsh-plugin` | topics 列表已包含 `dsh-plugin` | ✅ 达标 |
+| **安装 Manifest** | `package.json` 声明 `dsh.bundle`，根目录有 `cordis.patch.yml` | 根目录声明 `"bundle": { "patch": "./cordis.patch.yml" }`，patch 文件 722 字节存在 | ✅ 达标 |
+| **真实可用代码** | 拒绝占位符或纯 README 仓库 | 完整 TypeScript 插件 + MCP 桥接，209 个文件，自动化测试套件全绿 | ✅ 达标 |
+| **版本与发布** | 发布了正式 Release 与安装包 | Release `v0.1.0` 已发布，资产 `dsh-solidworks-0.1.0.tgz`（647,064 字节，SHA-256：`799247bef17371781907568e05eac2677e5d41a18d58fe79e67584bffaf2f8f1`）可正常下载 | ✅ 达标 |
+| **许可证** | 开源许可证 | `AGPL-3.0-only`，LICENSE 文件齐全 | ✅ 达标 |
 
-## 3. capabilities / 红线自查
+---
 
-投审时大概率会被问「插件能不能绕开审批直接改文件」。本插件的实际边界（**已证实**，见 verification.md）：
+## 3. 关键风险与技术透明性披露
 
-- 工具注册是**闸门**而不是装饰：`read-only` 只注册 16 个只读工具 + 2 个元工具；`standard` 加 26 个写工具；
-  24 个高风险工具必须 `mode: full` 或写进 `allow`，且仍需一次性确认（`solidworks_confirm`）。
-- 路径闸门：写类工具的目标路径必须落在 `allowedRoots`（默认会话 cwd）里，否则直接拒绝。
-- 审计：每次工具调用记一行 JSONL（工具名、风险等级、参数哈希、结果、耗时），默认写到 DSH home 下的
-  `dsh-solidworks/audit.jsonl`，可用 `auditLog: null` 关掉。
-- 不联网：插件本身只连本地 stdio 子进程，没有任何外部 API 调用。
+### 3.1 实机写操作尚未完成现场验收（客观事实）
+- **现状**：插件已完成全部 MCP 协议交互、三档安全策略（Policy）、模式闸门（Gate）、路径鉴权（allowedRoots）、调用审计（Audit）和崩溃恢复（Crash）的自动化验证。但由于缺乏物理机真实 CAD 模型的破坏性联调环境，实机写操作尚未完成现场闭环验收。
+- **安全保障**：插件在架构上严格执行「默认只读（read-only 仅注册 16 个只读工具）」和「高风险工具逐次确认（per-call confirmation）」机制，写操作必须经白名单路径（allowedRoots）鉴权，保障用户环境安全。
 
-## 4. 投稿前必须由用户执行/确认的步骤
+### 3.2 上游授权链与许可证（R1 风险）
+- **现状**：vendor 引擎源于声明 MIT 的镜像仓库，但其上游原作者授权链尚未完全闭合。本项目采用 AGPL-3.0-only，但不能声称 AGPL-3.0 自动解决了上游代码授权链的问题。
+- **透明声明**：项目中完整保留 `PROVENANCE.md` 和 `docs/license-risk.md`，并在 PR 审查说明中主动引用供维护者查阅。
 
-1. 把本地仓库推到 `tan000tan/dsh-solidworks` 并设为公开。
-   —— 本地仓库已就绪（`main`，5 个提交，HEAD `3065260`，工作树干净，无 remote）；
-   **`git remote add` + `push` + 建 tag `v0.1.0` 都还没做，需要授权**。逐条命令见 `docs/github-publish.md`。
-2. 决定发布通道：`npm publish dsh-solidworks`，或打到 GitHub Release 并用 `tarball` 字段。
-3. 线上仓库加 topic `dsh-plugin`；确认仓库年龄是否满足阈值。
-4. 用官方 `contributing.md` 核对分类名（`tools` 是否是官方词表内的值，**待确认**；网络当前不可达）。
-5. 向 `awesome-dsh-plugin/awesome-dsh-plugin` 提 PR，修改 `plugins.json`（**不手工改 README**）。
-6. 提审前重跑一遍 `docs/verification.md` 的全部命令，把结果贴进 PR 描述。
+---
 
-## 5. 已知会被审核问到、需要提前回答的问题
+## 4. 投稿 YAML 文件
 
-| 问题 | 回答 |
-|---|---|
-| 需要联网吗？ | 不需要。子进程走 stdio，纯本地。 |
-| 需要用户装什么？ | Windows + SolidWorks（2024/2026 实测）、Python 3.10+ 且装了 `mcp`（`pip install mcp`）。插件不替你装。 |
-| 会不会动用户已有的 CAD 文件？ | 只在你指定的 `allowedRoots` 内写；保存/导出/删除类工具默认不注册。 |
-| AGPL 会不会污染用户？ | 插件以独立进程方式运行，宿主通过 stdio 调用；插件本身 AGPL-3.0，源码随包分发。法律结论请自行复核，见 PROVENANCE.md 第 5 节。 |
-| 为什么不用现成的 MCP 服务器目录？ | 市场只装 cordis 插件包（README 已证实），MCP 目录装不进来。 |
+目标路径：`data/plugins/tan000tan__dsh-solidworks.yml`
+
+```yaml
+url: https://github.com/tan000tan/dsh-solidworks
+name: tan000tan/dsh-solidworks
+category: tools
+tarball: https://github.com/tan000tan/dsh-solidworks/releases/download/v0.1.0/dsh-solidworks-0.1.0.tgz
+description:
+  en: Connects DeepSeek Harness to a local SolidWorks install through an MCP server, with a read-only default mode and per-call confirmation for high-risk operations.
+  zh: 通过 MCP 服务器把 DeepSeek Harness 接入本机 SolidWorks，默认只读模式，高风险操作逐次确认。
+```
+
+---
+
+## 5. 建议的 PR 提交材料
+
+### PR Title
+```text
+feat(plugins): add tan000tan/dsh-solidworks
+```
+
+### PR Body (英文)
+```markdown
+Adds `tan000tan/dsh-solidworks` to the **tools** category.
+
+Connects DeepSeek Harness to a local SolidWorks installation via an MCP server with granular security tiering, path restriction, and audit logging.
+
+- [x] I added **one file** at `data/plugins/tan000tan__dsh-solidworks.yml` — that single file is the whole submission. The READMEs are regenerated on `main` after merge, so this PR does not touch them.
+- [x] My repo's `package.json` declares **`dsh.bundle`** (`./cordis.patch.yml`), not just `dsh.client`.
+- [x] My repo is at least **1 day old** (created 2026-10-25).
+- [x] `category` is one of the allowed values: `tools`.
+- [x] Description accurately states what the plugin does without superlatives.
+- [x] My repo has the `dsh-plugin` topic.
+
+### Key Details & Review Notes
+- **Repository**: https://github.com/tan000tan/dsh-solidworks (Public, tag `v0.1.0`)
+- **Release Tarball**: https://github.com/tan000tan/dsh-solidworks/releases/download/v0.1.0/dsh-solidworks-0.1.0.tgz
+  - SHA-256: `799247bef17371781907568e05eac2677e5d41a18d58fe79e67584bffaf2f8f1`
+- **Security & Safety Design**:
+  - 66 registered tools categorized into 16 read-only, 26 write, and 24 high-risk operations.
+  - Three operation modes: default `read-only` (only 16 read-only inspection tools exposed), `standard` (adds write tools with path restriction to `allowedRoots`), and `full` (high-risk tools require per-call interactive confirmation via `solidworks_confirm`).
+  - Pure local stdio MCP bridge; no external network requests or remote credentials required.
+- **Test Coverage**:
+  - 47/47 automated unit assertions passing in host test suite (`npm test`: policy, mcp, schema, package); full 110-assertion suite verified during v0.1.0 release pass with Python environment.
+- **Transparency & Disclosures**:
+  - Live write operations on physical CAD models have not completed full on-site hardware verification; the plugin intentionally enforces default read-only restrictions and confirmation gates to prevent accidental modifications.
+  - Licensing: AGPL-3.0-only. An upstream licensing provenance question remains unresolved and is documented in PROVENANCE.md and docs/license-risk.md.
+```
+
+### PR Body (中文备用说明)
+```markdown
+将 `tan000tan/dsh-solidworks` 添加到 **tools** 分类。
+
+通过 MCP 服务器将 DeepSeek Harness 接入本地 SolidWorks，提供细粒度三档安全分级、路径白名单约束与调用审计日志。
+
+- [x] 仅在 `data/plugins/tan000tan__dsh-solidworks.yml` 新增单个文件，未修改两个 README。
+- [x] 根目录 `package.json` 声明了 `dsh.bundle`（`./cordis.patch.yml`）。
+- [x] 仓库创建于 2026-10-25，已满 5 天（满足 ≥ 1 天要求）。
+- [x] `category: tools`，属于官方合法分类词表。
+- [x] 功能描述属实，无营销修饰。
+- [x] 仓库已打上 `dsh-plugin` topic。
+
+### 审核要点与透明性披露
+- 仓库地址：https://github.com/tan000tan/dsh-solidworks
+- Release 安装包：https://github.com/tan000tan/dsh-solidworks/releases/download/v0.1.0/dsh-solidworks-0.1.0.tgz
+- 校验哈希（SHA-256）：`799247bef17371781907568e05eac2677e5d41a18d58fe79e67584bffaf2f8f1`
+- 工具体系：共 66 个工具（16 只读、26 写操作、24 高风险）。默认只读模式仅注册 16 个只读工具；写操作受 `allowedRoots` 白名单沙箱保护；高风险操作需通过 `solidworks_confirm` 逐次确认。
+- 自动化测试：单元测试套件 47 项断言全部通过；发布期全量 110 项断言在具备 Python 环境下验证通过。
+- 局限与风险说明：CAD 实机破坏性写操作尚未在物理机现场全量实测闭环，故以安全闸门保障用户环境；代码许可证采用 AGPL-3.0-only，上游授权来源链问题尚未完全闭合，详细风险记录见 `PROVENANCE.md` 和 `docs/license-risk.md`。
+```

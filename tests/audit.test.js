@@ -68,7 +68,7 @@ const base = {
 
 // ---- instance A: read-only, one read tool called twice ---------------------
 const ctxA = makeCtx()
-const stopA = await apply(ctxA, { ...base, mode: 'read-only' })
+const stopA = await apply(ctxA, { ...base, mode: 'read-only', customTiers: { stub_wrapped: 'read' } })
 
 check(ctxA.registered.has('stub_wrapped'), 'read-only mode publishes the read-shaped stub tool')
 check(!ctxA.registered.has('stub_export'), 'read-only mode withholds the write-shaped stub tool')

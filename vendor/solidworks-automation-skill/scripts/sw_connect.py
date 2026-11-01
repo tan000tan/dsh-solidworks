@@ -3,8 +3,11 @@ SolidWorks 连接工具
 提供连接到 SolidWorks 实例的各种方法
 """
 import glob
+import json
 import os
+import queue
 import tempfile
+import threading
 import time
 from pathlib import Path
 try:
@@ -123,19 +126,7 @@ class _LaunchGuard:
 _MEMBER_UNSET = object()
 
 
-def get_com_member(obj, attr_name, *args, default=_MEMBER_UNSET):
-    """
-    兼容 pywin32 中“同一成员在不同环境下可能是属性也可能是方法”的情况。
-
-    参数:
-        obj: COM 对象
-        attr_name: 成员名称
-        *args: 当成员可调用时传入的参数
-        default: 当成员不存在时返回的值；未提供则按旧行为抛出 AttributeError
-
-    返回:
-        成员值或调用结果；成员缺失且提供了 default 时返回 default
-    """
+def _raw_get_com_member(obj, attr_name, *args, default=_MEMBER_UNSET):
     try:
         member = getattr(obj, attr_name)
     except AttributeError:
@@ -151,6 +142,28 @@ def get_com_member(obj, attr_name, *args, default=_MEMBER_UNSET):
         if "-2147352573" in message or "找不到成员" in message or "Member not found" in message:
             return member
         raise
+
+
+def get_com_member(obj, attr_name, *args, default=_MEMBER_UNSET):
+    """
+    兼容 pywin32 中“同一成员在不同环境下可能是属性也可能是方法”的情况。
+    支持在跨桌面/非默认桌面环境下自动路由到 STA Worker 线程中执行。
+    """
+    try:
+        from .sw_connect import _global_sta_worker
+    except Exception:
+        try:
+            from sw_connect import _global_sta_worker
+        except Exception:
+            _global_sta_worker = globals().get("_global_sta_worker")
+
+    worker = _global_sta_worker if "_global_sta_worker" in globals() else None
+    if worker and threading.current_thread() != worker._thread:
+        try:
+            return worker.execute(lambda: _raw_get_com_member(obj, attr_name, *args, default=default))
+        except Exception:
+            pass
+    return _raw_get_com_member(obj, attr_name, *args, default=default)
 
 
 def safe_get_com_member(obj, attr_name, *args):
@@ -223,9 +236,16 @@ def _wait_until_ready(sw, timeout_seconds):
     """等待 COM 服务器可读，避免固定 sleep 导致 UI 假死。"""
     deadline = time.monotonic() + max(0.1, float(timeout_seconds))
     last_error = None
+    try:
+        worker = get_sta_worker()
+    except Exception:
+        worker = None
     while time.monotonic() < deadline:
         try:
-            get_com_member(sw, "RevisionNumber")
+            if worker and threading.current_thread() != worker._thread:
+                worker.execute(lambda: get_com_member(sw, "RevisionNumber"))
+            else:
+                get_com_member(sw, "RevisionNumber")
             return
         except Exception as exc:
             last_error = exc
@@ -255,6 +275,332 @@ def close_owned_solidworks(sw, started_by_cad_studio, expected_pid=None):
     return False
 
 
+def _is_default_desktop():
+    """检查当前线程所在 Windows 桌面是否为交互式 Default 桌面。"""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        hdesk = user32.GetThreadDesktop(kernel32.GetCurrentThreadId())
+        name_buf = ctypes.create_unicode_buffer(256)
+        needed = wintypes.DWORD()
+        if user32.GetUserObjectInformationW(hdesk, 2, name_buf, ctypes.sizeof(name_buf), ctypes.byref(needed)):
+            return name_buf.value.lower() == "default"
+    except Exception:
+        pass
+    return False
+
+
+class TaskState:
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    TIMED_OUT = "TIMED_OUT"
+    FAILED = "FAILED"
+
+
+class WorkerTask:
+    def __init__(self, func, args, kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+        self.state = TaskState.QUEUED
+        self.result_queue = queue.Queue(maxsize=1)
+        self.lock = threading.Lock()
+
+
+class DesktopPinnedStaWorker:
+    """
+    Dedicated STA Worker thread permanently pinned to the Windows interactive 'Default' desktop.
+
+    Architecture guarantees:
+    1. Single-Threaded Apartment (STA) model compliance for SolidWorks Out-of-Process COM server.
+    2. Zero cross-thread COM interface marshaling degradation (avoids RPC_E_WRONG_THREAD).
+    3. Strict SetThreadDesktop timing (called BEFORE any window creation and BEFORE CoInitialize).
+    4. Safe PyHDESK handle lifecycle (avoids Double Free crash by relying on Python dealloc).
+    5. Clean message pump during idle wait only (eliminates COM reentrancy during modeling).
+    6. Task timeout state machine: discards queued tasks that timed out prior to worker pickup.
+    """
+
+    def __init__(self):
+        self._queue = queue.Queue()
+        self._running = False
+        self._thread = None
+        self._hdesk = None
+        self._ready_event = threading.Event()
+        self._init_error = None
+        self._desktop_name = None
+
+    def start(self):
+        if self._running:
+            return
+        self._running = True
+        self._ready_event.clear()
+        self._thread = threading.Thread(
+            target=self._worker_loop,
+            name="DSH-SolidWorks-STAWorker",
+            daemon=True,
+        )
+        self._thread.start()
+        if not self._ready_event.wait(timeout=10.0):
+            raise RuntimeError("DesktopPinnedStaWorker startup timed out")
+        if self._init_error:
+            raise RuntimeError(f"DesktopPinnedStaWorker startup failed: {self._init_error}")
+
+    def _worker_loop(self):
+        if os.name == "nt":
+            try:
+                import ctypes
+                import win32con
+                import win32service
+
+                # Open Default desktop and pin thread before creating any window or initializing COM
+                self._hdesk = win32service.OpenDesktop("Default", 0, False, win32con.MAXIMUM_ALLOWED)
+                if not ctypes.windll.user32.SetThreadDesktop(int(self._hdesk)):
+                    # Note error but proceed if already default
+                    err = ctypes.GetLastError()
+                    if not _is_default_desktop():
+                        self._init_error = f"SetThreadDesktop failed with code {err}"
+            except Exception as exc:
+                if not _is_default_desktop():
+                    self._init_error = f"OpenDesktop/SetThreadDesktop error: {exc}"
+
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+        except Exception as exc:
+            self._init_error = f"CoInitialize error: {exc}"
+            self._ready_event.set()
+            return
+
+        self._ready_event.set()
+
+        while self._running:
+            try:
+                task = self._queue.get(timeout=0.05)
+                if task is None:
+                    break
+                with task.lock:
+                    if task.state == TaskState.TIMED_OUT:
+                        continue
+                    task.state = TaskState.RUNNING
+
+                try:
+                    res = task.func(*task.args, **task.kwargs)
+                    with task.lock:
+                        task.state = TaskState.COMPLETED
+                    task.result_queue.put((True, res))
+                except Exception as exc:
+                    with task.lock:
+                        task.state = TaskState.FAILED
+                    task.result_queue.put((False, exc))
+            except queue.Empty:
+                if os.name == "nt":
+                    try:
+                        import pythoncom
+                        pythoncom.PumpWaitingMessages()
+                    except Exception:
+                        pass
+
+        # Cleanup on exit
+        try:
+            import pythoncom
+            pythoncom.CoUninitialize()
+        except Exception:
+            pass
+
+    def execute(self, func, *args, timeout=None, **kwargs):
+        if not self._running:
+            self.start()
+
+        # If already executing inside the STA worker thread, execute directly
+        if threading.current_thread() == self._thread:
+            return func(*args, **kwargs)
+
+        task = WorkerTask(func, args, kwargs)
+        self._queue.put(task)
+
+        try:
+            success, val = task.result_queue.get(timeout=timeout)
+        except queue.Empty:
+            with task.lock:
+                if task.state == TaskState.QUEUED:
+                    task.state = TaskState.TIMED_OUT
+            raise TimeoutError(f"SolidWorks COM operation timed out after {timeout}s")
+
+        if success:
+            return val
+        raise val
+
+    def stop(self):
+        if not self._running:
+            return
+        self._running = False
+        self._queue.put(None)
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
+
+
+_global_sta_worker = None
+_global_sta_lock = threading.Lock()
+
+
+def get_sta_worker():
+    """Returns singleton DesktopPinnedStaWorker."""
+    global _global_sta_worker
+    if _global_sta_worker is None:
+        with _global_sta_lock:
+            if _global_sta_worker is None:
+                import atexit
+                worker = DesktopPinnedStaWorker()
+                worker.start()
+                atexit.register(worker.stop)
+                _global_sta_worker = worker
+    return _global_sta_worker
+
+
+def get_final_path(target_path):
+    """
+    Resolve final physical path on disk using Windows Native GetFinalPathNameByHandle,
+    properly expanding Directory Junctions, Symlinks, and uncreated child paths.
+    """
+    if os.name != "nt":
+        return os.path.abspath(str(target_path))
+    try:
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.CreateFileW.restype = wintypes.HANDLE
+        kernel32.CreateFileW.argtypes = [
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.HANDLE,
+        ]
+        kernel32.GetFinalPathNameByHandleW.restype = wintypes.DWORD
+        kernel32.GetFinalPathNameByHandleW.argtypes = [
+            wintypes.HANDLE,
+            wintypes.LPWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+        ]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        cur = os.path.abspath(str(target_path))
+        tail = []
+        while not os.path.exists(cur):
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            tail.append(os.path.basename(cur))
+            cur = parent
+
+        if os.path.exists(cur):
+            handle = kernel32.CreateFileW(
+                cur,
+                0,
+                1 | 2,  # FILE_SHARE_READ | FILE_SHARE_WRITE
+                None,
+                3,  # OPEN_EXISTING
+                0x02000000,  # FILE_FLAG_BACKUP_SEMANTICS
+                None,
+            )
+            if handle is not None and handle not in (-1, 0, 0xFFFFFFFFFFFFFFFF):
+                try:
+                    buf = ctypes.create_unicode_buffer(1024)
+                    res = kernel32.GetFinalPathNameByHandleW(handle, buf, 1024, 0)
+                    if res > 0:
+                        real = buf.value
+                        if real.startswith("\\\\?\\UNC\\") or real.startswith("\\\\?\\UNC/"):
+                            real = "\\\\" + real[8:]
+                        elif real.startswith("\\\\?\\"):
+                            real = real[4:]
+                        for part in reversed(tail):
+                            real = os.path.join(real, part)
+                        return os.path.abspath(real)
+                finally:
+                    kernel32.CloseHandle(handle)
+    except Exception:
+        pass
+    return os.path.abspath(str(target_path))
+
+
+def get_default_workspace():
+    """
+    Resolve default user workspace root respecting Windows 10/11 OneDrive redirection.
+    """
+    if os.name == "nt":
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
+            )
+            personal, _ = winreg.QueryValueEx(key, "Personal")
+            winreg.CloseKey(key)
+            if personal:
+                expanded = os.path.expandvars(personal)
+                return os.path.join(expanded, "DSH-SolidWorks-Workspace")
+        except Exception:
+            pass
+    return os.path.join(os.path.expanduser("~/Documents"), "DSH-SolidWorks-Workspace")
+
+
+def validate_path_against_allowed_roots(target_path, allowed_roots=None):
+    """
+    Python-layer defense-in-depth: validates target_path against allowed roots.
+    Fails closed if target_path falls outside or if roots are empty under DSH environment.
+    """
+    if not target_path:
+        return True
+
+    env_roots = os.environ.get("DSH_ALLOWED_ROOTS")
+    is_dsh_env = env_roots is not None
+    if is_dsh_env and allowed_roots is None:
+        try:
+            allowed_roots = json.loads(env_roots)
+        except Exception:
+            allowed_roots = []
+
+    # If allowed_roots was explicitly passed or configured via DSH_ALLOWED_ROOTS
+    if allowed_roots is not None:
+        if not allowed_roots:
+            return False  # Fail-closed when roots list is configured but empty
+        final_target = get_final_path(target_path).lower()
+        for root in allowed_roots:
+            if not root:
+                continue
+            final_root = get_final_path(root).lower()
+            try:
+                rel = os.path.relpath(final_target, final_root)
+                if not rel.startswith("..") and not os.path.isabs(rel):
+                    return True
+            except ValueError:
+                continue
+        return False
+
+    # Standalone script execution without explicit DSH sandbox boundary
+    return True
+
+
+def _get_active_object(prog_id):
+    """
+    获取活动 COM 对象，支持 Windows 跨桌面/沙箱穿透。
+    通过常驻 DesktopPinnedStaWorker 在 Default 桌面与 STA 环境下稳定挂接。
+    """
+    worker = get_sta_worker()
+    if threading.current_thread() == worker._thread:
+        return win32com_client.GetActiveObject(prog_id)
+    return worker.execute(lambda: win32com_client.GetActiveObject(prog_id))
+
+
 def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metadata=False):
     """
     连接到 SolidWorks 实例。
@@ -277,7 +623,7 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
     with _LaunchGuard():
         before = solidworks_processes()
         try:
-            sw = win32com_client.GetActiveObject(prog_id)
+            sw = _get_active_object(prog_id)
             print(f"已连接到运行中的 SolidWorks 实例（ProgID: {prog_id}）")
         except Exception as attach_error:
             try:
@@ -288,12 +634,17 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
                     deadline = time.monotonic() + max(.1, float(wait_seconds))
                     while time.monotonic() < deadline:
                         try:
-                            sw = win32com_client.GetActiveObject(prog_id)
+                            sw = _get_active_object(prog_id)
                             break
                         except Exception:
                             time.sleep(.1)
                     if sw is None:
-                        raise SolidWorksConnectionError("SW_INSTANCE_NOT_READY", "attach", "已有实例尚不可连接，已阻止重复启动")
+                        try:
+                            worker = get_sta_worker()
+                            sw = worker.execute(lambda: win32com_client.Dispatch(prog_id))
+                            dispatched = True
+                        except Exception:
+                            raise SolidWorksConnectionError("SW_INSTANCE_NOT_READY", "attach", "已有实例尚不可连接，已阻止重复启动")
                 if sw is None:
                     sw = win32com_client.Dispatch(prog_id)
                     dispatched = True
@@ -370,10 +721,16 @@ def find_template(sw, doc_type="part"):
     """
     doc_type, _ = normalize_doc_type(doc_type)
 
+    def _pref(key):
+        try:
+            return get_com_member(sw, "GetUserPreferenceStringValue", DEFAULT_TEMPLATE_PREFS[key])
+        except Exception:
+            return ""
+
     type_map = {
-        "part": (sw.GetUserPreferenceStringValue(DEFAULT_TEMPLATE_PREFS["part"]), "*.prtdot"),
-        "assembly": (sw.GetUserPreferenceStringValue(DEFAULT_TEMPLATE_PREFS["assembly"]), "*.asmdot"),
-        "drawing": (sw.GetUserPreferenceStringValue(DEFAULT_TEMPLATE_PREFS["drawing"]), "*.drwdot"),
+        "part": (_pref("part"), "*.prtdot"),
+        "assembly": (_pref("assembly"), "*.asmdot"),
+        "drawing": (_pref("drawing"), "*.drwdot"),
     }
 
     default_path, pattern = type_map.get(doc_type, type_map["part"])
@@ -499,7 +856,7 @@ def new_document(sw, doc_type="part", template_path=None, *, max_documents=None)
     if budget < 1 or len(preexisting_titles) >= budget:
         raise SolidWorksConnectionError("SW_DOCUMENT_BUDGET", "new_document", f"打开文档数已达预算 {budget}；请保存并关闭本轮文档")
 
-    model = sw.NewDocument(template_path, 0, 0, 0)
+    model = get_com_member(sw, "NewDocument", template_path, 0, 0, 0)
     if model is not None:
         # 正常路径：NewDocument 直接返回文档。仍需确认它确实是新文档，
         # 避免个别版本返回陈旧引用。
@@ -543,6 +900,9 @@ def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=F
         IModelDoc2 对象
     """
     file_path = _expand_path(file_path)
+    if not validate_path_against_allowed_roots(file_path):
+        raise PermissionError(f"Access denied: path '{file_path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+
     if not os.path.exists(file_path):
         message = f"文件不存在: {file_path}"
         if raise_on_error:
@@ -637,22 +997,29 @@ def save_document(model, file_path=None):
     返回:
         bool 成功/失败
     """
-    errors = VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
-    warnings = VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
+    target_path = file_path
+    if not target_path:
+        try:
+            target_path = get_com_member(model, 'GetPathName')
+        except Exception:
+            target_path = None
 
-    if file_path:
-        file_path = _expand_path(file_path)
-        _ensure_parent_dir(file_path)
-        success = model.Extension.SaveAs(
-            file_path, 0, 1, create_empty_dispatch_variant(), errors, warnings
-        )
-    else:
-        success = model.Save3(1, errors, warnings)
+    if not target_path:
+        print("保存失败: 未指定文件路径且文档尚未命名")
+        return False
+
+    target_path = _expand_path(target_path)
+    if not validate_path_against_allowed_roots(target_path):
+        raise PermissionError(f"Access denied: target path '{target_path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+
+    _ensure_parent_dir(target_path)
+    save_code = get_com_member(model, "SaveAs3", target_path, 0, 1)
+    success = (save_code == 0)
 
     if success:
-        print(f"保存成功: {file_path or get_com_member(model, 'GetPathName')}")
+        print(f"保存成功: {target_path}")
     else:
-        print(f"保存失败, 错误码: {errors.value}, 警告码: {warnings.value}")
+        print(f"保存失败, SaveAs3 错误码: {save_code}")
     return bool(success)
 
 

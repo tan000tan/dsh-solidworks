@@ -152,6 +152,7 @@ let stubThrown = null
 try {
   await apply(stubCtx, {
     mode: 'read-only',
+    customTiers: { stub_wrapped: 'read', stub_plain: 'read' },
     pythonPath,
     serverScript: join(here, 'stub-server.py'),
     serverCwd: here,

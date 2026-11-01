@@ -50,3 +50,6 @@ artifacts/
 .idea/
 *.user
 *.suo
+
+# Sandbox test outputs (TASK-03/TASK-04 CAD benchmarks)
+/测试代码/sandbox_benchmark/

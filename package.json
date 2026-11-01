@@ -1,6 +1,6 @@
 {
   "name": "dsh-solidworks",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "description": "SolidWorks CAD tools for DeepSeek Harness: a policy-gated plugin that drives a local SolidWorks desktop through the bundled SolidWorks MCP server.",
   "type": "module",
@@ -46,19 +46,28 @@
   "files": [
     "lib",
     "bin",
+    "scripts",
     "tests",
     "vendor",
     "docs",
+    "requirements.txt",
+    "requirements-optional.txt",
     "cordis.patch.yml",
     "dsh-plugin.json",
     "LICENSE",
     "NOTICE",
     "PROVENANCE.md",
     "README.md",
-    "README.zh.md"
+    "README.zh.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
-    "doctor": "node bin/dsh-solidworks.js doctor",
+    "setup": "node scripts/setup.js",
+    "doctor": "node scripts/doctor.js",
+    "doctor:cli": "node bin/dsh-solidworks.js doctor",
+    "upgrade": "node scripts/upgrade.js",
+    "uninstall": "node scripts/uninstall.js",
+    "mcp-config": "node scripts/generate_mcp_config.js",
     "list-tools": "node bin/dsh-solidworks.js list-tools",
     "selftest": "node bin/dsh-solidworks.js selftest",
     "test": "node tests/policy.test.js && node tests/mcp.test.js && node tests/schema.test.js && node tests/package.test.js",

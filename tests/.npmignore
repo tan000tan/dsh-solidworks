@@ -1,0 +1,5 @@
+# 排除测试过程中的 Python 缓存与编译字节码
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

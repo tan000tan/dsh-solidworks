@@ -11,7 +11,22 @@ import os
 try:
     from .sw_connect import close_owned_solidworks, connect_solidworks, get_com_member, new_document, open_document, save_document
     from .sw_export import export_to_dxf, export_to_iges, export_to_pdf, export_to_stl, export_to_step
+    from .shadow_backup import get_shadow_manager
+    from .cad_task_context import CADTaskContext, CADTaskRollbackManager, FeatureCleanupManager, DocumentLifecycleManager
 except ImportError:
+    from sw_connect import close_owned_solidworks, connect_solidworks, get_com_member, new_document, open_document, save_document
+    from sw_export import export_to_dxf, export_to_iges, export_to_pdf, export_to_stl, export_to_step
+    try:
+        from shadow_backup import get_shadow_manager
+    except ImportError:
+        get_shadow_manager = lambda: None
+    try:
+        from cad_task_context import CADTaskContext, CADTaskRollbackManager, FeatureCleanupManager, DocumentLifecycleManager
+    except ImportError:
+        CADTaskContext = None
+        CADTaskRollbackManager = None
+        FeatureCleanupManager = None
+        DocumentLifecycleManager = None
     from sw_connect import close_owned_solidworks, connect_solidworks, get_com_member, new_document, open_document, save_document
     from sw_export import export_to_dxf, export_to_iges, export_to_pdf, export_to_stl, export_to_step
 
@@ -26,6 +41,147 @@ EXPORTERS = {
     ".dxf": export_to_dxf,
     ".dwg": export_to_dxf,
 }
+
+
+class CADSessionState:
+    DISCONNECTED = "DISCONNECTED"
+    CONNECTING = "CONNECTING"
+    CONNECTED_IDLE = "CONNECTED_IDLE"
+    EXECUTING = "EXECUTING"
+    WAITING_USER = "WAITING_USER"
+    ERROR = "ERROR"
+    RECOVERING = "RECOVERING"
+
+
+def apply_ui_suppression(sw):
+    """
+    配置 SolidWorks 用户偏好设置，抑制阻断脚本执行的非必要模态弹窗与调试器中断。
+    """
+    if not sw:
+        return
+    try:
+        # swStopDebuggingOnErrors (11): COM 或宏异常时停止弹出 VBA 调试器中断自动化
+        sw.SetUserPreferenceToggle(11, True)
+    except Exception:
+        pass
+    try:
+        # swDisplayPreReleaseNotification (14): 禁用预发布版本提示弹窗
+        sw.SetUserPreferenceToggle(14, False)
+    except Exception:
+        pass
+
+
+class CADTransaction:
+    """
+    SolidWorks 几何建模事务上下文管理器。
+
+    核心保证：
+    1. 快照捕获：进入时抓取物理影子快照（若文档已有落盘路径），并记录当前特征计数（FeatureCount）。
+    2. 性能与防闪烁：执行期间可选择性冻结特征树刷新（FeatureManager.EnableFeatureTree = False）。
+    3. 异常回滚：若事务内部发生异常未 commit，优先采用影子快照文件级秒级还原；无路径时循环 EditUndo。
+    4. 提交清理：正常提交时销毁影子快照；在 finally 块中保证特征树重新启用与选择集清空。
+    """
+
+    def __init__(self, session, model=None, name="CADTransaction", auto_rebuild=True, freeze_ui=True, enable_shadow_backup=True, task_context=None):
+        self.session = session
+        self.model = model
+        self.name = name
+        self.auto_rebuild = auto_rebuild
+        self.freeze_ui = freeze_ui
+        self.enable_shadow_backup = enable_shadow_backup
+        self.task_context = task_context or (getattr(session, "active_task_context", None) if session else None)
+        self.committed = False
+        self.initial_feature_count = 0
+        self.initial_doc_title = None
+        self.doc_path = None
+        self.shadow_mgr = get_shadow_manager() if enable_shadow_backup else None
+
+    def __enter__(self):
+        if self.model is None and self.session:
+            self.model = self.session.active_doc
+        if self.model:
+            try:
+                self.initial_doc_title = get_com_member(self.model, "GetTitle")
+                self.initial_feature_count = int(get_com_member(self.model, "GetFeatureCount") or 0)
+                self.doc_path = get_com_member(self.model, "GetPathName")
+                if self.doc_path and self.shadow_mgr:
+                    self.shadow_mgr.capture(self.doc_path, model=self.model)
+            except Exception:
+                pass
+            if self.freeze_ui:
+                try:
+                    feat_mgr = getattr(self.model, "FeatureManager", None)
+                    if feat_mgr and hasattr(feat_mgr, "EnableFeatureTree"):
+                        feat_mgr.EnableFeatureTree = False
+                except Exception:
+                    pass
+        if self.session:
+            self.session.state = CADSessionState.EXECUTING
+        return self
+
+    def commit(self):
+        self.committed = True
+        if self.doc_path and self.shadow_mgr:
+            try:
+                self.shadow_mgr.discard(self.doc_path)
+            except Exception:
+                pass
+
+    def rollback(self):
+        """回滚本事务期间产生的新特征、修改或未命名脏文档。优先影子还原，其次 EditUndo。"""
+        if not self.model:
+            return
+
+        # 1. 优先尝试文件级影子快照还原（解决尺寸修改不增减特征数导致无法 Undo 的缺陷）
+        if self.doc_path and self.shadow_mgr and self.shadow_mgr.is_protected(self.doc_path):
+            try:
+                sw_app = getattr(self.session, "sw", None)
+                if self.shadow_mgr.restore(self.doc_path, sw_app=sw_app):
+                    return
+            except Exception:
+                pass
+
+        # 2. 次级回退：特征树差值循环 EditUndo
+        try:
+            curr_count = int(get_com_member(self.model, "GetFeatureCount") or 0)
+            diff = curr_count - self.initial_feature_count
+            if diff > 0:
+                for _ in range(diff):
+                    try:
+                        self.model.EditUndo()
+                    except Exception:
+                        break
+        except Exception:
+            pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if exc_type is not None and not self.committed:
+                self.rollback()
+                if self.session:
+                    self.session.state = CADSessionState.ERROR
+            else:
+                if self.committed and self.auto_rebuild and self.model:
+                    try:
+                        self.model.EditRebuild3()
+                    except Exception:
+                        pass
+                if self.session:
+                    self.session.state = CADSessionState.CONNECTED_IDLE
+        finally:
+            if self.model and self.freeze_ui:
+                try:
+                    feat_mgr = getattr(self.model, "FeatureManager", None)
+                    if feat_mgr and hasattr(feat_mgr, "EnableFeatureTree"):
+                        feat_mgr.EnableFeatureTree = True
+                except Exception:
+                    pass
+            if self.model:
+                try:
+                    self.model.ClearSelection2(True)
+                except Exception:
+                    pass
+        return False
 
 
 class SolidWorksSession:
@@ -48,6 +204,7 @@ class SolidWorksSession:
             wait_seconds: 新启动实例后的等待秒数。
             visible: 新启动实例是否显示窗口。
         """
+        self.state = CADSessionState.CONNECTING
         self.sw, self.model, self.connection_info = connect_solidworks(
             version=version,
             wait_seconds=wait_seconds,
@@ -58,6 +215,20 @@ class SolidWorksSession:
         if self.max_documents < 1:
             raise ValueError("文档预算必须大于零")
         self._owned_documents = []
+        apply_ui_suppression(self.sw)
+        self.state = CADSessionState.CONNECTED_IDLE
+
+    @property
+    def is_modal_dialog_active(self):
+        """检测 SolidWorks 是否有活动的阻塞式模态对话框。"""
+        try:
+            return bool(get_com_member(self.sw, "CommandInProgress"))
+        except Exception:
+            return False
+
+    def transaction(self, name="CADTransaction", model=None, auto_rebuild=True, freeze_ui=True):
+        """返回受控 CADTransaction 上下文管理器。"""
+        return CADTransaction(self, model=model or self.model, name=name, auto_rebuild=auto_rebuild, freeze_ui=freeze_ui)
 
     def __enter__(self):
         """@brief 进入受控会话，自动清理仅针对本轮登记的文档。"""

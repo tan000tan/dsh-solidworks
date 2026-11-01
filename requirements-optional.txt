@@ -1,0 +1,21 @@
+# dsh-solidworks-plugin 可选扩展功能依赖包 (Optional Feature Dependencies)
+#
+# 说明：以下依赖仅在调用高级制造工程图分析 (DFM)、DXF 轮廓解析与工程文档导出时按需加载。
+# 基础 CAD 建模、尺寸修改、草图绘制与影子事务回滚仅依赖 requirements.txt，无需安装本文件。
+#
+# 安装命令：
+#   pip install -r requirements-optional.txt
+
+# --- DXF 工程图解析与制造导出 ---
+ezdxf>=1.1.0; sys_platform == 'win32'
+
+# --- 图像处理与矩阵几何计算 ---
+numpy>=1.24.0; sys_platform == 'win32'
+Pillow>=10.0.0; sys_platform == 'win32'
+lxml>=4.9.0; sys_platform == 'win32'
+
+# --- DFM 报表与自动化 Office 文档导出 ---
+openpyxl>=3.1.0
+python-docx>=1.0.0
+python-pptx>=0.6.21
+XlsxWriter>=3.1.0

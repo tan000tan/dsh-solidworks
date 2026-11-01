@@ -23,6 +23,7 @@ import platform
 import sys
 import threading
 import time
+import uuid
 from contextlib import redirect_stdout
 from enum import Enum
 from pathlib import Path
@@ -740,6 +741,13 @@ class DesignSpecBuildInput(BaseInput):
     response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
 
 
+class FeatureGraphCompileInput(BaseInput):
+    """Input for compiling and validating a Feature Graph IR DAG."""
+
+    graph: Dict[str, Any] = Field(..., description="Feature Graph IR dictionary representation.")
+    response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
+
+
 class SolidWorksRecoverInput(BaseInput):
     """Input for diagnosing and recovering a blocked SolidWorks session."""
 
@@ -842,6 +850,31 @@ class SolidWorksExportInput(BaseInput):
     output_path: str = Field(..., min_length=1, description="Absolute output file path.")
     export_format: ExportFormat = Field(..., description="Export format.")
     stl_quality: str = Field(default="fine", description="STL quality: coarse or fine.")
+    response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
+
+
+class SolidWorksIdentifyDimensionsInput(BaseInput):
+    """Input for enumerating all dimensions in the active model."""
+
+    feature_name: Optional[str] = Field(default=None, description="Optional feature name filter.")
+    response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
+
+
+class SolidWorksDimensionImpactInput(BaseInput):
+    """Input for inspecting downstream impact of a dimension modification."""
+
+    dimension_name: str = Field(..., min_length=1, description="Dimension full name, e.g. D1@Sketch1.")
+    response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
+
+
+class SolidWorksSafeDimensionUpdateInput(BaseInput):
+    """Input for safely updating model dimensions with automatic shadow backup and rollback."""
+
+    updates: Dict[str, float] = Field(..., description="Mapping of dimension names to new values in mm, e.g. {'D1@Sketch1': 80.0}.")
+    auto_rollback: bool = Field(default=True, description="Automatically rollback from shadow backup if rebuild fails.")
+    rebuild: bool = Field(default=True, description="Rebuild the model after setting dimensions.")
+    save: bool = Field(default=False, description="Save document if modification succeeds.")
+    configuration_mode: str = Field(default="current", pattern="^(current|all|specific)$", description="Configuration scope.")
     response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
 
 
@@ -1313,38 +1346,53 @@ def _tool_error(exc: Exception, response_format: ResponseFormat = ResponseFormat
 def _run_locked(operation, response_format: ResponseFormat, load_automation: bool = True,
                 timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS):
     """
-    Run one SolidWorks COM operation under the global lock.
+    Run one SolidWorks COM operation under the global lock and route it to the STA worker thread.
 
     锁带超时：SolidWorks 弹出模态对话框（模板选择、许可证提示、文件覆盖确认）
     时 COM 调用会永久阻塞，若无超时的锁会让整个 MCP server 变成砖头——所有后
     续调用都排队等一个永远不会释放的锁。超时后返回结构化错误并提示调用
     solidworks_recover。
-    """
-    if not _sw_lock.acquire(timeout=timeout_seconds):
-        payload = {
-            "status": "error",
-            "error_type": "SolidWorksBusyTimeout",
-            "message": (
-                f"等待 SolidWorks 操作锁超过 {timeout_seconds:.0f} 秒仍未获得。"
-                f"上一个操作可能被模态对话框阻塞。"
-            ),
-            "holder": dict(_lock_state),
-            "suggestion": (
-                "检查 SolidWorks 主窗口是否有等待确认的对话框（模板选择/许可证/文件覆盖），"
-                "手动关闭后调用 solidworks_recover 复检；必要时重启 SolidWorks。"
-            ),
-        }
-        return _result(payload, response_format)
 
-    _lock_state["acquired_at"] = time.time()
-    _lock_state["thread"] = threading.current_thread().name
-    _lock_state["operation"] = None
+    防死锁机制：若当前调用已在 STA worker 线程内部执行（递归嵌套），则自动旁路获取
+    _sw_lock，防止跨线程重入死锁。
+    """
+    worker = None
+    if load_automation:
+        _load_automation_modules()
+        from scripts.sw_connect import get_sta_worker
+        worker = get_sta_worker()
+
+    is_on_worker_thread = worker is not None and threading.current_thread() == worker._thread
+
+    if not is_on_worker_thread:
+        if not _sw_lock.acquire(timeout=timeout_seconds):
+            payload = {
+                "status": "error",
+                "error_type": "SolidWorksBusyTimeout",
+                "message": (
+                    f"等待 SolidWorks 操作锁超过 {timeout_seconds:.0f} 秒仍未获得。"
+                    f"上一个操作可能被模态对话框阻塞。"
+                ),
+                "holder": dict(_lock_state),
+                "suggestion": (
+                    "检查 SolidWorks 主窗口是否有等待确认的对话框（模板选择/许可证/文件覆盖），"
+                    "手动关闭后调用 solidworks_recover 复检；必要时重启 SolidWorks。"
+                ),
+            }
+            return _result(payload, response_format)
+
     try:
-        if load_automation:
-            _load_automation_modules()
-        _coinitialize()
-        with redirect_stdout(sys.stderr):
-            payload = operation()
+        if not is_on_worker_thread:
+            _lock_state["acquired_at"] = time.time()
+            _lock_state["thread"] = threading.current_thread().name
+            _lock_state["operation"] = None
+
+        if load_automation and worker is not None and not is_on_worker_thread:
+            with redirect_stdout(sys.stderr):
+                payload = worker.execute(operation, timeout=timeout_seconds)
+        else:
+            with redirect_stdout(sys.stderr):
+                payload = operation()
         payload = normalize_tool_payload(payload)
         if payload.get("status") not in {"error", "failed", "fail", "blocked"}:
             refs = _artifact_access().publish(payload)
@@ -1354,10 +1402,11 @@ def _run_locked(operation, response_format: ResponseFormat, load_automation: boo
     except Exception as exc:
         return _tool_error(exc, response_format)
     finally:
-        _lock_state["acquired_at"] = None
-        _lock_state["thread"] = None
-        _lock_state["operation"] = None
-        _sw_lock.release()
+        if not is_on_worker_thread:
+            _lock_state["acquired_at"] = None
+            _lock_state["thread"] = None
+            _lock_state["operation"] = None
+            _sw_lock.release()
 
 
 @mcp.tool(
@@ -1784,6 +1833,63 @@ def solidworks_health_check(params: SolidWorksHealthCheckInput = SolidWorksHealt
     return _run_locked(op, params.response_format, load_automation=False)
 
 
+PROTECTED_WINDOW_KEYWORDS = (
+    "另存为", "Save As",
+    "打开", "Open",
+    "系统选项", "System Options",
+    "方程式", "Equations",
+    "自定义", "Customize",
+    "文档属性", "Document Properties",
+    "配置属性", "Configuration Properties",
+    "特征编辑", "Edit Feature",
+    "草图", "Sketch",
+    "外观", "Appearances",
+    "配合", "Mate",
+)
+
+BLOCKING_MODAL_KEYWORDS = (
+    "错误", "Error",
+    "警告", "Warning",
+    "未找到默认模板", "Default Template",
+    "重建模型错误", "Rebuild Error",
+    "几何体自相交", "Zero-thickness",
+    "无法解算", "Cannot solve",
+    "覆盖", "Overwrite",
+    "提示", "Notice",
+    "终止", "Abort",
+)
+
+
+def is_safe_to_dismiss(title: str, class_name: str = "#32770") -> Tuple[bool, str]:
+    """
+    精确判断弹出的模态对话框是否可以被 solidworks_recover 安全发送 WM_CLOSE。
+
+    返回: (is_safe: bool, reason: str)
+    - 严禁误关闭用户正在编辑的系统选项、方程式、另存为等关键界面；
+    - 仅对阻断自动化运行的错误、警告、覆盖提示、模板缺失对话框放行关闭；
+    - 未知类别默认 Fail-Closed，安全保留不强关。
+    """
+    if class_name != "#32770":
+        return False, f"非标准对话框窗口类 ({class_name})，禁止关闭"
+
+    title_clean = title.strip()
+    if not title_clean:
+        return False, "无标题窗口，安全保留"
+
+    # 1. 用户关键工作窗口保护白名单（绝对禁止关闭）
+    for protected in PROTECTED_WINDOW_KEYWORDS:
+        if protected.lower() in title_clean.lower():
+            return False, f"命中用户编辑与设置保护白名单 ('{protected}')，禁止关闭"
+
+    # 2. 阻断自动化模态错误提示识别（允许发送 WM_CLOSE 解除阻塞）
+    for blocking in BLOCKING_MODAL_KEYWORDS:
+        if blocking.lower() in title_clean.lower():
+            return True, f"命中阻断错误提示特征 ('{blocking}')，允许安全关闭"
+
+    # 3. 默认安全防线：未识别的弹窗默认不关闭，避免误操作
+    return False, "未明确识别为阻塞错误弹窗，默认安全保留"
+
+
 def _enumerate_solidworks_windows():
     """
     枚举 SolidWorks 顶层窗口，找出疑似模态对话框。
@@ -1861,6 +1967,8 @@ def solidworks_recover(params: SolidWorksRecoverInput = SolidWorksRecoverInput()
             probe["window_probe_error"] = window_error
 
         dismissed = []
+        protected = []
+        retained = []
         if params.dismiss_dialogs and dialogs:
             try:
                 import win32con  # type: ignore
@@ -1869,14 +1977,24 @@ def solidworks_recover(params: SolidWorksRecoverInput = SolidWorksRecoverInput()
                 probe["dismiss_error"] = f"无法发送关闭消息: {exc}"
             else:
                 for dialog in dialogs:
-                    try:
-                        # WM_CLOSE 等价于点击标题栏关闭；不自动按"确定"，
-                        # 以免在模板/覆盖确认框上做出用户未授权的选择。
-                        win32gui.PostMessage(dialog["handle"], win32con.WM_CLOSE, 0, 0)
-                        dismissed.append(dialog["title"])
-                    except Exception as exc:
-                        probe["dismiss_error"] = f"{dialog['title']}: {exc}"
-        probe["dismissed_dialogs"] = dismissed
+                    d_title = dialog.get("title", "")
+                    d_class = dialog.get("class", "#32770")
+                    safe, reason = is_safe_to_dismiss(d_title, d_class)
+                    if safe:
+                        try:
+                            # 仅对阻断自动化的错误提示弹窗发送 WM_CLOSE
+                            win32gui.PostMessage(dialog["handle"], win32con.WM_CLOSE, 0, 0)
+                            dismissed.append({"title": d_title, "reason": reason})
+                        except Exception as exc:
+                            probe["dismiss_error"] = f"{d_title}: {exc}"
+                    else:
+                        retained.append({"title": d_title, "reason": reason})
+                        if "保护白名单" in reason:
+                            protected.append(d_title)
+        probe["dismissed_dialogs"] = [d["title"] if isinstance(d, dict) else d for d in dismissed]
+        probe["dismissed_details"] = dismissed
+        probe["protected_dialogs"] = protected
+        probe["retained_dialogs"] = retained
 
         # 探测 COM 是否恢复响应。
         com_status = "not_checked"
@@ -1925,6 +2043,43 @@ def solidworks_recover(params: SolidWorksRecoverInput = SolidWorksRecoverInput()
 
 
 @mcp.tool(
+    name="solidworks_compile_feature_graph",
+    title="Compile Feature Graph IR",
+    description="Compile and validate a SolidWorks Feature Graph IR DAG into a deterministic execution plan.",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+)
+def solidworks_compile_feature_graph(params: FeatureGraphCompileInput) -> str:
+    """Compile and validate a Feature Graph IR DAG."""
+    try:
+        from scripts.feature_graph_ir import (
+            compile_feature_graph_from_dict,
+            CyclicDependencyError,
+            UndefinedDependencyError,
+        )
+        graph = compile_feature_graph_from_dict(params.graph)
+        plan = graph.compile_execution_plan()
+        result = {
+            "status": "success",
+            "graph_id": graph.graph_id,
+            "target_part_name": graph.target_part_name,
+            "node_count": len(graph.nodes),
+            "execution_plan": plan,
+        }
+        return _result(result, params.response_format)
+    except Exception as e:
+        return _result({
+            "status": "error",
+            "error_type": type(e).__name__,
+            "message": str(e),
+        }, params.response_format)
+
+
+@mcp.tool(
     name="solidworks_new_document",
     title="Create SolidWorks Document",
     annotations={
@@ -1956,40 +2111,74 @@ def solidworks_new_document(params: SolidWorksNewDocumentInput) -> str:
     },
 )
 def solidworks_create_basic_part(params: SolidWorksCreateBasicPartInput) -> str:
-    """Create a simple cylinder or box part with optional color and save path."""
+    """Create a simple cylinder or box part with optional color and save path.
+    Equipped with automatic task context, failure rollback, and document purge to eliminate background leftovers.
+    """
 
     def op():
         sw, _ = connect_solidworks(wait_seconds=1)
-        model = new_document(sw, "part")
-        with sketch(model, params.plane_name) as sketch_name:
-            if params.shape == BasicPartShape.CYLINDER:
-                sketch_circle(model, 0.0, 0.0, mm(params.radius_mm))
-            elif params.shape == BasicPartShape.BOX:
-                sketch_rectangle(model, 0.0, 0.0, mm(params.width_mm), mm(params.height_mm))
-            else:
-                raise ValueError(f"Unsupported shape: {params.shape}")
-            from scripts.sw_sketch_quality import fully_define_sketch
-            sketch_quality = fully_define_sketch(model)
-        feature = extrude_boss(model, sketch_name, mm(params.depth_mm))
-        appearance_ok = None
-        if params.color:
-            appearance_ok = set_document_appearance(model, params.color)
-        save_ok = None
-        if params.output_path:
-            save_ok = save_document(model, params.output_path)
-        rebuild_ok = bool(model.ForceRebuild3(False))
-        return {
-            "status": "ok",
-            "shape": params.shape.value,
-            "sketch_quality": sketch_quality,
-            "rebuild_ok": rebuild_ok,
-            "feature_created": feature is not None,
-            "feature_name": get_com_member(feature, "Name") if feature else None,
-            "appearance_ok": appearance_ok,
-            "saved": save_ok,
-            "output_path": str(Path(os.path.expandvars(params.output_path)).expanduser().resolve()) if params.output_path else None,
-            "document": _model_summary(model),
-        }
+        from scripts.cad_task_context import CADTaskContext, CADTaskRollbackManager
+        ctx = CADTaskContext(task_id=f"basic_part_{uuid.uuid4().hex[:8]}", session=None)
+        rollback_mgr = CADTaskRollbackManager(ctx, sw_app=sw)
+
+        model = None
+        try:
+            model = new_document(sw, "part")
+            doc_entry = ctx.register_document(model, is_newly_created=True)
+
+            with sketch(model, params.plane_name) as sketch_name:
+                ctx.register_feature(str(sketch_name), "SKETCH", doc_entry.title)
+                if params.shape == BasicPartShape.CYLINDER:
+                    sketch_circle(model, 0.0, 0.0, mm(params.radius_mm))
+                elif params.shape == BasicPartShape.BOX:
+                    sketch_rectangle(model, 0.0, 0.0, mm(params.width_mm), mm(params.height_mm))
+                else:
+                    raise ValueError(f"Unsupported shape: {params.shape}")
+                from scripts.sw_sketch_quality import fully_define_sketch
+                sketch_quality = fully_define_sketch(model)
+
+            feature = extrude_boss(model, sketch_name, mm(params.depth_mm))
+            if feature is None:
+                raise RuntimeError("特征拉伸失败 (extrude_boss returned None)")
+
+            feat_name = get_com_member(feature, "Name")
+            if feat_name:
+                ctx.register_feature(feat_name, "BODYFEATURE", doc_entry.title)
+
+            appearance_ok = None
+            if params.color:
+                appearance_ok = set_document_appearance(model, params.color)
+            save_ok = None
+            if params.output_path:
+                ctx.register_temp_file(params.output_path)
+                save_ok = save_document(model, params.output_path)
+            rebuild_ok = bool(model.ForceRebuild3(False))
+            return {
+                "status": "ok",
+                "task_id": ctx.task_id,
+                "shape": params.shape.value,
+                "sketch_quality": sketch_quality,
+                "rebuild_ok": rebuild_ok,
+                "feature_created": True,
+                "feature_name": feat_name,
+                "appearance_ok": appearance_ok,
+                "saved": save_ok,
+                "output_path": str(Path(os.path.expandvars(params.output_path)).expanduser().resolve()) if params.output_path else None,
+                "document": _model_summary(model),
+            }
+        except Exception as exc:
+            cleanup_ok = rollback_mgr.rollback()
+            return {
+                "status": "error",
+                "task_id": ctx.task_id,
+                "error_type": type(exc).__name__,
+                "message": f"建模失败已自动安全回滚并关闭残留文档: {str(exc)}",
+                "cleanup_performed": True,
+                "cleanup_verified": cleanup_ok,
+                "residual_documents_in_sw": 0 if cleanup_ok else 1,
+                "ready_to_retry": cleanup_ok,
+                "suggestion": "中间状态与未完成文档已全部清理干净，可安全修正参数后重试。",
+            }
 
     return _run_locked(op, params.response_format)
 
@@ -2153,64 +2342,81 @@ def solidworks_sketch_and_extrude(params: SolidWorksSketchOnPlaneInput) -> str:
 
     def op():
         sw, model = _active_part_required()
+        from scripts.cad_task_context import CADTaskContext, CADTaskRollbackManager
+        ctx = CADTaskContext(task_id=f"sketch_extrude_{uuid.uuid4().hex[:8]}")
+        doc_entry = ctx.register_document(model, is_newly_created=False)
+        rollback_mgr = CADTaskRollbackManager(ctx, sw_app=sw)
+        sketch_ref = None
 
-        if params.shape == "circle" and params.radius_mm is None:
-            raise ValueError("shape='circle' requires radius_mm.")
-        if params.shape == "rectangle" and (params.width_mm is None or params.height_mm is None):
-            raise ValueError("shape='rectangle' requires width_mm and height_mm.")
-        if params.shape == "corner_rectangle" and (params.corner_x2_mm is None or params.corner_y2_mm is None):
-            raise ValueError("shape='corner_rectangle' requires corner_x2_mm and corner_y2_mm.")
-        if params.shape == "slot" and (params.slot_end_x_mm is None or params.slot_end_y_mm is None):
-            raise ValueError("shape='slot' requires slot_end_x_mm, slot_end_y_mm and radius_mm.")
-        if params.shape == "slot" and params.radius_mm is None:
-            raise ValueError("shape='slot' requires radius_mm (slot half-width).")
+        try:
+            if params.shape == "circle" and params.radius_mm is None:
+                raise ValueError("shape='circle' requires radius_mm.")
+            if params.shape == "rectangle" and (params.width_mm is None or params.height_mm is None):
+                raise ValueError("shape='rectangle' requires width_mm and height_mm.")
+            if params.shape == "corner_rectangle" and (params.corner_x2_mm is None or params.corner_y2_mm is None):
+                raise ValueError("shape='corner_rectangle' requires corner_x2_mm and corner_y2_mm.")
+            if params.shape == "slot" and (params.slot_end_x_mm is None or params.slot_end_y_mm is None):
+                raise ValueError("shape='slot' requires slot_end_x_mm, slot_end_y_mm and radius_mm.")
+            if params.shape == "slot" and params.radius_mm is None:
+                raise ValueError("shape='slot' requires radius_mm (slot half-width).")
 
-        with sketch(model, params.plane_name) as sketch_ref:
-            if params.shape == "circle":
-                sketch_circle(model, mm(params.center_x_mm), mm(params.center_y_mm), mm(params.radius_mm))
-            elif params.shape == "rectangle":
-                sketch_rectangle(model, mm(params.center_x_mm), mm(params.center_y_mm),
-                                 mm(params.width_mm), mm(params.height_mm))
-            elif params.shape == "corner_rectangle":
-                sketch_corner_rectangle(model, mm(params.center_x_mm), mm(params.center_y_mm),
-                                        mm(params.corner_x2_mm), mm(params.corner_y2_mm))
-            elif params.shape == "slot":
-                sketch_slot(model, mm(params.center_x_mm), mm(params.center_y_mm),
-                            mm(params.slot_end_x_mm), mm(params.slot_end_y_mm), mm(params.radius_mm))
-            elif params.shape == "polygon":
-                sketch_polygon(model, mm(params.center_x_mm), mm(params.center_y_mm),
-                               mm(params.radius_mm or 10.0), params.sides)
+            with sketch(model, params.plane_name) as sketch_ref:
+                ctx.register_feature(str(sketch_ref), "SKETCH", doc_entry.title)
+                if params.shape == "circle":
+                    sketch_circle(model, mm(params.center_x_mm), mm(params.center_y_mm), mm(params.radius_mm))
+                elif params.shape == "rectangle":
+                    sketch_rectangle(model, mm(params.center_x_mm), mm(params.center_y_mm),
+                                     mm(params.width_mm), mm(params.height_mm))
+                elif params.shape == "corner_rectangle":
+                    sketch_corner_rectangle(model, mm(params.center_x_mm), mm(params.center_y_mm),
+                                            mm(params.corner_x2_mm), mm(params.corner_y2_mm))
+                elif params.shape == "slot":
+                    sketch_slot(model, mm(params.center_x_mm), mm(params.center_y_mm),
+                                mm(params.slot_end_x_mm), mm(params.slot_end_y_mm), mm(params.radius_mm))
+                elif params.shape == "polygon":
+                    sketch_polygon(model, mm(params.center_x_mm), mm(params.center_y_mm),
+                                   mm(params.radius_mm or 10.0), params.sides)
 
-        if params.midplane:
-            feature = extrude_midplane(model, sketch_ref, mm(params.depth_mm))
-        elif params.cut:
-            feature = extrude_cut(model, sketch_ref, mm(params.depth_mm))
-        else:
-            feature = extrude_boss(model, sketch_ref, mm(params.depth_mm))
+            if params.midplane:
+                feature = extrude_midplane(model, sketch_ref, mm(params.depth_mm))
+            elif params.cut:
+                feature = extrude_cut(model, sketch_ref, mm(params.depth_mm))
+            else:
+                feature = extrude_boss(model, sketch_ref, mm(params.depth_mm))
 
-        if feature is None:
+            if feature is None:
+                raise RuntimeError("特征拉伸/切除构建失败 (extrude returned None)")
+
+            feat_name = get_com_member(feature, "Name")
+            if feat_name:
+                ctx.register_feature(feat_name, "BODYFEATURE", doc_entry.title)
+
+            return {
+                "status": "ok",
+                "task_id": ctx.task_id,
+                "shape": params.shape,
+                "feature_created": True,
+                "feature_name": feat_name,
+                "sketch_name": str(sketch_ref),
+                "depth_mm": params.depth_mm,
+                "operation": "cut" if params.cut else ("midplane" if params.midplane else "boss"),
+                "document": _model_summary(model),
+            }
+        except Exception as exc:
+            cleanup_ok = rollback_mgr.rollback()
             return {
                 "status": "error",
-                "shape": params.shape,
+                "task_id": ctx.task_id,
+                "error_type": type(exc).__name__,
+                "message": f"草图/特征操作失败已自动逆序回滚清理: {str(exc)}",
+                "cleanup_performed": True,
+                "cleanup_verified": cleanup_ok,
                 "feature_created": False,
-                "sketch_name": str(sketch_ref),
-                "suggestion": (
-                    "The sketch was created but the feature did not build. Check that the profile is "
-                    "closed and does not self-intersect, and that the depth is non-zero in the "
-                    "extrude direction."
-                ),
+                "sketch_name": str(sketch_ref) if sketch_ref else None,
+                "residual_features": 0 if cleanup_ok else 1,
+                "ready_to_retry": cleanup_ok,
+                "suggestion": "失败草图与未完成特征已自动逆序彻底清理，模型恢复干净基线状态，可修正参数后安全重试。",
             }
-
-        return {
-            "status": "ok",
-            "shape": params.shape,
-            "feature_created": True,
-            "feature_name": get_com_member(feature, "Name"),
-            "sketch_name": str(sketch_ref),
-            "depth_mm": params.depth_mm,
-            "operation": "cut" if params.cut else ("midplane" if params.midplane else "boss"),
-            "document": _model_summary(model),
-        }
 
     return _run_locked(op, params.response_format)
 
@@ -3074,6 +3280,77 @@ def solidworks_update_dimension(params: SolidWorksDimensionUpdateInput) -> str:
         )
         result["document"] = _model_summary(model)
         return result
+
+    return _run_locked(op, params.response_format)
+
+
+@mcp.tool(
+    name="solidworks_identify_dimensions",
+    title="Identify Model Dimensions",
+    description="Enumerate all dimensions across features and sketches in the active SolidWorks model.",
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+)
+def solidworks_identify_dimensions(params: SolidWorksIdentifyDimensionsInput = SolidWorksIdentifyDimensionsInput()) -> str:
+    """Enumerate all dimensions across features and sketches in the active SolidWorks model."""
+
+    def op():
+        _sw, model = _active_model_required()
+        from scripts.dimension_manager import identify_dimensions
+        res = identify_dimensions(model)
+        if params.feature_name:
+            filtered = [d for d in res["dimensions"] if d["feature_name"] == params.feature_name]
+            res["dimensions"] = filtered
+            res["count"] = len(filtered)
+        res["document"] = _model_summary(model)
+        return res
+
+    return _run_locked(op, params.response_format)
+
+
+@mcp.tool(
+    name="solidworks_inspect_dimension_impact",
+    title="Inspect Dimension Impact",
+    description="Analyze downstream features potentially impacted by modifying a specific dimension.",
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+)
+def solidworks_inspect_dimension_impact(params: SolidWorksDimensionImpactInput) -> str:
+    """Analyze downstream features potentially impacted by modifying a specific dimension."""
+
+    def op():
+        _sw, model = _active_model_required()
+        from scripts.dimension_manager import inspect_dimension_impact
+        res = inspect_dimension_impact(model, params.dimension_name)
+        res["document"] = _model_summary(model)
+        return res
+
+    return _run_locked(op, params.response_format)
+
+
+@mcp.tool(
+    name="solidworks_modify_dimension_safe",
+    title="Safe Modify Dimensions with Shadow Backup",
+    description="Safely modify one or multiple dimensions with automatic shadow backup and auto-rollback on rebuild errors.",
+    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+)
+def solidworks_modify_dimension_safe(params: SolidWorksSafeDimensionUpdateInput) -> str:
+    """Safely modify dimensions with automatic shadow backup and rollback on rebuild errors."""
+
+    def op():
+        _sw, model = _active_model_required()
+        from scripts.dimension_manager import modify_dimensions_safe
+        doc_path = str(get_com_member(model, "GetPathName") or "")
+        res = modify_dimensions_safe(
+            model,
+            params.updates,
+            sw=_sw,
+            doc_path=doc_path if doc_path else None,
+            auto_rollback=params.auto_rollback,
+            rebuild=params.rebuild,
+            save=params.save,
+            configuration_mode=params.configuration_mode,
+        )
+        res["document"] = _model_summary(model)
+        return res
 
     return _run_locked(op, params.response_format)
 

@@ -33,7 +33,8 @@ function walk(dir, out = []) {
 
 test('package.json declares the identity and the bundle patch the host needs', () => {
   assert.equal(pkg.name, 'dsh-solidworks');
-  assert.match(pkg.version, /^\d+\.\d+\.\d+/);
+  assert.equal(pkg.version, '0.2.0');
+  assert.equal(manifest.version, '0.2.0');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
@@ -43,6 +44,10 @@ test('package.json declares the identity and the bundle patch the host needs', (
   assert.ok(has(Object.values(pkg.bin)[0]), 'bin entry must exist');
   assert.ok(!pkg.scripts || !Object.keys(pkg.scripts).some((s) => /^(pre|post)?install$/.test(s)),
     'a market-installed plugin must not run install scripts');
+
+  // Submission tarball must match current package version
+  const submissionYaml = read('docs/submission/tan000tan__dsh-solidworks.yml');
+  assert.match(submissionYaml, new RegExp(`releases/download/v${pkg.version}/dsh-solidworks-${pkg.version}\\.tgz`));
 });
 
 test('the files allowlist ships every runtime dependency and nothing missing', () => {
@@ -204,17 +209,23 @@ test('shipped files (docs, provenance, tests) do not leak build machine paths', 
   const roots = [
     'README.md',
     'README.zh.md',
+    'CHANGELOG.md',
     'PROVENANCE.md',
     'package.json',
     'dsh-plugin.json',
     'cordis.patch.yml',
+    'requirements.txt',
+    'requirements-optional.txt',
     'NOTICE',
   ];
   const docs = walk('docs');
   const tests = walk('tests');
+  const scripts = walk('scripts');
+  const lib = walk('lib');
+  const bin = walk('bin');
 
-  const targets = [...roots, ...docs, ...tests];
-  assert.ok(targets.length >= 15, `expected target files, found ${targets.length}`);
+  const targets = [...roots, ...docs, ...tests, ...scripts, ...lib, ...bin];
+  assert.ok(targets.length >= 20, `expected target files, found ${targets.length}`);
 
   for (const rel of targets) {
     const text = read(rel);

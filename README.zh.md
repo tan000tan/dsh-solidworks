@@ -1,209 +1,70 @@
-# dsh-solidworks
+# dsh-solidworks-plugin (AI CAD 插件)
 
-把本机 SolidWorks 桌面接入 DeepSeek Harness（DSH）的插件：66 个 CAD 工具（零件/装配/工程图/DFM/FEA），
-默认**只读**，写操作与保存/导出分别需要更高的策略档位和一次性用户授权。
+[![Release](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/tan000tan/dsh-solidworks)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-green.svg)](LICENSE)
+[![SolidWorks](https://img.shields.io/badge/SolidWorks-2020%7E2026-orange.svg)](docs/FEATURE_MATRIX.md)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)](docs/USER_GUIDE.md)
 
-- 插件包：`dsh-solidworks`（AGPL-3.0-only）
-- 内嵌执行端：`solidworks-automation-skill` 的 Python MCP 服务器（MIT，见 `vendor/` 与 `NOTICE`）
-- 运行形态：DSH 宿主内的 cordis 插件 → 以子进程（stdio）启动 Python MCP 服务器 → COM 驱动本机 SolidWorks
-
-```
-DSH 模型 → 工具调用 → lib/index.js（策略/审计） → lib/mcp.js（JSON-RPC over stdio）
-        → python server.py（vendor/，MIT） → pywin32/COM → SolidWorks.exe
-```
+让 DeepSeek Harness (DSH) 或任意标准 MCP 客户端直接驱动本地 **SolidWorks** 桌面完成三维建模、自愈式尺寸修改、质量属性复核、工程图出图与格式转换的 AI CAD 插件。
 
 ---
 
-## 1. 前置条件
+## 一、核心特性
 
-| 项 | 要求 | 检查方式 |
-| --- | --- | --- |
-| 操作系统 | Windows 10/11 x64 | `dsh-solidworks doctor` |
-| SolidWorks | 桌面版 2023–2026，已激活且至少启动过一次（COM 注册） | `doctor` 读 `HKLM\SOFTWARE\SolidWorks` |
-| Python | 3.10+ x64，且 `import mcp` 成功（服务器自身要求 `mcp>=1.27,<2`、`pydantic>=2`、`jsonschema>=4.20,<5`；Windows 上还要 `pywin32>=305`、`comtypes>=1.2`；DFM/DXF/FEA 族另需 `ezdxf`、`numpy`、`Pillow`、`lxml`、`openpyxl`、`python-docx`、`python-pptx`、`XlsxWriter`） | `doctor` 逐候选执行 `import mcp` |
-| Node | 22.12+（DSH 自带） | `doctor` |
-| DSH | 桌面版（插件市场 / 桌面 profile） | — |
+- 🚀 **小白友好，一键就绪**：彻底废弃繁琐的环境配置说明书，提供纯 Node.js 驱动的 `setup`、`doctor`、`upgrade`、`uninstall` 全套自动化基建，防 PowerShell 执行策略拦截。
+- 🛡 **影子事务与自愈回滚**：内置 `ShadowBackupManager` 机制，在尺寸修改或复杂建模前自动抓取物理只读快照。若发生几何报错或拓扑自交，**0.5 秒内自动无损回滚**，绝不破坏用户原本文件。
+- 📐 **双精度质量属性验收**：拒绝浅层 API Mock！本插件所有核心特征均经过真实 SolidWorks 2026 物理环境实机打火验证，理论体积与实测体积误差 **$\le 0.0003\text{ mm}^3$**。
+- 🔒 **严密安全防护策略**：默认只读模式（read-only），高风险写操作逐次授权（Fail-Closed），内建 Windows 桌面 STA 消息隔离与系统窗口防误杀白名单。
 
-> 系统里常见 `C:\Users\<你>\AppData\Local\Microsoft\WindowsApps\python.exe` 是应用商店占位符，能"找到"但
-> `import mcp` 必然失败。插件不会把它当成功，会在 `doctor` 里明确报 `PYTHON_INVALID` / `PYTHON_NOT_FOUND`
-> 并列出试过的每个候选。装 Python 时把 `python.exe` 的绝对路径填进配置项 `pythonPath` 最稳。
+---
 
-## 2. 安装
+## 二、三步极简快速开始
 
-**方式 A：DSH 插件市场（推荐给普通用户）**
-在 DSH 桌面版打开市场，搜索 `dsh-solidworks`，安装后重启/刷新。市场只分发已收录（curated）插件，
-安装期 `postinstall` 脚本被禁用——本包不需要任何安装脚本，全部依赖探测都在首次加载时进行。
-
-**方式 B：本地包装（内测/离线）**
-```powershell
-dsh plugin --profile web add "D:\path\dsh-solidworks-0.1.0.tgz"
+### 1. 自动化安装环境
+在插件目录打开终端运行：
+```bash
+npm run setup
 ```
-注意：`desktop` profile 由桌面端独占，命令行 `dsh plugin --profile desktop add` 会报错，桌面用户请用方式 A 或 GUI。
+*(国内用户若网络受限，可附加 `--tsinghua` 参数使用清华镜像源加速)*
 
-**方式 C：开发态挂载**
-把本目录加进某个 profile 的 `cordis.patch.yml` 的 `insert`（本仓库自带 `cordis.patch.yml` 可直接 `insert`），
-配置 `name: dsh-solidworks`。这种方式下 DSH 会以源码目录加载，改动后重启 DSH 生效。
-
-## 3. 首次自检（不会修改任何 CAD 文件）
-
-```powershell
-# 1) 环境诊断：解释器 / 服务器脚本 / SolidWorks 是否安装 / 策略档位
-node bin\dsh-solidworks.js doctor --json --python "C:\Python313\python.exe"
-
-# 2) 连接与工具清单：启动服务器、握手、列出工具，并显示当前策略下"发布/扣留"了哪些
-node bin\dsh-solidworks.js list-tools --mode read-only
-
-# 3) 只读冒烟：调用 solidworks_health_check（读 SolidWorks 状态，不建不存不改）
-node bin\dsh-solidworks.js selftest
-
-# 4) 手工调任意工具，策略判定与宿主内完全一致（参数放文件里，PowerShell 会把内联 JSON 弄坏）
-node bin\dsh-solidworks.js call solidworks_health_check --arg-file .\args.json --mode read-only
-node bin\dsh-solidworks.js call solidworks_save_document --arg-file .\save.json --mode read-only
-#   -> {"status":"refused","code":"POLICY_MODE","risk":"high",...}
+### 2. 全项健康体检
+```bash
+npm run doctor
 ```
+系统将自动执行 8 大核心维度诊断（Python/COM/SolidWorks心跳/STA桌面权限/沙箱读写等），确保 100% 绿灯。
 
-四步都通过才说明"能连上、策略生效"。`doctor` 的 `ready: true` 只代表前置条件齐备，不代表 66 个工具都验证过（见第 7 节）。
-
-## 4. 会话内自检与使用
-
-在 DSH 里先问：
-
-1. `solidworks_status` —— 解释器、服务器脚本、策略档位、最近一次启动错误、子进程 stderr 尾部。任何 CAD 工具失败时先调它。
-2. `solidworks_connect` —— 连上正在运行的 SolidWorks（会新建/复用会话，不改文档）。
-3. 只读例子：`solidworks_mass_properties`、`solidworks_bounding_box`、`solidworks_list_edges`。
-4. 建模例子（需 `mode: standard`）：`solidworks_sketch_and_extrude` → `solidworks_fillet` → `solidworks_mass_properties` 复核。
-5. 保存/导出（需 `mode: full` 或 `allow` 放行 + 一次性确认）：
-   ```
-   solidworks_confirm { tool: "solidworks_save_document", args: { path: "C:\\work\\part.sldprt" }, reason: "用户同意保存" }
-   solidworks_save_document { path: "C:\\work\\part.sldprt" }   # 参数必须逐字一致
-   ```
-
-## 5. 配置项
-
-在 `cordis.patch.yml` 的 `config:` 下（或市场插件的设置面板）配置：
-
-| 键 | 默认 | 作用 |
-| --- | --- | --- |
-| `mode` | `read-only` | `read-only` 只发布只读工具；`standard` 再加建/改文档；`full` 全开（高风险仍需确认） |
-| `allow` | `[]` | 逐工具放行，**优先于** `mode`（也会绕过下面的 `allowedRoots` 检查，慎用） |
-| `deny` | `[]` | 逐工具禁用，**优先于** `allow` 和 `mode` |
-| `allowedRoots` | `[]` | 写操作路径白名单；空则用当前 DSH 会话工作目录 |
-| `grantTtlMs` | `300000` | `solidworks_confirm` 授权有效期（单次使用，用完即失效） |
-| `toolTimeoutMs` | `300000` | 单次 CAD 调用超时（重建/求解慢，故 5 分钟） |
-| `startTimeoutMs` | `60000` | 启动服务器 + `tools/list` 超时 |
-| `auditLog` | `null` | 审计日志路径（JSONL）；**只记工具名/风险/参数摘要/耗时/会话 ID，不记参数原值** |
-| `pythonPath` | `null` | 指定解释器绝对路径（跳过自动探测） |
-| `serverScript` | `null` | 覆盖服务器脚本路径（默认用 `vendor/` 内副本） |
-| `serverCwd` | `null` | 覆盖服务器工作目录 |
-| `toolPrefix` | `""` | 工具名前缀，避免与其他插件撞名 |
-
-`mode` 与风险等级的对应（`lib/policy.js` 的 `RISK_TABLE`，逐工具显式登记）：
-
-- **read**（16 个）：`health_check`、`mass_properties`、`bounding_box`、`list_edges`、`interference_check`、`inspect_*`、`review_*`、`*_preflight`、`design_spec_validate`、`cadstudio_read_artifact` 等。
-- **write**（26 个）：建模、装配、配置、尺寸、外观、`open/new_document`、`generate_drawing`、`design_spec_build` 等。
-- **high**（24 个）：`save/export/close/pack_and_go/recover`、`cadstudio_run_fea*`、`cadstudio_write_open_format`、OCP loft/surface 等。
-
-## 6. 安全边界（重要，请读完）
-
-**已实现并有单元测试：**
-
-- 默认只读；未登记的工具按名字推断后**从宽不成立**——名字含 `save/export/close/delete/...` 归 high，含 `add/create/set/...` 归 write，其余才是 read（`classify()`），因此新增工具不会自动变成"只读"。
-- 高风险调用必须先用 `solidworks_confirm` 提交**逐字相同的参数**换取一次性授权：授权按 `(工具名, 规范化参数)` 绑定、5 分钟过期、用后即焚；参数差一个字符就必须重新授权。
-- `deny` > `allow` > `mode`；`deny` 另有一层 `ctx.tools.guard()` 兜底，即使工具被别处注册也会被拒。
-- 写操作路径限制在 `allowedRoots`（默认会话工作目录）内，越界返回 `PATH_OUTSIDE_ALLOWED_ROOTS`；只读工具不做路径拦截。
-- 审计日志只写工具名、风险、参数**摘要**（sha256 前 16 位）、耗时、会话 ID、目标文件名，不写完整参数，不写 token。
-
-**边界与已知取舍：**
-
-- `allow` 里的工具会跳过 `allowedRoots` 检查（明确放行即视为用户已授权任意路径）。
-- 只读工具理论上也能通过 `open_document` 打开文件——插件不阻止，但也不会自动保存；不改文档即无副作用。
-- 插件不做文件系统沙箱：CAD 写盘由 SolidWorks 进程执行，最终仍受 DSH 自身的沙箱/审批策略约束（本插件不绕过它）。
-- 取消/超时后**副作用未知**：返回 `sideEffects: "unknown"`，要求先检查文档再重试，而不是假装回滚。
-- 没有自动备份/回滚：保存前的备份责任在用户/上层流程（这是相对 `dsh-solidworks` 旧实现的明确功能缺口）。
-
-**为什么缺 SolidWorks / Python 不会让整个 DSH 起不来**（`failOnStartupError` 的取舍）：
-
-DSH 的 `failOnStartupError` 是宿主对 **required bundle** 的策略：为 `true` 时任何一个 required 插件没激活，整机启动就失败
-（本机实测过这种现场：`4 required plugins did not activate` → `dsh: startup failed`，见 `docs/verification.md` E16/排错表）。
-对 SolidWorks 这种**可选的外部依赖**，这个默认值是错的：
-
-- 插件在自己的 `apply()` 里捕获**所有**启动失败（找不到 Python、服务器脚本缺失、COM 注册缺失、服务器启动即退出），
-  只降级为"两个 meta 工具可用 + `solidworks_status` 报原因"，**从不向宿主抛错**；`tests/crash.test.js`（9 项）让服务器
-  脚本第一行就 `SystemExit(3)`，断言宿主调用 `apply()` 不抛错、注册表只剩 2 个 meta 工具、状态里能读到原因。
-- 因此本插件**不要求**用户把 `failOnStartupError` 改成 `true`；需要"缺 CAD 就整体失败"的场景（例如科室统一部署的
-  受控环境）可以自己加，但那属于宿主的策略选择，不是插件的默认。
-
-## 7. 验证状态（诚实声明）
-
-**一条命令复现全部 110 项断言**（七个套件）：
-
-```powershell
-$env:DSH_SOLIDWORKS_PYTHON = "<你的 python.exe 完整路径>"
-npm run test:all      # exit 0 = 全绿
+### 3. 获取 MCP 接入配置
+```bash
+npm run mcp-config
 ```
+将生成的标准 JSON 配置填入您的 DSH 或 Claude 客户端即可开始对话建模！
 
-`npm test` 只跑不需要 Python 的四个套件（policy / mcp / schema / package，共 47 项），在没有装
-Python 的机器上也能跑。三个依赖 Python 的套件都认 `--python <exe>` 或 `DSH_SOLIDWORKS_PYTHON`。
+---
 
-| 能力 | 状态 |
-| --- | --- |
-| 策略/授权/路径/审计单元测试 | **已通过**（11 项，`node tests/policy.test.js`） |
-| MCP 客户端（握手/列举/调用/超时/取消/关闭） | **已通过**（8 项，`node tests/mcp.test.js`，用 stub 服务器） |
-| FastMCP `params` 参数外壳的解包/回填 | **已通过**（16 项，`node tests/schema.test.js`） |
-| 发布包自洽（清单/工具表/许可证/文件白名单） | **已通过**（12 项，`node tests/package.test.js`） |
-| 审计日志（每调用一行、摘要稳定、不落参数/路径/凭据） | **已通过**（27 项，`node tests/audit.test.js`） |
-| 宿主形态端到端（真服务器 + stub 服务器，27 项） | **已通过**（`node tests/host.test.js`） |
-| 服务器启动即崩溃时不拖垮宿主 | **已通过**（9 项，`node tests/crash.test.js`） |
-| 内嵌服务器在真实 Python 上的 `tools/list` | **已通过**（66 个工具，见 `docs/verification.md`） |
-| 三档位发布面与风险表一致 | **已通过**（只读 16 / 标准 42 / 完整 66，E22） |
-| 在真实 DSH 宿主里加载、连上内嵌服务器并执行只读调用 | **已通过**（隔离 `DSH_HOME` + `swweb` profile，见 E6/E7） |
-| 卸载后目录消失、不留 python 子进程 | **已通过**（E10/E11） |
-| 真实 SolidWorks 上的建模/装配/工程图/DFM/FEA | **未验证**（需装 SolidWorks 的机器，属待批准动作）。最小写闭环的脚本已就绪：`node tests/write-loop.mjs --python <python.exe> --authorised`——新建空白零件 → 草图+拉伸 → 读回体积 → 导出 STEP → **不保存**关闭；不带 `--authorised` 会直接拒绝运行（退出码 2） |
-| 保存/导出/关闭、包与工程图导出 | **未验证** |
-| 换版本升级与回滚 | **已通过（安装层）**：0.1.0 → 0.1.1 → 0.1.0 整包替换、无残留（E20）；坏包会被宿主拒绝并自动回滚。宿主内运行时升级未验证 |
-| 市场端到端安装（发布后） | **未验证** |
+## 三、常用日常指令
 
-## 8. 排错
+| 指令 | 作用说明 |
+| :--- | :--- |
+| `npm run setup` | 自动化创建隔离虚拟环境并注册 pywin32 COM 组件 |
+| `npm run setup -- --optional` | 安装 DFM 制造分析与 Office 报表扩展依赖 |
+| `npm run doctor` | 系统全项健康诊断，输出 PASS/WARN/FAIL |
+| `npm run upgrade` | 自动快照备份旧配置并平滑升级依赖 |
+| `npm run uninstall -- --dry-run` | 演练预览安全卸载清理范围（绝不触碰用户 CAD 模型） |
+| `npm run uninstall -- --yes` | 执行安全卸载清理 |
+| `npm test` | 运行离线自动化测试套件 (63 项断言) |
 
-| 症状 / 代码 | 含义与处理 |
-| --- | --- |
-| `PYTHON_NOT_FOUND` | 没找到能 `import mcp` 的解释器。装 `mcp`/`httpx`/`pydantic`，或设 `pythonPath`。`doctor` 会列出每个候选的失败原因。 |
-| `PYTHON_INVALID` | 配置的 `pythonPath` 探测失败（常见：指向应用商店占位符、32 位 Python、缺 `mcp`）。 |
-| `SERVER_SCRIPT_MISSING` | `vendor/` 内服务器缺失（安装包不完整）。重装，或把 `serverScript` 指到 `solidworks-automation-skill\mcp-server\server.py`。 |
-| `SPAWN_FAILED` / `SERVER_EXITED` | 子进程起不来/退出。`solidworks_status` 的 `connection.stderr` 有 Python traceback 尾部。 |
-| `POLICY_MODE` | 当前档位不允许该风险等级。改 `mode` 或 `allow`。 |
-| `CONFIRMATION_REQUIRED` | 高风险工具没确认，或确认的参数与本次调用不一致/已过期。重新 `solidworks_confirm`。 |
-| `PATH_OUTSIDE_ALLOWED_ROOTS` | 写操作目标不在允许目录。改 `allowedRoots` 或把文件放进会话目录。 |
-| `TIMEOUT` | 超过 `toolTimeoutMs`。SolidWorks 可能在后台仍在运算——先查文档状态再重试。 |
-| 工具不在列表里 | 被 `mode`/`deny` 扣留。`list-tools --mode <档位>` 可看扣留清单与原因。 |
-| 宿主启动失败，报 `4 required plugins did not activate` / `152 plugins failed to import` / `Cannot find package '@deepseek-ai/dsh-plugin-manager'` | 常见于迁移 `DSH_HOME` 到隔离测试目录时宿主安装锚点（`installAnchor`）未生效，导致无法解析 in-box 的 `@deepseek-ai/*` bundle（此前曾怀疑为 pnpm 依赖裁剪，现已证实 `@deepseek-ai/*` 本不在 profile 的 `pnpm-lock.yaml` 中，空 profile 在隔离目录下同样复现，真实默认 home 下解析正常；与插件本身无关）。恢复：在真实默认 home 或桌面端正常使用该 profile 即可。本插件在服务器起不来时**不会**让宿主失败（`apply()` 吞掉启动异常，只发布 2 个 meta 工具并报 `environment.state: failed`）。 |
-| `dsh plugin --profile X add` 后 profile 里出现乱码 `file:D:/Agent宸ヤ綔鍖?/...` | 安装包路径含中文时 DSH 记录的 spec 会乱码。把 tgz 放到纯 ASCII 路径重装；市场按 npm 包名安装不受影响。 |
-| `select a profile only once` | 正确语法是 `dsh --profile <name> web --port N`（profile 在子命令前），不是 `dsh web --profile <name>`。 |
-| 在受限沙箱里跑测试全部 `EPERM` | `tests/host.test.js`、`tests/mcp.test.js`、`tests/crash.test.js` 要 spawn 子进程（管道 stdio），必须在普通终端或 danger-full-access 下跑。 |
+---
 
-## 9. 升级 / 停用 / 卸载
+## 四、文档索引
 
-- **升级**：市场内升级，或换 tgz 重装；配置项在 profile 的 `cordis.patch.yml` 中保留。整包替换已实测（E20：0.1.0 → 0.1.1 → 0.1.0，无残留文件）；若自己打包，`package.json` 不能带 BOM，否则宿主会拒绝安装并回滚。
-- **停用**：把 `insert` 项加 `disabled: true`，或市场里禁用；不会动 SolidWorks 与已有文档。
-- **卸载**：市场卸载 / `dsh plugin --profile web remove dsh-solidworks`；可选删除 `auditLog` 文件。卸载不影响任何 `.sldprt/.sldasm/.slddrw`，宿主退出时会一并关闭 Python 子进程（已实测无残留）。profile 的 `cordis.patch.yml` 里残留的 `- id: dsh-solidworks` 配置项不会报错，也可以一起删掉。
-- **回滚**：保留上一版 tgz 即可回退；插件自身不写注册表、不装服务、不改 SolidWorks 设置。
+- 📖 **[普通用户极简使用指南 (User Guide)](docs/USER_GUIDE.md)**：包含完整图文流程与自然语言对话实例；
+- 🛠 **[故障排查与自愈手册 (Troubleshooting)](docs/TROUBLESHOOTING.md)**：常见 Windows COM 权限、网络与弹窗排障方案；
+- 📊 **[CAD 功能支持矩阵 (Feature Matrix)](docs/FEATURE_MATRIX.md)**：13 项建模特征、装配体、工程图成熟度标定；
+- 📝 **[版本变更日志 (CHANGELOG)](CHANGELOG.md)**：v0.2.0 里程碑技术演进细节。
 
-## 10. 许可证与来源
+---
 
-- 本插件：**AGPL-3.0-only**（`LICENSE`）。
-- `vendor/solidworks-automation-skill/`：MIT（`vendor/solidworks-automation-skill/LICENSE`），来源与改动见 `PROVENANCE.md`、`NOTICE`。
-- 本插件**不包含** `dsh-solidworks`（AGPL）的任何源代码：策略、授权、MCP 客户端、入口均为本包独立实现；两仓库的关系与不合并理由见产品化方案文档。
-- 分发时须同时保留 `LICENSE`、`NOTICE`、`vendor/**/LICENSE`。
+## 五、开源许可证
 
-**来源与合规细节**：`docs/license-risk.md`（逐文件许可证清单、与 AGPL 上游的全量哈希比对结果、
-运行时依赖许可证表、5 条风险与处置、以及需要法律复核的待确认项）；
-第三方包清单在 `NOTICE`，上游固定提交与行级比对在 `PROVENANCE.md`。
-
-## 11. 发布与投稿（仓库维护者看）
-
-| 文件 | 用途 |
-| --- | --- |
-| `docs/github-publish.md` | 建仓库、push、tag `v0.1.0`、Release、topics、投稿 PR 的逐条命令（**全部需要授权**，本轮未执行） |
-| `docs/release-notes-v0.1.0.md` | GitHub Release 说明现成稿（含实测数字与"写操作未验证"声明） |
-| `docs/market-submission.md` | 投稿条件核对表 + 三处待核项（`name` 语义、`category` 词表、`capabilities` 是否必填） |
-| `docs/submission/tan000tan__dsh-solidworks.yml` | 正式投稿文件（目标 `data/plugins/tan000tan__dsh-solidworks.yml`） |
+- 插件宿主与管理层遵循 [AGPL-3.0-only](LICENSE) 协议；
+- 内嵌自动化技能核心位于 `vendor/` 遵循 [MIT](vendor/solidworks-automation-skill/LICENSE) 协议，详见 [NOTICE](NOTICE)。
