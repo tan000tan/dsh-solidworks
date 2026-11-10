@@ -6,9 +6,13 @@
 **最终验收日期**: 2026-11-10  
 **交付物基准目录**: `audit_round2_final/`  
 **历史 Git 基线**: `7d70bc090d5cef146ac3946bb062667ae30a4cc9`  
+**正式发布 Commit**: `de6829d6e878f85a589a1fc89c1d47d272d3cfb6`  
+**正式发布 Tag**: `v0.2.0` (Tag SHA: `677e198af1284aac15d8b07cbf272351dc143bdb`)  
 **安装包文件名**: `dsh-solidworks-0.2.0.tgz`  
 **安装包真实 SHA-256**: `12dd5073a2cec8862b361b31dd3303a7808e8636b9e6066d49408acbccae6fb5`  
-**最终官方裁定**: **`RELEASED WITH CONDITIONS` (正式版本已发布，附带运行时环境依赖说明)**
+**GitHub Release 链接**: [https://github.com/tan000tan/dsh-solidworks/releases/tag/v0.2.0](https://github.com/tan000tan/dsh-solidworks/releases/tag/v0.2.0)  
+**DSH 市场升级 PR**: [https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/13770](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/13770) (PR #13770)  
+**最终官方裁定**: **`RELEASED WITH CONDITIONS` (正式版本已上线发布，附带运行时环境依赖说明)**
 
 ---
 
@@ -76,11 +80,11 @@
 5. **正式包是否与源码一致？**
    - **答**: **完全一致**。生产必需的 15 个核心模块与当前工作区完全吻合，且剔除了非发布测试与本地日志。
 6. **是否已完成 commit、tag、push？**
-   - **答**: **是**（见下文第四节执行记录）。
+   - **答**: **是**。Commit `de6829d6e878f85a589a1fc89c1d47d272d3cfb6`，Tag `v0.2.0`（SHA: `677e198af1284aac15d8b07cbf272351dc143bdb`），已完整推送到 GitHub 远端 `origin main`。
 7. **GitHub Release 是否真的发布？**
-   - **答**: **是**（见下文第四节执行记录）。
+   - **答**: **是**。已在线发布于 [https://github.com/tan000tan/dsh-solidworks/releases/tag/v0.2.0](https://github.com/tan000tan/dsh-solidworks/releases/tag/v0.2.0)，正式安装包 `dsh-solidworks-0.2.0.tgz` 已成功上传并可直接下载。
 8. **DSH 市场是否真的提交？**
-   - **答**: **是**（已完成投稿元数据验证并向市场投稿库提交）。
+   - **答**: **是**。已向官方市场 `awesome-dsh-plugin` 提交版本升级 Pull Request [PR #13770](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/13770)。
 9. **用户下一步还需要做什么？**
    - **答**: 用户环境只需具备标准前置条件（Windows 10/11 x64, SolidWorks 2021-2026 已注册 COM, Python 3.10+），即可直接通过 DSH 客户端加载插件使用。
 
@@ -90,11 +94,11 @@
 
 **最终裁定**: **`RELEASED WITH CONDITIONS`**  
 - **已完成事项**:
-  1. 源码修改、测试补充与验收交付物完整归档并完成 Git Commit。
-  2. 创建正式发布版本 Tag `v0.2.0`。
+  1. 源码修改、测试补充与验收交付物完整归档并完成 Git Commit (`de6829d`)。
+  2. 创建正式发布版本 Tag `v0.2.0` (`677e198`)。
   3. 推送本地 `main` 分支及 `v0.2.0` Tag 到 GitHub 远端仓库。
-  4. 创建 GitHub Release `v0.2.0` 并成功上传发布包 `dsh-solidworks-0.2.0.tgz`。
-  5. 核准 DSH 插件市场投稿 YAML 规范文件 `tan000tan__dsh-solidworks.yml`。
+  4. 创建 GitHub Release `v0.2.0` 并成功上传正式安装包 `dsh-solidworks-0.2.0.tgz`。
+  5. 成功向官方插件市场仓库提交升级 Pull Request (#13770)。
 - **附带发布条件 (Conditions)**:
   1. 宿主系统必须为 Windows 10/11 64 位操作系统；
   2. 宿主必须已安装正版 SolidWorks 2021~2026 并注册 COM 组件；
