@@ -1,3 +1,4 @@
+[![M8ven Score](https://m8ven.ai/badge/mcp/tan000tan/dsh-solidworks)](https://m8ven.ai/mcp/tan000tan/dsh-solidworks?s=readme)
 [![Release](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/tan000tan/dsh-solidworks)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-green.svg)](LICENSE)
 [![SolidWorks](https://img.shields.io/badge/SolidWorks-2020%7E2026-orange.svg)](docs/FEATURE_MATRIX.md)
