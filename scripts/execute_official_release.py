@@ -143,8 +143,8 @@ def create_github_release_and_upload(token, commit_sha):
         "target_commitish": "main",
         "name": "v0.2.0: Official Production Release",
         "body": release_body,
-        "draft": false,
-        "prerelease": false
+        "draft": False,
+        "prerelease": False
     }
     
     headers = {
