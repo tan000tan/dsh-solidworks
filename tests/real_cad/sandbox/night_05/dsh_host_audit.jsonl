@@ -1,0 +1,2 @@
+{"ts":"2026-11-05T13:51:05.294Z","event":"call","tool":"solidworks_mass_properties","risk":"read","ok":true,"target":null,"digest":"44136fa355b3678a","ms":528,"session":"dsh-session-night-05-alpha"}
+{"ts":"2026-11-05T13:51:05.388Z","event":"call","tool":"solidworks_list_edges","risk":"read","ok":true,"target":null,"digest":"44136fa355b3678a","ms":91,"session":"dsh-session-night-05-alpha"}

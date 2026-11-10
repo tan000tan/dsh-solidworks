@@ -186,13 +186,16 @@ except Exception:
 // 生成标准化 MCP 客户端配置文件
 function generateMcpConfig(pythonExecutable) {
   const serverScript = path.join(ROOT_DIR, 'vendor', 'solidworks-automation-skill', 'mcp-server', 'server.py');
+  const sandboxDir = process.env.DSH_ALLOWED_ROOTS
+    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return path.join(process.cwd(), 'cad_sandbox'); } })()
+    : path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark');
   const config = {
     mcpServers: {
       "solidworks-cad": {
         command: pythonExecutable,
         args: [serverScript],
         env: {
-          DSH_ALLOWED_ROOTS: JSON.stringify([path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark')]),
+          DSH_ALLOWED_ROOTS: JSON.stringify([sandboxDir]),
           PYTHONUNBUFFERED: "1",
           PYTHONDONTWRITEBYTECODE: "1"
         }

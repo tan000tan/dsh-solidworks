@@ -371,7 +371,9 @@ except Exception as e:
   // ---------------------------------------------------------
   // 6. SANDBOX_ROOTS_VALIDITY
   // ---------------------------------------------------------
-  const defaultSandbox = path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark');
+  const defaultSandbox = process.env.DSH_ALLOWED_ROOTS
+    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return path.join(process.cwd(), 'cad_sandbox'); } })()
+    : path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark');
   let sandboxOk = false;
   let sandboxMsg = '';
   try {

@@ -1,0 +1,36 @@
+﻿Index,FilePath,ChangeType,AddLines,DelLines,Category,Description
+1,NOTICE,MODIFIED,2,2,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+2,bin/dsh-solidworks.js,MODIFIED,25,3,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+3,docs/USER_GUIDE.md,MODIFIED,3,3,HISTORICAL_UNCOMMITTED,用户指南与验证技术说明文档
+4,docs/verification.md,MODIFIED,1,1,HISTORICAL_UNCOMMITTED,用户指南与验证技术说明文档
+5,dsh-plugin.json,MODIFIED,8,3,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+6,lib/discover.js,MODIFIED,48,4,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+7,lib/index.js,MODIFIED,10,2,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+8,lib/mcp.js,MODIFIED,1,1,FINAL_VERIFICATION_FIX,向子进程环境注入 PYTHONDONTWRITEBYTECODE: '1'，彻底防止字节码污染 vendor 目录
+9,lib/policy.js,MODIFIED,18,0,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+10,mcp-server-solidworks-main/adapters/claude/server.py,MODIFIED,26,11,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+11,mcp-server-solidworks-main/adapters/claude/tests/test_execution_client.py,MODIFIED,36,0,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+12,mcp-server-solidworks-main/adapters/claude/tests/test_schema_contract.py,MODIFIED,11,0,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+13,mcp-server-solidworks-main/adapters/dsh/server.py,MODIFIED,7,1,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+14,mcp-server-solidworks-main/adapters/dsh/tests/conftest.py,MODIFIED,7,0,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+15,mcp-server-solidworks-main/adapters/dsh/tests/test_job_store.py,MODIFIED,36,0,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+16,mcp-server-solidworks-main/adapters/dsh/tests/test_orchestrator.py,MODIFIED,36,0,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+17,mcp-server-solidworks-main/adapters/dsh/tests/test_policy.py,MODIFIED,36,0,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+18,mcp-server-solidworks-main/adapters/dsh/tests/test_tool_surface.py,MODIFIED,36,0,HISTORICAL_UNCOMMITTED,Claude / DSH 适配层历史接口抽象与测试夹具
+19,scripts/doctor.js,MODIFIED,3,1,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+20,scripts/generate_mcp_config.js,MODIFIED,8,4,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+21,scripts/setup.js,MODIFIED,4,1,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+22,tests/failure_injection_test.py,MODIFIED,5,2,TEST_ADDITION,端到端与故障注入测试套件加固
+23,tests/ir_solidworks_end_to_end_test.py,MODIFIED,6,0,TEST_ADDITION,端到端与故障注入测试套件加固
+24,tests/mcp.test.js,MODIFIED,52,1,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+25,tests/mcp_failure_cleanup_e2e_test.py,MODIFIED,3,0,TEST_ADDITION,端到端与故障注入测试套件加固
+26,tests/mcp_mid_operation_failure_test.py,MODIFIED,12,9,TEST_ADDITION,端到端与故障注入测试套件加固
+27,tests/package.test.js,MODIFIED,1,1,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+28,tests/probe-server.mjs,MODIFIED,15,3,TEST_ADDITION,端到端与故障注入测试套件加固
+29,vendor/solidworks-automation-skill/mcp-server/server.py,MODIFIED,4293,77,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+30,vendor/solidworks-automation-skill/scripts/cad_task_context.py,MODIFIED,231,31,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+31,vendor/solidworks-automation-skill/scripts/dimension_manager.py,MODIFIED,90,9,ROUND2_IMPLEMENTATION,底层参数化尺寸管理器与原生 Wire 桥接优化
+32,vendor/solidworks-automation-skill/scripts/feature_graph_ir.py,MODIFIED,2,0,ROUND2_IMPLEMENTATION,底层参数化尺寸管理器与原生 Wire 桥接优化
+33,vendor/solidworks-automation-skill/scripts/sw_connect.py,MODIFIED,1461,18,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+34,vendor/solidworks-automation-skill/scripts/sw_export.py,MODIFIED,395,375,ROUND2_IMPLEMENTATION,第二轮核心整改：FastMCP解构、PolicyGate安全沙箱、STEP AP214强制导出、版本号统一为0.2.0
+35,vendor/solidworks-automation-skill/scripts/sw_native_wire.py,MODIFIED,137,128,ROUND2_IMPLEMENTATION,底层参数化尺寸管理器与原生 Wire 桥接优化

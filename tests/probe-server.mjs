@@ -46,7 +46,7 @@ const client = new McpClient({
 let init;
 let tools;
 try {
-  init = await client.initialize({ clientName: 'dsh-solidworks-probe', clientVersion: '0.1.0', timeoutMs: 90_000 });
+  init = await client.initialize({ clientName: 'dsh-solidworks-probe', clientVersion: '0.2.0', timeoutMs: 90_000 });
   tools = await client.listTools({ timeoutMs: 90_000 });
 } catch (error) {
   console.error(`handshake failed: ${error.code ?? '?'} ${error.message}`);
@@ -63,7 +63,18 @@ for (const tool of tools) {
   const tier = policy.tierOf(tool.name);
   byTier[tier] = (byTier[tier] ?? 0) + 1;
 }
+// Phase 3 unreleased capabilities implemented ahead-of-time on server, staged for v0.3.0
+const PHASE3_STAGED_TOOLS = new Set([
+  'solidworks_compile_feature_graph',
+  'solidworks_execute_feature_graph',
+  'solidworks_identify_dimensions',
+  'solidworks_inspect_dimension_impact',
+  'solidworks_modify_dimension_safe',
+]);
+
 const unknown = names.filter(name => !(name in RISK_TABLE));
+const staged = unknown.filter(name => PHASE3_STAGED_TOOLS.has(name));
+const unclassified = unknown.filter(name => !PHASE3_STAGED_TOOLS.has(name));
 const stale = Object.keys(RISK_TABLE).filter(name => !names.includes(name));
 const published = names.filter(name => policy.registerable(name));
 const withheld = names.filter(name => !policy.registerable(name));
@@ -82,7 +93,8 @@ console.log(`python      ${found.python.version} at ${found.python.command}`);
 console.log(`tools       ${tools.length} total, tiers ${JSON.stringify(byTier)}`);
 console.log(`table       ${Object.keys(RISK_TABLE).length} entries`);
 console.log(`mode ${mode}: ${published.length} published / ${withheld.length} withheld`);
-if (unknown.length) console.log(`NOT IN TABLE (classified by pattern): ${unknown.join(', ')}`);
+if (staged.length) console.log(`STAGED PHASE 3 TOOLS (withheld under v0.2.0 policy): ${staged.join(', ')}`);
+if (unclassified.length) console.log(`NOT IN TABLE (classified by pattern): ${unclassified.join(', ')}`);
 if (stale.length) console.log(`STALE TABLE ENTRIES (server no longer offers them): ${stale.join(', ')}`);
 if (withheld.length) console.log(`withheld: ${withheld.join(', ')}`);
 
@@ -92,4 +104,4 @@ for (const name of unknown) {
   console.log(`  ${name} -> ${policy.tierOf(name)} (heuristic)`);
 }
 
-process.exit(unknown.length || stale.length ? 3 : 0);
+process.exit(unclassified.length || stale.length ? 3 : 0);

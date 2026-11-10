@@ -97,6 +97,9 @@ class TestFailureInjectionAndRecovery(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from sw_connect import solidworks_processes
+        if not solidworks_processes():
+            raise unittest.SkipTest("未检测到运行中的 SolidWorks 进程，跳过实机物理测试以保护待机基线")
         cls.sw, cls.initial_doc = connect_solidworks(wait_seconds=5, visible=True)
         if cls.sw is None:
             raise unittest.SkipTest("未检测到本地 SolidWorks COM 实例，跳过物理实测")
@@ -245,7 +248,7 @@ class TestFailureInjectionAndRecovery(unittest.TestCase):
                     "round": injection_idx,
                     "task_id": task_id,
                     "injected_error": type(exc).__name__,
-                    "cleanup_ok": cleanup_ok,
+                    "cleanup_ok": bool(cleanup_ok),
                     "start_open_docs": start_docs,
                     "end_open_docs": end_docs,
                     "docs_delta": end_docs - start_docs,
@@ -348,7 +351,7 @@ class TestFailureInjectionAndRecovery(unittest.TestCase):
                 "expected_volume_mm3": expected_volume,
                 "volume_error_mm3": volume_error,
                 "metrics_log": metrics_log,
-            }, f, indent=2, ensure_ascii=False)
+            }, f, indent=2, ensure_ascii=False, default=str)
 
 
 if __name__ == "__main__":

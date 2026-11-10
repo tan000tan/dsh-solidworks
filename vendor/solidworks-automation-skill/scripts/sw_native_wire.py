@@ -74,6 +74,16 @@ def invoke_native(sw, target, action, **values):
     model=get(sw,'ActiveDoc')
     if model is None or os.path.normcase(os.path.abspath(get(model,'GetPathName')))!=os.path.normcase(os.path.abspath(str(expected))):
         raise ValueError('Active document target mismatch')
+    from scripts.sw_connect import is_document_owned, validate_path_against_allowed_roots
+    if not validate_path_against_allowed_roots(str(expected)):
+        raise PermissionError(f"Access denied: document path '{expected}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+    if not is_document_owned(model, path=str(expected)):
+        raise PermissionError(f"DEF-SEC-01: Document '{expected}' is not owned by current automation session. Operation refused.")
+    for val_key in ('spec_path', 'step_path', 'output_path', 'replacement_path'):
+        if val_key in values and values[val_key]:
+            vp = str(values[val_key])
+            if not validate_path_against_allowed_roots(vp):
+                raise PermissionError(f"Access denied: {val_key} '{vp}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
     install=Path(discover_installation('solidworks')['executable']).parent
     interop=next((p for p in [install/'api/redist',install] if (p/'SolidWorks.Interop.sldworks.dll').is_file()),None)
     if not interop: raise FileNotFoundError('Installed SOLIDWORKS PIA not found')

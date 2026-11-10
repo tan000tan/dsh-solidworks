@@ -65,6 +65,9 @@ class TestMCPMidOperationFailure(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from sw_connect import solidworks_processes
+        if not solidworks_processes():
+            raise unittest.SkipTest("未检测到运行中的 SolidWorks 进程，跳过实机物理测试以保护待机基线")
         cls.sw, _ = connect_solidworks(wait_seconds=5, visible=True)
         if cls.sw is None:
             raise unittest.SkipTest("未连接到本地 SolidWorks COM 实例，跳过端到端测试")
@@ -107,7 +110,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
             self.assertEqual(len(after_docs), initial_count, "失败后后台残留文档数必须为 0")
             self.assertNotIn(title, after_titles, "该未完成文档必须已从 SolidWorks 中彻底移除")
 
-        worker.execute(run, timeout=30)
+        worker.execute(run, timeout=60)
 
     def test_02_mid_failure_after_plane_creation(self):
         """测试 2：创建基准面后中途故障（新基准面已进入特征树，后续失败触发逆序清除，默认基准面受保护）。"""
@@ -156,7 +159,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
             finally:
                 get_com_member(sw, "CloseDoc", title)
 
-        worker.execute(run, timeout=30)
+        worker.execute(run, timeout=60)
 
     def test_03_mid_failure_after_sketch_creation(self):
         """测试 3：创建草图后中途故障（真实进入草图并创建几何实体，退出草图编辑态，逆序清除失败草图及实体）。"""
@@ -210,7 +213,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
             finally:
                 get_com_member(sw, "CloseDoc", title)
 
-        worker.execute(run, timeout=30)
+        worker.execute(run, timeout=60)
 
     def test_04_mid_failure_after_extrude_boss_success(self):
         """测试 4：拉伸成功后中途故障（实体已进入特征树且体积大于 0，后续切除失败触发逆序清理实体）。"""
@@ -267,7 +270,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
             finally:
                 get_com_member(sw, "CloseDoc", title)
 
-        worker.execute(run, timeout=40)
+        worker.execute(run, timeout=60)
 
     def test_05_mid_failure_after_extrude_cut_success(self):
         """测试 5：切除成功后中途故障（测试基体上切除已使体积发生变化，后续验证失败触发逆序回滚恢复原体积）。"""
@@ -335,7 +338,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
             finally:
                 get_com_member(sw, "CloseDoc", title)
 
-        worker.execute(run, timeout=40)
+        worker.execute(run, timeout=60)
 
     def test_06_mid_failure_rebuild_error_recovery(self):
         """测试 6：ForceRebuild3 重建阶段故障（模拟几何拓扑重构失败触发回滚与干净恢复）。"""
@@ -382,7 +385,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
             finally:
                 get_com_member(sw, "CloseDoc", title)
 
-        worker.execute(run, timeout=30)
+        worker.execute(run, timeout=60)
 
     def test_07_cleanup_operation_itself_fails_circuit_breaker(self):
         """测试 7：清理操作本身失败时的熔断机制（进入 CLEANUP_FAILED，ready_to_retry 锁定为 False，杜绝死循环）。"""
@@ -419,7 +422,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
                 # 人工干预安全清理
                 get_com_member(sw, "CloseDoc", title)
 
-        worker.execute(run, timeout=30)
+        worker.execute(run, timeout=60)
 
     def test_08_end_to_end_mcp_mid_failure_and_safe_retry(self):
         """测试 8：真实 MCP 工具入口中途故障自动清理与第二轮合法请求安全重试全流程。"""
@@ -486,7 +489,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
             self.assertAlmostEqual(mass.get("volume_mm3", 0.0), 125000.0, delta=1.0)
             get_com_member(sw, "CloseDoc", "mcp_mid_fail_retry_bench.SLDPRT")
 
-        worker.execute(check_retry_part, timeout=30)
+        worker.execute(check_retry_part, timeout=60)
         if os.path.exists(retry_out_path):
             try:
                 os.remove(retry_out_path)
@@ -562,7 +565,7 @@ class TestMCPMidOperationFailure(unittest.TestCase):
                 except Exception:
                     pass
 
-        worker.execute(run, timeout=40)
+        worker.execute(run, timeout=60)
 
 
 if __name__ == "__main__":

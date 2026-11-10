@@ -41,7 +41,7 @@
       {
         "icon": "./docs/assets/icon.png",
         "title": "dsh-solidworks",
-        "description": "Drive a local SolidWorks desktop: 66 CAD tools for parts, assemblies, drawings, DFM checks, and FEA, gated by a read-only-by-default risk policy.",
+        "description": "Drive a local SolidWorks desktop: 71 CAD tools for parts, assemblies, drawings, DFM checks, and FEA, gated by a read-only-by-default risk policy.",
         "locales": [
           "docs/locale/en.json",
           "docs/locale/zh.json"
@@ -130,7 +130,12 @@
           "solidworks_build_round_sweeps",
           "solidworks_import_step_part",
           "solidworks_replace_component_preserving_transform",
-          "solidworks_exclude_reviewed_bodies"
+          "solidworks_exclude_reviewed_bodies",
+          "solidworks_compile_feature_graph",
+          "solidworks_execute_feature_graph",
+          "solidworks_identify_dimensions",
+          "solidworks_inspect_dimension_impact",
+          "solidworks_modify_dimension_safe"
         ]
       }
     ],
@@ -142,7 +147,7 @@
         "platforms": ["win32"],
         "architectures": ["x64", "arm64"],
         "targets": ["win32-x64"],
-        "presentation": "66 CAD tools published on load; the set narrows to read-only under the default policy",
+        "presentation": "71 CAD tools published on load; the set narrows to read-only under the default policy",
         "runtime": "Python 3 interpreter with the mcp package, plus a local SolidWorks desktop session",
         "tools": [],
         "permissions": "Read-only by default; standard enables document edits; full enables save/export/close behind a one-shot solidworks_confirm grant; every call is audited"

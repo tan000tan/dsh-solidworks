@@ -3,7 +3,13 @@ import json
 import re
 from typing import Literal
 
-from mcp.server import MCPServer
+try:
+    from mcp.server.fastmcp import FastMCP as MCPServer
+except ImportError:
+    try:
+        from mcp.server import MCPServer
+    except ImportError:
+        from mcp.server.lowlevel import Server as MCPServer
 
 from backend import ExecutionLayerError
 from orchestrator import orchestrator

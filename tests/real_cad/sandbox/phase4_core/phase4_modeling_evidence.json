@@ -1,0 +1,52 @@
+﻿{
+  "timestamp": "2026-11-06T00:28:28Z",
+  "suite": "phase4_cad_core_suite",
+  "elapsed_seconds": 95.65368819236755,
+  "environment": {
+    "cad_engine": "SolidWorks 2024",
+    "python": "3.13.16 (tags/v3.13.16:cbc944f, Sep 30 2026, 19:17:50) [MSC v.1944 64 bit (AMD64)]",
+    "sandbox": "<PLUGIN_ROOT>\\tests\\real_cad\\sandbox\\phase4_core"
+  },
+  "results": {
+    "exp1_industrial_housing": {
+      "status": "PASS",
+      "body_count": 1,
+      "volume_mm3": 311723.707182,
+      "bbox_mm": [
+        120.0,
+        80.0,
+        100.0
+      ],
+      "mqi_score": 28.0,
+      "mqi_grade": "F",
+      "file_size": 106072
+    },
+    "exp2_precision_sleeve": {
+      "status": "PASS",
+      "body_count": 1,
+      "volume_mm3": 161515.834797,
+      "bbox_mm": [
+        120.0,
+        60.0,
+        60.0
+      ],
+      "mqi_score": 76.0,
+      "mqi_grade": "C",
+      "file_size": 112980
+    },
+    "exp3_parametric_healing": {
+      "status": "PASS",
+      "vol_init": 144000.0,
+      "vol_mod": 158137.166941,
+      "rollback_status": "SUCCESS",
+      "cleaned_features": [
+        "凸台-拉伸2",
+        "草图2",
+        "凸台-拉伸1",
+        "草图1"
+      ],
+      "body_count_healed": 0,
+      "vol_healed": 0.0
+    }
+  }
+}

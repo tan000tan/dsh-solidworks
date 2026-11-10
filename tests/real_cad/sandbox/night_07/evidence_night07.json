@@ -1,0 +1,125 @@
+{
+  "session": "NIGHT-ENGINEERING-07",
+  "timestamp": "2026-11-05T22:10:00",
+  "solidworks_pid": 22732,
+  "baseline_doc_count": 0,
+  "baseline_metrics": {
+    "pid": 22732,
+    "working_set_mb": 661.66,
+    "gdi_objects": 874,
+    "user_objects": 1567
+  },
+  "phases": {
+    "phase_state_sta": {
+      "sta_healthy": true,
+      "final_status": "CANCELLED",
+      "state_history": [
+        [
+          "CREATED",
+          1793887800.0652277,
+          "Initial task created"
+        ],
+        [
+          "QUEUED",
+          1793887800.0652714,
+          "Enqueue for execution"
+        ],
+        [
+          "RUNNING",
+          1793887800.0653043,
+          "Worker started task"
+        ],
+        [
+          "CANCELLING",
+          1793887800.0653248,
+          "User timeout abort requested"
+        ],
+        [
+          "ROLLING_BACK",
+          1793887800.065335,
+          "Executing cleanup on cancel"
+        ],
+        [
+          "CANCELLED",
+          1793887800.065342,
+          "Cancellation finalized safely"
+        ]
+      ],
+      "passed": true
+    },
+    "phase_physical_rollback": {
+      "initial_bodies": 0,
+      "step1_bodies": 1,
+      "step1_volume": 150000.0,
+      "step2_bodies": 1,
+      "step2_volume": 175623.615081,
+      "cleaned_features": [
+        "凸台-拉伸2",
+        "草图2",
+        "凸台-拉伸1",
+        "草图1"
+      ],
+      "post_rollback_bodies": 0,
+      "post_rollback_volume": 0.0,
+      "reopened_bodies": 0,
+      "reopened_volume": 0.0,
+      "passed": true
+    },
+    "phase_drawing_reopen": {
+      "views_before_close": 3,
+      "reopened_view_count": 3,
+      "reopened_views": [
+        "工程图视图1",
+        "工程图视图2",
+        "工程图视图3"
+      ],
+      "reopen_ms": 1930.05,
+      "pdf_size_bytes": 50684,
+      "passed": true
+    },
+    "phase_batch_stability": {
+      "batches": [
+        {
+          "batch": 1,
+          "sw_working_set_mb": 752.89,
+          "gdi_objects": 887,
+          "user_objects": 1568,
+          "open_docs_count": 0,
+          "doc_count_leak": false
+        },
+        {
+          "batch": 2,
+          "sw_working_set_mb": 751.25,
+          "gdi_objects": 887,
+          "user_objects": 1568,
+          "open_docs_count": 0,
+          "doc_count_leak": false
+        },
+        {
+          "batch": 3,
+          "sw_working_set_mb": 751.33,
+          "gdi_objects": 887,
+          "user_objects": 1568,
+          "open_docs_count": 0,
+          "doc_count_leak": false
+        }
+      ],
+      "all_batches_doc_clean": true,
+      "passed": true
+    }
+  },
+  "final_verifications": {
+    "final_doc_count": 0,
+    "baseline_doc_count": 0,
+    "doc_count_recovered": true,
+    "final_metrics": {
+      "pid": 22732,
+      "working_set_mb": 751.33,
+      "gdi_objects": 887,
+      "user_objects": 1568
+    },
+    "mem_delta_mb": 89.67,
+    "gdi_delta": 13,
+    "all_passed": true
+  }
+}

@@ -129,7 +129,7 @@ test('manifest tool list matches the risk table exactly', () => {
 
   const counts = { read: 0, write: 0, high: 0 };
   for (const tier of Object.values(RISK_TABLE)) counts[tier] += 1;
-  assert.deepEqual(counts, { read: 16, write: 26, high: 24 });
+  assert.deepEqual(counts, { read: 19, write: 26, high: 26 });
 });
 
 test('licence and notice travel with the package', () => {

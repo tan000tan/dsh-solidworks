@@ -1,0 +1,291 @@
+﻿{
+  "timestamp": "2026-11-05T21:36:18",
+  "environment": "SolidWorks 2026 SP4.1 Real CAD",
+  "files": {
+    "drw_path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\tests\\real_cad\\sandbox\\night_04\\reopen_verified_drawing.SLDDRW",
+    "drw_size_bytes": 82647,
+    "pdf_path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\tests\\real_cad\\sandbox\\night_04\\drawing_render_preview.pdf",
+    "pdf_size_bytes": 50402,
+    "drw_exists": true,
+    "pdf_exists": true,
+    "views_valid": true
+  },
+  "views_before_close": {
+    "status": "pass",
+    "stage": "review",
+    "sheets": [
+      "图纸1"
+    ],
+    "views": [
+      {
+        "sheet": "图纸1",
+        "name": "工程图视图1",
+        "type": 7,
+        "orientation": "*前视",
+        "semantic_view": "front",
+        "scale": [
+          2.0,
+          1.0
+        ],
+        "box": {
+          "left": 0.13070500000000002,
+          "bottom": 0.24206999999999995,
+          "right": 0.404345,
+          "top": 0.30571
+        }
+      },
+      {
+        "sheet": "图纸1",
+        "name": "工程图视图2",
+        "type": 4,
+        "orientation": "",
+        "semantic_view": "top",
+        "scale": [
+          2.0,
+          1.0
+        ],
+        "box": {
+          "left": 0.13070500000000002,
+          "bottom": 0.51347,
+          "right": 0.404345,
+          "top": 0.70711
+        }
+      },
+      {
+        "sheet": "图纸1",
+        "name": "工程图视图3",
+        "type": 4,
+        "orientation": "",
+        "semantic_view": "right",
+        "scale": [
+          2.0,
+          1.0
+        ],
+        "box": {
+          "left": 0.5868549999999997,
+          "bottom": 0.24206999999999995,
+          "right": 0.7804950000000004,
+          "top": 0.30571
+        }
+      }
+    ],
+    "dimensions": [],
+    "notes": [],
+    "tables": [],
+    "professional_annotations": {
+      "center_marks": [],
+      "center_lines": [],
+      "hole_callouts": [],
+      "datum_tags": [],
+      "geometric_tolerances": [],
+      "surface_finish_symbols": [],
+      "weld_symbols": []
+    },
+    "template_path": "v:\\updated cs\\a0 - gb.slddrt",
+    "paper_size": "A0",
+    "sheet_size": {
+      "width_m": 1.189,
+      "height_m": 0.841
+    },
+    "title_block": {
+      "candidate": true,
+      "gbt_candidate": true,
+      "content_verified": false,
+      "fields": {},
+      "box": {
+        "left": 0.9970000000000001,
+        "bottom": 0.012,
+        "right": 1.177,
+        "top": 0.067
+      }
+    },
+    "view_count": 3,
+    "dimension_count": 0,
+    "table_count": 0,
+    "view_outline_count": 3,
+    "dimension_box_count": 0,
+    "native_dimension_box_count": 0,
+    "estimated_dimension_box_count": 0,
+    "low_confidence_dimension_box_count": 0,
+    "manual_review_required": true,
+    "retryable": false,
+    "error_code": null,
+    "checks": [
+      {
+        "id": "drawing-views",
+        "status": "pass",
+        "message": "工程图包含视图"
+      },
+      {
+        "id": "drawing-template",
+        "status": "pass",
+        "message": "已读取图框模板"
+      },
+      {
+        "id": "drawing-a3-sheet",
+        "status": "warning",
+        "message": "当前图幅不是 A3 或无法识别"
+      },
+      {
+        "id": "drawing-gbt-template",
+        "status": "pass",
+        "message": "模板名称是 GB/T 候选，内容仍需目视复核"
+      },
+      {
+        "id": "drawing-dimensions",
+        "status": "warning",
+        "message": "未读取到尺寸实体"
+      },
+      {
+        "id": "drawing-view-outlines",
+        "status": "pass",
+        "message": "已读取全部视图边界"
+      },
+      {
+        "id": "drawing-dimension-boxes",
+        "status": "warning",
+        "message": "原生边界 0/0，保守估算 0/0；估算不等于原生证据"
+      }
+    ]
+  },
+  "views_after_reopen": {
+    "status": "pass",
+    "stage": "review",
+    "sheets": [
+      "图纸1"
+    ],
+    "views": [
+      {
+        "sheet": "图纸1",
+        "name": "工程图视图1",
+        "type": 7,
+        "orientation": "*前视",
+        "semantic_view": "front",
+        "scale": [
+          2.0,
+          1.0
+        ],
+        "box": {
+          "left": 0.13070500000000002,
+          "bottom": 0.24206999999999995,
+          "right": 0.404345,
+          "top": 0.30571
+        }
+      },
+      {
+        "sheet": "图纸1",
+        "name": "工程图视图2",
+        "type": 4,
+        "orientation": "",
+        "semantic_view": "top",
+        "scale": [
+          2.0,
+          1.0
+        ],
+        "box": {
+          "left": 0.13070500000000002,
+          "bottom": 0.51347,
+          "right": 0.404345,
+          "top": 0.70711
+        }
+      },
+      {
+        "sheet": "图纸1",
+        "name": "工程图视图3",
+        "type": 4,
+        "orientation": "",
+        "semantic_view": "right",
+        "scale": [
+          2.0,
+          1.0
+        ],
+        "box": {
+          "left": 0.5868549999999997,
+          "bottom": 0.24206999999999995,
+          "right": 0.7804950000000004,
+          "top": 0.30571
+        }
+      }
+    ],
+    "dimensions": [],
+    "notes": [],
+    "tables": [],
+    "professional_annotations": {
+      "center_marks": [],
+      "center_lines": [],
+      "hole_callouts": [],
+      "datum_tags": [],
+      "geometric_tolerances": [],
+      "surface_finish_symbols": [],
+      "weld_symbols": []
+    },
+    "template_path": "v:\\updated cs\\a0 - gb.slddrt",
+    "paper_size": "A0",
+    "sheet_size": {
+      "width_m": 1.189,
+      "height_m": 0.841
+    },
+    "title_block": {
+      "candidate": true,
+      "gbt_candidate": true,
+      "content_verified": false,
+      "fields": {},
+      "box": {
+        "left": 0.9970000000000001,
+        "bottom": 0.012,
+        "right": 1.177,
+        "top": 0.067
+      }
+    },
+    "view_count": 3,
+    "dimension_count": 0,
+    "table_count": 0,
+    "view_outline_count": 3,
+    "dimension_box_count": 0,
+    "native_dimension_box_count": 0,
+    "estimated_dimension_box_count": 0,
+    "low_confidence_dimension_box_count": 0,
+    "manual_review_required": true,
+    "retryable": false,
+    "error_code": null,
+    "checks": [
+      {
+        "id": "drawing-views",
+        "status": "pass",
+        "message": "工程图包含视图"
+      },
+      {
+        "id": "drawing-template",
+        "status": "pass",
+        "message": "已读取图框模板"
+      },
+      {
+        "id": "drawing-a3-sheet",
+        "status": "warning",
+        "message": "当前图幅不是 A3 或无法识别"
+      },
+      {
+        "id": "drawing-gbt-template",
+        "status": "pass",
+        "message": "模板名称是 GB/T 候选，内容仍需目视复核"
+      },
+      {
+        "id": "drawing-dimensions",
+        "status": "warning",
+        "message": "未读取到尺寸实体"
+      },
+      {
+        "id": "drawing-view-outlines",
+        "status": "pass",
+        "message": "已读取全部视图边界"
+      },
+      {
+        "id": "drawing-dimension-boxes",
+        "status": "warning",
+        "message": "原生边界 0/0，保守估算 0/0；估算不等于原生证据"
+      }
+    ]
+  },
+  "final_status": "PASS",
+  "reopen_duration_ms": 2070.034980773926
+}

@@ -23,7 +23,7 @@
 
 import os from 'node:os';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 
@@ -33,7 +33,8 @@ import { Policy } from '../lib/policy.js';
 import { unwrapParams, wrapArgs } from '../lib/schema.js';
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.1.0';
+const pkg = JSON.parse(readFileSync(path.join(PLUGIN_ROOT, 'package.json'), 'utf8'));
+const VERSION = pkg.version;
 
 const argv = process.argv.slice(2);
 const command = argv.find(arg => !arg.startsWith('-')) ?? 'doctor';
@@ -53,15 +54,36 @@ function out(payload, human) {
   else console.log(human ?? JSON.stringify(payload, null, 2));
 }
 
+async function runScript(scriptName) {
+  const scriptPath = path.join(PLUGIN_ROOT, 'scripts', scriptName);
+  const forwarded = argv.filter(a => a !== command);
+  const child = spawn(process.execPath, [scriptPath, ...forwarded], {
+    cwd: PLUGIN_ROOT,
+    stdio: 'inherit',
+    env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+  });
+  return new Promise((resolve) => {
+    child.on('close', (code) => resolve(code ?? 0));
+    child.on('error', (err) => {
+      console.error(`cannot execute ${scriptName}: ${err.message}`);
+      resolve(1);
+    });
+  });
+}
+
 async function main() {
   switch (command) {
+    case 'setup': return runScript('setup.js');
     case 'doctor': return doctor();
+    case 'mcp-config': return runScript('generate_mcp_config.js');
+    case 'upgrade': return runScript('upgrade.js');
+    case 'uninstall': return runScript('uninstall.js');
     case 'list-tools': return listTools();
     case 'selftest': return selftest();
     case 'call': return callTool();
     case 'version': out({ name: 'dsh-solidworks', version: VERSION, pluginRoot: PLUGIN_ROOT }); return 0;
     default:
-      console.error(`unknown command: ${command}\nusage: dsh-solidworks [doctor|list-tools|selftest|call <tool>|version] [--json] [--mode read-only|standard|full]`);
+      console.error(`unknown command: ${command}\nusage: dsh-solidworks [setup|doctor|mcp-config|list-tools|selftest|call <tool>|version|upgrade|uninstall] [--json] [--mode read-only|standard|full]`);
       return 2;
   }
 }

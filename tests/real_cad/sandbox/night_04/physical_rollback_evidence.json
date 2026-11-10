@@ -1,0 +1,82 @@
+{
+  "timestamp": "2026-11-05T21:30:08",
+  "environment": "SolidWorks 2026 SP4.1 Real CAD",
+  "steps": [
+    {
+      "step": "1_initial_blank_state",
+      "features": [
+        "收藏",
+        "历史记录",
+        "选择集",
+        "传感器",
+        "设计活页夹",
+        "注解",
+        "标注",
+        "光源与相机",
+        "实体",
+        "曲面实体",
+        "备注",
+        "方程式",
+        "材质 <未指定>",
+        "前视基准面",
+        "上视基准面",
+        "右视基准面",
+        "原点",
+        "Tables"
+      ],
+      "body_count": 0,
+      "volume_mm3": 0.0
+    },
+    {
+      "step": "2_created_base_plate",
+      "base_feature_name": "凸台-拉伸1",
+      "body_count": 1,
+      "volume_mm3": 150000.0
+    },
+    {
+      "step": "3_created_pillar",
+      "pillar_feature_name": "凸台-拉伸2",
+      "body_count": 1,
+      "volume_mm3": 175623.615081
+    }
+  ],
+  "verifications": {
+    "rollback_status": "SUCCESS",
+    "cleaned_features": [
+      "凸台-拉伸2",
+      "草图2",
+      "凸台-拉伸1",
+      "草图1"
+    ],
+    "post_body_count": 0,
+    "post_volume_mm3": 0.0,
+    "bodies_cleared": true,
+    "volume_cleared": true,
+    "features_erased": true,
+    "init_preserved": true,
+    "duration_ms": 3152.0001888275146,
+    "reopen_verified": true,
+    "reopened_features": [
+      "收藏",
+      "历史记录",
+      "选择集",
+      "传感器",
+      "设计活页夹",
+      "注解",
+      "标注",
+      "光源与相机",
+      "实体",
+      "曲面实体",
+      "备注",
+      "方程式",
+      "材质 <未指定>",
+      "前视基准面",
+      "上视基准面",
+      "右视基准面",
+      "原点",
+      "Tables"
+    ],
+    "reopened_bodies": 0
+  },
+  "final_status": "PASS"
+}

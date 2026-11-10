@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import os from 'node:os';
 
 import { McpClient, McpError } from '../lib/mcp.js';
-import { probePython, discover } from '../lib/discover.js';
+import { probePython, discover, venvCandidates, entryCandidates } from '../lib/discover.js';
+import { version as libVersion } from '../lib/index.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const STUB = path.join(HERE, 'stub-server.mjs');
@@ -105,4 +108,52 @@ test('discover reports a readable error when the server script is missing', asyn
   assert.equal(found.ok, false);
   assert.ok(['PYTHON_INVALID', 'SERVER_SCRIPT_MISSING'].includes(found.code), found.code);
   assert.ok(found.message.length > 0);
+});
+
+test('DEF-03: package.json, dsh-plugin.json, and lib/index.js report identical version', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'package.json'), 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'dsh-plugin.json'), 'utf8'));
+  const binScript = fs.readFileSync(path.join(HERE, '..', 'bin', 'dsh-solidworks.js'), 'utf8');
+  assert.equal(pkg.version, manifest.version, 'package.json and manifest version must match');
+  assert.equal(libVersion, pkg.version, 'lib/index.js export version must match package.json');
+  assert.notEqual(libVersion, '0.1.0', 'lib/index.js must not report 0.1.0');
+  assert.ok(binScript.includes('pkg.version'), 'bin/dsh-solidworks.js must read pkg.version');
+});
+
+test('DEF-01: discovers project .venv when present in plugin root', () => {
+  const pluginRoot = path.join(HERE, '..');
+  const candidates = venvCandidates(pluginRoot);
+  assert.ok(candidates.length > 0, 'venvCandidates must find candidate in ROOT/.venv');
+  assert.match(candidates[0].label, /local \.venv|pyvenv\.cfg/);
+});
+
+test('DEF-01: priority order is config.pythonPath > DSH_SOLIDWORKS_PYTHON > .venv > py launcher > PATH', () => {
+  const pluginRoot = path.join(HERE, '..');
+  const fakeEnv = { DSH_SOLIDWORKS_PYTHON: 'C:\\fake\\env\\python.exe' };
+  const candidates = entryCandidates(fakeEnv, pluginRoot);
+  assert.ok(candidates.length >= 2);
+  assert.equal(candidates[0].command, 'C:\\fake\\env\\python.exe', 'DSH_SOLIDWORKS_PYTHON must take precedence');
+  assert.ok(candidates[1].label.includes('.venv') || candidates[1].label.includes('pyvenv'), 'Second priority must be local .venv');
+});
+
+test('DEF-01: non-existent venv falls through cleanly to PATH candidates without crashing', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-test-novenv-'));
+  try {
+    const candidates = venvCandidates(tempDir);
+    assert.deepEqual(candidates, [], 'empty dir must yield 0 venv candidates');
+    const all = entryCandidates({}, tempDir);
+    assert.ok(all.length > 0, 'must fall through to PATH/launcher candidates');
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('DEF-04: solidworks_pack_and_go is registered with exact tool name in manifest and server', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'dsh-plugin.json'), 'utf8'));
+  const declaredTools = manifest.contributes['x-tool-namespaces'][0].tools;
+  assert.ok(declaredTools.includes('solidworks_pack_and_go'), 'manifest must include solidworks_pack_and_go');
+  assert.ok(!declaredTools.includes('solidworks_pack_and_go_tool'), 'manifest must not have _tool suffix');
+
+  const serverSrc = fs.readFileSync(path.join(HERE, '..', 'vendor', 'solidworks-automation-skill', 'mcp-server', 'server.py'), 'utf8');
+  assert.match(serverSrc, /@mcp\.tool\(\s*name="solidworks_pack_and_go"/, 'server.py must register with wire name solidworks_pack_and_go');
 });

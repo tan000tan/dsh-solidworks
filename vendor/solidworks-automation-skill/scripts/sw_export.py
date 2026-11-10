@@ -25,6 +25,12 @@ def _ensure_parent_dir(file_path):
 
 
 def export_to_step(model, output_path):
+    try:
+        sw = model.GetSldWorksObject() or getattr(model, 'Application', None)
+        if sw:
+            sw.SetUserPreferenceIntegerValue(75, 214)  # 75 = swStepAP, 214 = AP214
+    except Exception:
+        pass
     """导出为 STEP 格式"""
     return _export_generic(model, output_path)
 
@@ -272,6 +278,9 @@ def batch_export_formats(
     if not extensions:
         raise ValueError("formats 不能为空")
     output_root = Path(os.path.expandvars(str(output_dir))).expanduser().resolve()
+    from scripts.sw_connect import validate_path_against_allowed_roots, is_document_owned
+    if not validate_path_against_allowed_roots(str(output_root)):
+        raise PermissionError(f"Access denied: output_root '{output_root}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
     output_root.mkdir(parents=True, exist_ok=True)
     claimed_outputs = set()
     documents = []
@@ -297,6 +306,11 @@ def batch_export_formats(
 
         try:
             for extension in extensions:
+                if extension in ('.step', '.stp'):
+                    try:
+                        sw.SetUserPreferenceIntegerValue(75, 214)  # 75 = swStepAP, 214 = AP214
+                    except Exception:
+                        pass
                 output_path = output_root / f"{source.stem}{extension}"
                 output_key = str(output_path).casefold()
                 before = _file_signature(output_path)
@@ -328,8 +342,15 @@ def batch_export_formats(
                     output_result["error"] = str(error)
                 document_result["outputs"].append(output_result)
         finally:
-            if close_documents and not was_open:
-                sw.CloseDoc(get_com_member(model, "GetTitle"))
+            if close_documents and not was_open and model is not None:
+                try:
+                    from scripts.sw_connect import is_document_owned
+                    if is_document_owned(model):
+                        doc_title = get_com_member(model, "GetTitle")
+                        if doc_title:
+                            sw.CloseDoc(doc_title)
+                except Exception:
+                    pass
         document_result["success"] = bool(document_result["outputs"]) and all(
             output["success"] for output in document_result["outputs"]
         )
@@ -351,6 +372,14 @@ def batch_export_formats(
 
 
 def _export_generic(model, output_path):
+    ext_lower = os.path.splitext(output_path)[1].lower()
+    if ext_lower in ('.step', '.stp'):
+        try:
+            sw = model.GetSldWorksObject() or getattr(model, 'Application', None)
+            if sw:
+                sw.SetUserPreferenceIntegerValue(75, 214)  # 75 = swStepAP, 214 = AP214
+        except Exception:
+            pass
     """通用导出函数（STEP/STL/IGES/Parasolid/DXF）"""
     model.ClearSelection2(True)
     output_path = os.path.abspath(os.path.expandvars(os.path.expanduser(output_path)))

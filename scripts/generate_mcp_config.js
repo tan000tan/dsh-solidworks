@@ -44,10 +44,14 @@ function getVenvPythonPath() {
 function main() {
   const venvPython = getVenvPythonPath();
   const serverPy = path.join(ROOT_DIR, 'vendor', 'solidworks-automation-skill', 'mcp-server', 'server.py');
-  const defaultSandbox = path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark');
+  const sandboxDir = process.env.DSH_ALLOWED_ROOTS
+    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return path.join(process.cwd(), 'cad_sandbox'); } })()
+    : (existsSync(path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark'))
+        ? path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark')
+        : path.join(process.cwd(), 'cad_sandbox'));
 
   const hasVenv = Boolean(venvPython);
-  const pythonCmd = venvPython || 'python';
+  const pythonCmd = venvPython || process.env.DSH_SOLIDWORKS_PYTHON || 'python';
 
   const mcpConfig = {
     mcpServers: {
@@ -57,7 +61,7 @@ function main() {
         env: {
           PYTHONUNBUFFERED: "1",
           PYTHONIOENCODING: "utf-8",
-          DSH_ALLOWED_ROOTS: JSON.stringify([defaultSandbox]),
+          DSH_ALLOWED_ROOTS: JSON.stringify([sandboxDir]),
         },
       },
     },
@@ -85,7 +89,7 @@ function main() {
 
   console.log('【安全与目录提示】');
   console.log(`• 默认安全写操作沙箱目录已绑定为:`);
-  console.log(`  ${defaultSandbox}`);
+  console.log(`  ${sandboxDir}`);
   console.log(`• 若需允许其他工作目录，可在 DSH_ALLOWED_ROOTS 环境变量 JSON 数组中追加。\n`);
 }
 

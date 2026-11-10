@@ -27,6 +27,8 @@ class FeatureType(str, Enum):
     FILLET = "fillet"
     CHAMFER = "chamfer"
     HOLE_WIZARD = "hole_wizard"
+    LINEAR_PATTERN = "linear_pattern"
+    CIRCULAR_PATTERN = "circular_pattern"
 
 
 class NodeStatus(str, Enum):

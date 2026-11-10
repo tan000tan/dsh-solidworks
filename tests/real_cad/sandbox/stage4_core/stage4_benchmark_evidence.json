@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-11-06T00:46:37Z",
+  "suite": "stage4_benchmark_full_suite",
+  "elapsed_seconds": 135.64185786247253,
+  "environment": {
+    "cad_engine": "SolidWorks 2024",
+    "python": "3.13.16 (tags/v3.13.16:cbc944f, Sep 30 2026, 19:17:50) [MSC v.1944 64 bit (AMD64)]",
+    "sandbox": "tests/real_cad/sandbox/stage4_core"
+  },
+  "results": {
+    "model_a_base_plate": {
+      "status": "PASS",
+      "volume_mm3": 113716.814693,
+      "relative_error": 4.12691843476227e-08,
+      "body_count": 1,
+      "bbox": [
+        100.0,
+        20.0,
+        60.0
+      ]
+    },
+    "model_b_stepped_shaft": {
+      "status": "PASS",
+      "volume_mm3": 113670.878223,
+      "body_count": 1,
+      "shaft_length_mm": 150.0
+    },
+    "model_c_flange": {
+      "status": "PASS",
+      "volume_mm3": 173180.295029,
+      "relative_error": 2.9039101347193013e-08,
+      "body_count": 1
+    },
+    "model_d_bracket": {
+      "status": "PASS",
+      "volume_mm3": 196831.618545,
+      "body_count": 1
+    },
+    "model_e_slotted_block": {
+      "status": "PASS",
+      "volume_mm3": 228352.0,
+      "relative_error": 0.0,
+      "body_count": 1
+    },
+    "model_f_thin_walled_box": {
+      "status": "PASS",
+      "volume_mm3": 96771.5,
+      "relative_error": 0.0,
+      "body_count": 1
+    },
+    "model_g_comprehensive": {
+      "status": "PASS",
+      "volume_mm3": 271749.912486,
+      "body_count": 1,
+      "bbox": [
+        110.0,
+        68.0,
+        80.0
+      ]
+    }
+  }
+}

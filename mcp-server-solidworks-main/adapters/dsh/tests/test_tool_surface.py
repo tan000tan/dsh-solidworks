@@ -1,3 +1,14 @@
+import os
+import sys
+from pathlib import Path
+
+_here = Path(__file__).resolve().parent
+_adapter_dir = _here.parent
+if str(_adapter_dir) not in sys.path:
+    sys.path.insert(0, str(_adapter_dir))
+if str(_here) not in sys.path:
+    sys.path.insert(0, str(_here))
+
 import asyncio
 import importlib.util
 import json
@@ -464,3 +475,28 @@ def test_request_confirmation_token_is_within_the_first_1024_chars(cad_env):
         confirmation["action_summary"],
     ):
         assert serialized.find(value) < 1024
+
+
+if __name__ == "__main__":
+    import time
+    t0 = time.time()
+    funcs = [k for k, v in list(globals().items()) if k.startswith("test_") and callable(v)]
+    passed = 0
+    failed = 0
+    print(f"Running {len(funcs)} tests...")
+    for f in funcs:
+        try:
+            globals()[f]()
+            passed += 1
+            print(f"  . {f}: PASS")
+        except Exception as e:
+            failed += 1
+            print(f"  F {f}: FAIL - {e}")
+    duration = time.time() - t0
+    print(f"----------------------------------------------------------------------")
+    print(f"Ran {len(funcs)} tests in {duration:.3f}s")
+    if failed == 0:
+        print("OK")
+    else:
+        print(f"FAILED (failures={failed})")
+        sys.exit(1)

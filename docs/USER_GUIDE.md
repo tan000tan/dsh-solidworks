@@ -52,12 +52,12 @@ npm run mcp-config
 {
   "mcpServers": {
     "solidworks-cad": {
-      "command": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\.venv\\Scripts\\python.exe",
+      "command": "<REPO_ROOT>\\.venv\\Scripts\\python.exe",
       "args": [
-        "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\vendor\\solidworks-automation-skill\\mcp-server\\server.py"
+        "<REPO_ROOT>\\vendor\\solidworks-automation-skill\\mcp-server\\server.py"
       ],
       "env": {
-        "DSH_ALLOWED_ROOTS": "[\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\测试代码\\\\sandbox_benchmark\"]",
+        "DSH_ALLOWED_ROOTS": "[\"<YOUR_SANDBOX_DIR>\"]",
         "PYTHONUNBUFFERED": "1"
       }
     }

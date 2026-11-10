@@ -1,0 +1,112 @@
+{
+  "session": "EXTREME-ENGINEERING-VERIFICATION",
+  "timestamp": "2026-11-05T23:30:07",
+  "solidworks_pid": 27692,
+  "baseline_doc_count": 0,
+  "baseline_metrics": {
+    "pid": 27692,
+    "working_set_mb": 737.73,
+    "gdi_objects": 894,
+    "user_objects": 1569
+  },
+  "experiments": {
+    "experiment_1_stepped_shaft": {
+      "bodies_count": 1,
+      "volume_mm3": 128600.190455,
+      "surface_area_mm2": 19122.686141,
+      "bbox_mm": [
+        40.0,
+        170.0,
+        40.0
+      ],
+      "mqi_score": 100.0,
+      "mqi_grade": "A",
+      "intent_verification": {
+        "passed": true,
+        "discrepancies": [],
+        "checks": {
+          "solid_bodies": true,
+          "volume_tolerance": true,
+          "surface_area_tolerance": true,
+          "bounding_box": true,
+          "required_feature_凸台-拉伸1": true,
+          "required_feature_切除-拉伸1": true
+        }
+      },
+      "file_size": 82527,
+      "passed": true
+    },
+    "experiment_2_flanged_bracket": {
+      "bodies_count": 1,
+      "volume_mm3": 391804.01315,
+      "surface_area_mm2": 46299.807993,
+      "bbox_mm": [
+        120.0,
+        60.0,
+        120.0
+      ],
+      "mqi_score": 100.0,
+      "mqi_grade": "A",
+      "intent_verification": {
+        "passed": true,
+        "discrepancies": [],
+        "checks": {
+          "solid_bodies": true,
+          "volume_tolerance": true,
+          "surface_area_tolerance": true,
+          "bounding_box": true,
+          "required_feature_凸台-拉伸1": true,
+          "required_feature_凸台-拉伸2": true,
+          "required_feature_草图4": true
+        }
+      },
+      "file_size": 88983,
+      "passed": true
+    },
+    "experiment_3_parametric_mutation": {
+      "initial_volume": 57853.981634,
+      "rollback_status": "SUCCESS",
+      "cleaned_features": [
+        "凸台-拉伸2",
+        "草图2",
+        "凸台-拉伸1",
+        "草图1"
+      ],
+      "post_bodies": 0,
+      "post_volume": 0.0,
+      "passed": true
+    },
+    "experiment_4_engineering_drawing_cycle": {
+      "views_before": 3,
+      "reopened_view_count": 3,
+      "reopened_views": [
+        "工程图视图1",
+        "工程图视图2",
+        "工程图视图3"
+      ],
+      "reopened_status": "pass",
+      "reopen_ms": 2067.2,
+      "pdf_size_bytes": 51517,
+      "drw_size_bytes": 98606,
+      "passed": true
+    }
+  },
+  "verifications": {
+    "e1_stepped_shaft": true,
+    "e2_flanged_bracket": true,
+    "e3_parametric_mutation": true,
+    "e4_drawing_reopen_cycle": true,
+    "docs_clean_recovered": true,
+    "final_doc_count": 0,
+    "baseline_doc_count": 0,
+    "final_metrics": {
+      "pid": 27692,
+      "working_set_mb": 733.69,
+      "gdi_objects": 907,
+      "user_objects": 1571
+    },
+    "mem_delta_mb": -4.04,
+    "gdi_delta": 13,
+    "all_passed": true
+  }
+}

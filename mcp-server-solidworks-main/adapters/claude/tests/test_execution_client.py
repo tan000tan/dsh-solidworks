@@ -1,3 +1,14 @@
+import os
+import sys
+from pathlib import Path
+
+_here = Path(__file__).resolve().parent
+_adapter_dir = _here.parent
+if str(_adapter_dir) not in sys.path:
+    sys.path.insert(0, str(_adapter_dir))
+if str(_here) not in sys.path:
+    sys.path.insert(0, str(_here))
+
 import sys
 from pathlib import Path
 
@@ -81,3 +92,28 @@ def test_call_tool_posts_with_tool_exec_timeout_and_reports_tool_on_timeout(monk
     assert "timed out after 123.0s" in message
     assert "tool=create_sketch" in message
     assert "HTTP_TOOL_TIMEOUT" in message
+
+
+if __name__ == "__main__":
+    import time
+    t0 = time.time()
+    funcs = [k for k, v in list(globals().items()) if k.startswith("test_") and callable(v)]
+    passed = 0
+    failed = 0
+    print(f"Running {len(funcs)} tests...")
+    for f in funcs:
+        try:
+            globals()[f]()
+            passed += 1
+            print(f"  . {f}: PASS")
+        except Exception as e:
+            failed += 1
+            print(f"  F {f}: FAIL - {e}")
+    duration = time.time() - t0
+    print(f"----------------------------------------------------------------------")
+    print(f"Ran {len(funcs)} tests in {duration:.3f}s")
+    if failed == 0:
+        print("OK")
+    else:
+        print(f"FAILED (failures={failed})")
+        sys.exit(1)

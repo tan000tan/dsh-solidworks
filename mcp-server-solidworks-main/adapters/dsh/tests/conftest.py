@@ -5,6 +5,13 @@ from types import SimpleNamespace
 
 import pytest
 
+try:
+    from mcp.types import Tool
+    if not hasattr(Tool, "input_schema"):
+        Tool.input_schema = property(lambda self: getattr(self, "inputSchema", None))
+except Exception:
+    pass
+
 
 ADAPTER_DIR = Path(__file__).resolve().parents[1]
 if str(ADAPTER_DIR) not in sys.path:

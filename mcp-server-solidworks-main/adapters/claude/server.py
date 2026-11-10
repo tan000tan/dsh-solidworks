@@ -7,9 +7,21 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Literal, Optional
 from pydantic import Field
-from mcp.server import MCPServer
-from mcp.server.caching import CacheHint
-from mcp.server.mcpserver.exceptions import ResourceError
+try:
+    from mcp.server.fastmcp import FastMCP as MCPServer
+except ImportError:
+    from mcp.server import MCPServer
+try:
+    from mcp.server.caching import CacheHint
+except ImportError:
+    class CacheHint:
+        def __init__(self, *args, **kwargs):
+            pass
+try:
+    from mcp.server.mcpserver.exceptions import ResourceError
+except ImportError:
+    class ResourceError(Exception):
+        pass
 from execution_client import call_tool, get_state, ensure_ready as _ensure_ready, ExecutionLayerError
 from response_mapper import map_response
 # NOTE: pycompiler is reached via `from ir_execution_port import run_feature_graph` imported
@@ -46,14 +58,17 @@ from response_mapper import map_response
 # measured saving of this migration is the per-turn `tools/list` shrinkage. Hints stay declared —
 # spec-correct, free, and a future host may use them.
 _RECIPE_CACHE = CacheHint(ttl_ms=3_600_000, scope="public")  # 1 h
-mcp = MCPServer(
-    "solidworks-execution-adapter",
-    cache_hints={
-        "resources/read": _RECIPE_CACHE,
-        "resources/list": _RECIPE_CACHE,
-        "resources/templates/list": _RECIPE_CACHE,
-    },
-)
+try:
+    mcp = MCPServer(
+        "solidworks-execution-adapter",
+        cache_hints={
+            "resources/read": _RECIPE_CACHE,
+            "resources/list": _RECIPE_CACHE,
+            "resources/templates/list": _RECIPE_CACHE,
+        },
+    )
+except TypeError:
+    mcp = MCPServer("solidworks-execution-adapter")
 
 # Tracks state_version in memory. Starts at 0, updated after every response.
 # Auto-resyncs from the execution layer on an INVALID_STATE_VERSION mismatch

@@ -123,6 +123,12 @@ def execute_ir_plan_on_live_solidworks(ir_graph: FeatureGraphIR, output_part_pat
 
 class FeatureGraphLiveSolidWorksTest(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        from sw_connect import solidworks_processes
+        if not solidworks_processes():
+            raise unittest.SkipTest("未检测到运行中的 SolidWorks 进程，跳过实机物理测试以保护待机基线")
+
     def setUp(self):
         self.part_path = str(SANDBOX_DIR / "ir_e2e_test_part.SLDPRT")
         if os.path.exists(self.part_path):

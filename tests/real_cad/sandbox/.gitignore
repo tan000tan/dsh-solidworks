@@ -1,0 +1,15 @@
+# Ignore all CAD test outputs and benchmark parts in sandbox
+*.SLDPRT
+*.sldprt
+*.SLDASM
+*.sldasm
+*.SLDDRW
+*.slddrw
+*.step
+*.stp
+*.iges
+*.igs
+*.dxf
+*.dwg
+*.tmp
+*.log

@@ -1,0 +1,39 @@
+{
+  "suite": "E01-E18 Engineering Benchmarks",
+  "total_count": 2,
+  "passed_count": 2,
+  "failed_count": 0,
+  "pass_rate": 1.0,
+  "total_elapsed_s": 17.383764266967773,
+  "results": [
+    {
+      "code": "E07",
+      "name": "圆角与倒角混合加工 (Fillet & Chamfer)",
+      "status": "PASS",
+      "elapsed_ms": 11939.102411270142,
+      "details": {
+        "v_act": 99239.19155,
+        "v_raw": 100000.0,
+        "fillet": true,
+        "chamfer": true,
+        "fillet_edge_count": 4,
+        "chamfer_edge_count": 4
+      }
+    },
+    {
+      "code": "E11",
+      "name": "实体质量属性综合核算 (Mass Properties)",
+      "status": "PASS",
+      "elapsed_ms": 5444.534063339233,
+      "details": {
+        "v_diff": 0.0,
+        "cx_diff": 0.0,
+        "cy_diff": 0.0,
+        "cz_diff": 0.0,
+        "cx_act": 50.0,
+        "cy_act": -10.0,
+        "cz_act": -25.0
+      }
+    }
+  ]
+}

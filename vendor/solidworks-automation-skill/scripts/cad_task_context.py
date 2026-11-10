@@ -61,18 +61,40 @@ except ImportError:
 logger = logging.getLogger("solidworks_cad_task")
 
 
+class InvalidStateTransitionError(RuntimeError):
+    """当发生非法任务状态跳转时抛出的强类型异常。"""
+    def __init__(self, from_state: Any, to_state: Any, reason: str = ""):
+        from_str = getattr(from_state, "value", str(from_state))
+        to_str = getattr(to_state, "value", str(to_state))
+        super().__init__(f"非法 CAD 任务状态跳转: {from_str} -> {to_str}{': ' + reason if reason else ''}")
+        self.from_state = from_state
+        self.to_state = to_state
+        self.reason = reason
+
+
 class TaskStatus(str, Enum):
-    """任务生命周期状态。"""
-    PENDING = "PENDING"
+    """任务生命周期状态机（严格包含全部 12 项标准生命周期状态与向后兼容别名）。"""
+    CREATED = "CREATED"
+    VALIDATING = "VALIDATING"
+    QUEUED = "QUEUED"
     RUNNING = "RUNNING"
-    FAILED = "FAILED"
+    CANCELLING = "CANCELLING"
+    COMMITTING = "COMMITTING"
     ROLLING_BACK = "ROLLING_BACK"
-    CLEANUP_VERIFYING = "CLEANUP_VERIFYING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    TIMEOUT = "TIMEOUT"
+    RECOVERY_REQUIRED = "RECOVERY_REQUIRED"
+
+    # 历史向后兼容别名与重试子状态
+    PENDING = "CREATED"
+    COMPLETED = "SUCCEEDED"
+    ABORTED = "CANCELLED"
     READY_TO_RETRY = "READY_TO_RETRY"
     RETRYING = "RETRYING"
-    COMPLETED = "COMPLETED"
+    CLEANUP_VERIFYING = "CLEANUP_VERIFYING"
     CLEANUP_FAILED = "CLEANUP_FAILED"
-    ABORTED = "ABORTED"
 
 
 class CleanupStatus(str, Enum):
@@ -82,6 +104,52 @@ class CleanupStatus(str, Enum):
     CLEANING = "CLEANING"
     CLEANED = "CLEANED"
     CLEANUP_FAILED = "CLEANUP_FAILED"
+
+
+class RollbackStatus(str, Enum):
+    """事务回滚结果状态。"""
+    NOT_NEEDED = "NOT_NEEDED"
+    SUCCESS = "SUCCESS"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
+
+
+@dataclass
+class RollbackResult:
+    """回滚执行详细报告。"""
+    status: RollbackStatus = RollbackStatus.NOT_NEEDED
+    cleaned_features: List[str] = field(default_factory=list)
+    failed_features: List[str] = field(default_factory=list)
+    closed_docs: List[str] = field(default_factory=list)
+    failed_docs: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return self.status in (RollbackStatus.SUCCESS, RollbackStatus.NOT_NEEDED)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "status": self.status.value if hasattr(self.status, "value") else str(self.status),
+            "cleaned_features": list(self.cleaned_features),
+            "failed_features": list(self.failed_features),
+            "closed_docs": list(self.closed_docs),
+            "failed_docs": list(self.failed_docs),
+            "errors": list(self.errors),
+        }
+
+
+@dataclass
+class FeatureCleanupResult:
+    """特征级清理结果，保持元组解包兼容 (cleaned_count, cleaned_names)。"""
+    cleaned_count: int = 0
+    cleaned_names: List[str] = field(default_factory=list)
+    failed_names: List[str] = field(default_factory=list)
+    rebuild_ok: bool = True
+    errors: List[str] = field(default_factory=list)
+
+    def __iter__(self):
+        yield self.cleaned_count
+        yield self.cleaned_names
 
 
 class CleanupVerificationError(RuntimeError):
@@ -175,16 +243,44 @@ class CADTaskContext:
     """
     单次建模任务的上下文隔离容器。
     记录本任务所有的对象创建、参数修改、事务状态与重试流水。
+    严格受有限状态机 (FSM) 约束与合法流转校验。
     """
+
+    # 合法状态流转矩阵
+    VALID_TRANSITIONS = {
+        TaskStatus.CREATED: {TaskStatus.VALIDATING, TaskStatus.QUEUED, TaskStatus.RUNNING, TaskStatus.CANCELLED},
+        TaskStatus.VALIDATING: {TaskStatus.QUEUED, TaskStatus.RUNNING, TaskStatus.FAILED, TaskStatus.CANCELLED},
+        TaskStatus.QUEUED: {TaskStatus.RUNNING, TaskStatus.CANCELLED, TaskStatus.TIMEOUT},
+        TaskStatus.RUNNING: {TaskStatus.COMMITTING, TaskStatus.ROLLING_BACK, TaskStatus.CANCELLING, TaskStatus.TIMEOUT, TaskStatus.FAILED, TaskStatus.SUCCEEDED},
+        TaskStatus.CANCELLING: {TaskStatus.ROLLING_BACK, TaskStatus.CANCELLED, TaskStatus.RECOVERY_REQUIRED},
+        TaskStatus.COMMITTING: {TaskStatus.SUCCEEDED, TaskStatus.ROLLING_BACK, TaskStatus.FAILED},
+        TaskStatus.ROLLING_BACK: {TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMEOUT, TaskStatus.RECOVERY_REQUIRED, TaskStatus.READY_TO_RETRY},
+        TaskStatus.READY_TO_RETRY: {TaskStatus.RETRYING, TaskStatus.CANCELLED, TaskStatus.FAILED},
+        TaskStatus.RETRYING: {TaskStatus.RUNNING, TaskStatus.FAILED, TaskStatus.CANCELLED},
+        # 终态：空集
+        TaskStatus.SUCCEEDED: set(),
+        TaskStatus.FAILED: set(),
+        TaskStatus.CANCELLED: set(),
+        TaskStatus.TIMEOUT: set(),
+        TaskStatus.RECOVERY_REQUIRED: set(),
+        TaskStatus.CLEANUP_FAILED: set(),
+    }
 
     def __init__(self, task_id: Optional[str] = None, max_retries: int = 2, session=None):
         self.task_id = task_id or f"task_{uuid.uuid4().hex[:10]}"
         self.start_time = time.time()
-        self.status = TaskStatus.PENDING
+        self.status = TaskStatus.CREATED
         self.cleanup_status = CleanupStatus.CLEAN
         self.max_retries = max(0, int(max_retries))
         self.retry_count = 0
         self.session = session
+
+        # 状态流转审计日志
+        self.state_history: List[Tuple[str, float, str]] = [
+            (self.status.value, self.start_time, "Initial task created")
+        ]
+        self._cancellation_requested = False
+        self._cancellation_reason = ""
 
         # 对象追踪
         self.tracked_documents: Dict[str, TrackedDocument] = {}
@@ -197,6 +293,52 @@ class CADTaskContext:
         # 错误与 COM 引用记录
         self.errors: List[str] = []
         self.com_references: List[Any] = []
+
+    def transition_to(self, target_status: TaskStatus, reason: str = "") -> TaskStatus:
+        """执行强类型状态转换，严格校验合法性并记录历史。"""
+        curr = self.status
+        if curr == target_status:
+            return curr
+
+        target_norm = TaskStatus(target_status.value)
+        curr_norm = TaskStatus(curr.value)
+        allowed = self.VALID_TRANSITIONS.get(curr_norm, set())
+        allowed_norms = {TaskStatus(s.value) for s in allowed}
+
+        if target_norm not in allowed_norms:
+            raise InvalidStateTransitionError(curr_norm, target_norm, reason)
+
+        self.status = target_norm
+        self.state_history.append((target_norm.value, time.time(), reason))
+        logger.info(f"Task [{self.task_id}] 状态流转: {curr_norm.value} -> {target_norm.value} ({reason})")
+        return self.status
+
+    def is_terminal(self) -> bool:
+        """检查任务是否已经处于不可再变迁的终态。"""
+        curr_norm = TaskStatus(self.status.value)
+        return len(self.VALID_TRANSITIONS.get(curr_norm, set())) == 0
+
+    def can_cancel(self) -> bool:
+        """检查当前状态是否允许被取消。"""
+        curr_norm = TaskStatus(self.status.value)
+        return not self.is_terminal() and curr_norm not in (TaskStatus.COMMITTING, TaskStatus.CANCELLING)
+
+    def request_cancellation(self, reason: str = "User requested cancellation") -> bool:
+        """协作式取消请求，设置取消标记，并在允许时流转到 CANCELLING 状态。"""
+        self._cancellation_requested = True
+        self._cancellation_reason = reason
+        if self.can_cancel():
+            try:
+                self.transition_to(TaskStatus.CANCELLING, reason)
+                return True
+            except Exception:
+                pass
+        return self.is_cancelled()
+
+    def is_cancelled(self) -> bool:
+        """检查是否已收到取消请求或已处于取消终态。"""
+        curr_norm = TaskStatus(self.status.value)
+        return self._cancellation_requested or curr_norm in (TaskStatus.CANCELLING, TaskStatus.CANCELLED)
 
     def register_document(
         self,
@@ -370,9 +512,12 @@ class FeatureCleanupManager:
         返回: (成功清理数, 清理特征名称列表)
         """
         if model is None:
-            return 0, []
+            return FeatureCleanupResult(0, [], [], True, [])
 
         cleaned_names = []
+        failed_names = []
+        cleanup_errors = []
+        rebuild_ok = True
         try:
             # 1. 首先确保退出任何未完成的草图编辑状态
             try:
@@ -392,7 +537,7 @@ class FeatureCleanupManager:
 
             # 逆序遍历删除
             for tf in reversed(doc_features):
-                fname = tf.feature_name
+                fname = str(tf.feature_name)
                 if cls.is_protected_feature(fname, initial_set=doc_entry.initial_feature_names):
                     continue
 
@@ -403,7 +548,7 @@ class FeatureCleanupManager:
                     ext = getattr(model, "Extension", None)
                     if ext is not None:
                         try:
-                            delete_ok = bool(ext.DeleteSelection2(1))
+                            delete_ok = bool(ext.DeleteSelection2(0))
                         except Exception:
                             delete_ok = False
                     if not delete_ok:
@@ -411,6 +556,8 @@ class FeatureCleanupManager:
                     if delete_ok:
                         tf.status = "ROLLED_BACK"
                         cleaned_names.append(fname)
+                    else:
+                        failed_names.append(fname)
                 else:
                     ext = getattr(model, "Extension", None)
                     if ext is not None:
@@ -418,7 +565,7 @@ class FeatureCleanupManager:
                             if get_com_member(ext, "SelectByID2", fname, etype, 0, 0, 0, False, 0, None, 0):
                                 delete_ok = False
                                 try:
-                                    delete_ok = bool(ext.DeleteSelection2(1))
+                                    delete_ok = bool(ext.DeleteSelection2(0))
                                 except Exception:
                                     delete_ok = False
                                 if not delete_ok:
@@ -427,10 +574,15 @@ class FeatureCleanupManager:
                                     tf.status = "ROLLED_BACK"
                                     cleaned_names.append(fname)
                                     break
+                                else:
+                                    failed_names.append(fname)
 
             if doc_entry.initial_feature_names:
                 from dimension_manager import iter_all_features
-                all_current = [get_com_member(f, "Name") for f in iter_all_features(model)]
+                try:
+                    all_current = [get_com_member(f, "Name") for f in iter_all_features(model)]
+                except Exception:
+                    all_current = []
                 for cur_name in reversed(all_current):
                     if cur_name and cur_name not in doc_entry.initial_feature_names:
                         if not cls.is_protected_feature(cur_name, initial_set=doc_entry.initial_feature_names):
@@ -441,7 +593,7 @@ class FeatureCleanupManager:
                                 ext = getattr(model, "Extension", None)
                                 if ext is not None:
                                     try:
-                                        del_ok = bool(ext.DeleteSelection2(1))
+                                        del_ok = bool(ext.DeleteSelection2(0))
                                     except Exception:
                                         del_ok = False
                                 if not del_ok:
@@ -450,16 +602,39 @@ class FeatureCleanupManager:
                                     cleaned_names.append(cur_name)
 
             # 3. 强制重构并刷新显示
+            rebuild_ok = True
+            cleanup_errors = []
             try:
-                get_com_member(model, "ForceRebuild3", False)
+                # 兼容 ForceRebuild3 与 EditRebuild3
+                rebuild_attr = getattr(model, "ForceRebuild3", None) or getattr(model, "EditRebuild3", None)
+                if callable(rebuild_attr):
+                    res = rebuild_attr(False) if getattr(model, "ForceRebuild3", None) else rebuild_attr()
+                    if res is False:
+                        rebuild_ok = False
+                        cleanup_errors.append("Rebuild 返回失败")
                 get_com_member(model, "ClearSelection2", True)
-            except Exception:
-                pass
+            except Exception as rb_exc:
+                rebuild_ok = False
+                cleanup_errors.append(f"Rebuild 异常: {rb_exc}")
 
         except Exception as exc:
             logger.error(f"清理文档特征异常: {exc}")
+            cleanup_errors.append(str(exc))
+            return FeatureCleanupResult(
+                cleaned_count=len(cleaned_names),
+                cleaned_names=cleaned_names,
+                failed_names=failed_names,
+                rebuild_ok=False,
+                errors=cleanup_errors,
+            )
 
-        return len(cleaned_names), cleaned_names
+        return FeatureCleanupResult(
+            cleaned_count=len(cleaned_names),
+            cleaned_names=cleaned_names,
+            failed_names=failed_names,
+            rebuild_ok=rebuild_ok,
+            errors=cleanup_errors,
+        )
 
 
 # ============================================================
@@ -589,14 +764,23 @@ class CADTaskRollbackManager:
         self.context = context
         self.sw_app = sw_app
 
-    def rollback(self) -> bool:
+    def rollback(self) -> RollbackResult:
         """
         执行完整的任务级回滚与状态清理。
-        返回: 是否全部清理并验证通过。
+        返回: RollbackResult (包含 status: SUCCESS / PARTIAL / FAILED / NOT_NEEDED)。
         """
         ctx = self.context
         ctx.status = TaskStatus.ROLLING_BACK
+        res = RollbackResult(status=RollbackStatus.NOT_NEEDED)
+
+        has_actions = bool(ctx.tracked_documents or ctx.tracked_features or ctx.modified_parameters)
+        if not has_actions:
+            ctx.cleanup_status = CleanupStatus.CLEAN
+            ctx.status = TaskStatus.READY_TO_RETRY
+            return res
+
         all_success = True
+        had_partial = False
 
         try:
             # 遍历本次任务涉及的所有文档
@@ -606,19 +790,32 @@ class CADTaskRollbackManager:
                     closed_ok = DocumentLifecycleManager.close_and_purge_document(
                         self.sw_app, doc_entry, ctx
                     )
-                    if not closed_ok:
+                    if closed_ok:
+                        res.closed_docs.append(title)
+                    else:
                         all_success = False
+                        had_partial = True
+                        res.failed_docs.append(title)
+                        res.errors.append(f"新建文档关闭或清理未通过: {title}")
                 else:
-                    # 情况 B: 已有文档
-                    # 1. 优先执行内存中逆序特征删除（零感知、不关文档、不破坏已有工作区）
+                    # 情况 B: 用户已有文档，绝对不关闭文档，仅在内存中逆序删除当前任务新建的特征
                     model = doc_entry.model_com_ref
-                    feature_cleaned = True
                     if model is not None:
-                        cleaned_count, _ = FeatureCleanupManager.cleanup_document_features(
+                        cleanup_report = FeatureCleanupManager.cleanup_document_features(
                             model, doc_entry, ctx.tracked_features
                         )
+                        res.cleaned_features.extend(cleanup_report.cleaned_names)
+                        if cleanup_report.failed_names:
+                            res.failed_features.extend(cleanup_report.failed_names)
+                            all_success = False
+                            had_partial = True
+                            res.errors.append(f"部分特征删除失败: {cleanup_report.failed_names}")
+                        if not cleanup_report.rebuild_ok:
+                            all_success = False
+                            had_partial = True
+                            res.errors.extend(cleanup_report.errors)
 
-                    # 2. 若发生尺寸修改且未在内存撤销，使用影子备份原地兜底恢复
+                    # 若发生尺寸修改且未在内存撤销，使用影子备份恢复
                     if ctx.modified_parameters:
                         if doc_entry.path and doc_entry.shadow_backup_path:
                             shadow_mgr = get_shadow_manager()
@@ -629,9 +826,10 @@ class CADTaskRollbackManager:
                                     continue
                                 else:
                                     all_success = False
+                                    had_partial = True
+                                    res.errors.append(f"影子备份恢复失败: {doc_entry.path}")
 
-                    doc_entry.cleaned = feature_cleaned
-                    # 若已安全处理且持有影子备份，销毁临时备份
+                    # 销毁影子备份
                     if doc_entry.path and doc_entry.shadow_backup_path:
                         shadow_mgr = get_shadow_manager()
                         if shadow_mgr:
@@ -644,19 +842,28 @@ class CADTaskRollbackManager:
             # 进入验证阶段
             ctx.status = TaskStatus.CLEANUP_VERIFYING
             if all_success:
+                res.status = RollbackStatus.SUCCESS
                 ctx.cleanup_status = CleanupStatus.CLEANED
                 ctx.status = TaskStatus.READY_TO_RETRY
-                return True
-            else:
+            elif had_partial:
+                res.status = RollbackStatus.PARTIAL
                 ctx.cleanup_status = CleanupStatus.CLEANUP_FAILED
                 ctx.status = TaskStatus.CLEANUP_FAILED
-                return False
+            else:
+                res.status = RollbackStatus.FAILED
+                ctx.cleanup_status = CleanupStatus.CLEANUP_FAILED
+                ctx.status = TaskStatus.CLEANUP_FAILED
+
+            return res
 
         except Exception as exc:
-            ctx.errors.append(f"RollbackException: {str(exc)}")
+            err_msg = f"RollbackException: {str(exc)}"
+            ctx.errors.append(err_msg)
+            res.errors.append(err_msg)
+            res.status = RollbackStatus.FAILED
             ctx.cleanup_status = CleanupStatus.CLEANUP_FAILED
             ctx.status = TaskStatus.CLEANUP_FAILED
-            return False
+            return res
 
     def execute_with_retry(
         self,

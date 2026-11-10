@@ -1,0 +1,142 @@
+﻿{
+  "timestamp": "2026-11-05T13:51:02.371Z",
+  "environment": {
+    "platform": "win32",
+    "node": "v24.21.0",
+    "plugin_root": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin"
+  },
+  "discovered_tools": [
+    "solidworks_status",
+    "solidworks_confirm",
+    "cadstudio_resolve_backend",
+    "cadstudio_routing_preflight",
+    "solidworks_addin_host_status",
+    "cadstudio_fea_preflight",
+    "solidworks_health_check",
+    "solidworks_list_edges",
+    "solidworks_mass_properties",
+    "solidworks_bounding_box",
+    "solidworks_interference_check",
+    "design_spec_validate",
+    "solidworks_inspect_configurations",
+    "solidworks_inspect_hole_features",
+    "solidworks_inspect_motion_studies",
+    "solidworks_validate_motion_study",
+    "cadstudio_read_artifact",
+    "solidworks_inspect_native_geometry"
+  ],
+  "test_cases": {
+    "test_a_status": {
+      "description": "检查当前 SolidWorks 是否正常运行，报告环境与连接状态",
+      "elapsed_ms": 0,
+      "status": "PASS",
+      "payload": {
+        "plugin": {
+          "name": "dsh-solidworks",
+          "version": "0.2.0",
+          "root": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin"
+        },
+        "policy": {
+          "mode": "read-only",
+          "registeredTools": 18,
+          "pendingGrants": 0
+        },
+        "environment": {
+          "state": "ok",
+          "python": {
+            "command": "D:\\SWCAD-MCP\\Python313\\python.exe",
+            "args": [],
+            "version": "3.13.16"
+          },
+          "serverScript": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\vendor\\solidworks-automation-skill\\mcp-server\\server.py",
+          "serverCwd": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\vendor\\solidworks-automation-skill",
+          "notes": [
+            "python: pyvenv.cfg executable: D:\\SWCAD-MCP\\Python313\\python.exe -> D:\\SWCAD-MCP\\Python313\\python.exe  (3.13.16)"
+          ]
+        },
+        "connection": {
+          "running": true,
+          "tools": 71
+        }
+      }
+    },
+    "test_b_model_info": {
+      "description": "读取当前零件的基本信息、实体数量和质量属性，不修改模型",
+      "elapsed_ms": 529,
+      "status": "PASS",
+      "payload": {
+        "units": {
+          "mass": "g",
+          "length": "mm",
+          "volume": "mm3",
+          "area": "mm2",
+          "inertia": "kg*mm2"
+        },
+        "mass_g": 0,
+        "volume_mm3": 0,
+        "surface_area_mm2": 0,
+        "center_of_mass_mm": [
+          0,
+          0,
+          0
+        ],
+        "moment_of_inertia_kg_mm2": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "density_kg_m3": null,
+        "material": "",
+        "material_assigned": false,
+        "errors": [],
+        "warnings": [
+          "文档未分配材料，SolidWorks 按默认密度（1000 kg/m³）计算；质量结果不可直接用于工程判断，请分配材料或显式传入 density_kg_m3。"
+        ],
+        "status": "ok",
+        "implied_density_kg_m3": null,
+        "document": {
+          "title": "工程图5 - 图纸1",
+          "path": "",
+          "type": 3
+        },
+        "suggestion": "Assign a material in the document (or pass density_kg_m3) before using mass for engineering decisions such as motor sizing or shipping weight."
+      }
+    },
+    "test_c_param_query": {
+      "description": "查询测试零件中的拓扑边线与几何参数，不执行修改",
+      "elapsed_ms": 92,
+      "status": "PASS",
+      "payload": {
+        "status": "error",
+        "error_type": "RuntimeError",
+        "message": "Active document must be a part (.SLDPRT).",
+        "suggestion": "Confirm SolidWorks is installed/running, the active document is correct, components are resolved, and file paths are absolute Windows paths."
+      }
+    },
+    "test_d_authorization_boundary": {
+      "description": "尝试执行高风险修改/保存操作，验证在只读策略下完全被拦截拒绝",
+      "elapsed_ms": 1,
+      "status": "PASS",
+      "withheld_write_tool": true,
+      "withheld_high_tool": true,
+      "confirm_interception": {
+        "status": "refused",
+        "code": "POLICY_MODE",
+        "message": "solidworks_save_document is disabled by the plugin policy (mode=read-only)."
+      }
+    }
+  },
+  "audit_events": []
+}
