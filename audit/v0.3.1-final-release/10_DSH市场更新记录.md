@@ -31,10 +31,10 @@ description:
 
 | 检查阶段 | 目标状态要求 | 当前实际状态 | 事实依据与说明 |
 | :--- | :--- | :--- | :--- |
-| **1. 本地元数据就绪** | YAML 字段精确更新 | **已完成 (COMPLETED)** | 版本号、tarball 下载 URL、sha256 与描述均已准确同步 |
-| **2. 更新分支创建** | 基于 `origin/main` 切出新分支 | **已完成 (COMPLETED)** | 分支名：`feat/update-tan000tan-dsh-solidworks-v031` |
-| **3. 提交与推送 Fork** | Commit 并推送到用户 Fork 仓 | **已就绪 (READY)** | 包含元数据变更提交 |
-| **4. 提交市场更新 PR** | 向 upstream 提交 Pull Request | **已就绪 / 提交阶段** | PR 标题：`feat(plugins): update tan000tan/dsh-solidworks to v0.3.1` |
+| **1. 本地元数据就绪** | YAML 字段精确更新 | **已完成 (COMPLETED)** | 版本号、tarball 下载 URL (`.../v0.3.1/dsh-solidworks-0.3.1.tgz`) 与描述均已准确同步 |
+| **2. 更新分支创建** | 基于 `origin/main` 切出新分支 | **已完成 (COMPLETED)** | 分支名：`feat/update-tan000tan-dsh-solidworks-v031` (base: `aa37dc1a`) |
+| **3. 提交与推送 Fork** | Commit 并推送到用户 Fork 仓 | **已完成 (COMPLETED)** | Commit `5b7739f2` 已推送到 `https://github.com/tan000tan/awesome-dsh-plugin.git` |
+| **4. 提交市场更新 PR** | 向 upstream 提交 Pull Request | **已就绪 / 提交阶段** | PR 链接：`https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/compare/main...tan000tan:awesome-dsh-plugin:feat/update-tan000tan-dsh-solidworks-v031` |
 | **5. 市场上游合并** | upstream maintainer 审核合并 | **等待上游合并** | 遵循开源规范，等待上游维护者正常合并，不绕过规则 |
 | **6. 客户端自动刷新** | DSH 市场索引在线拉取 | **待合并后刷新** | 客户端将在上游合并后自动拉取最新 v0.3.1 资产 |
 
