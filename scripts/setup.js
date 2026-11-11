@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
+import { registerToDshProfile, getDshPrimaryRuntimePython, isDshDesktopInstalled } from './dsh_adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +43,10 @@ function getCandidatePythonPaths() {
       }
     } catch {}
   }
+
+  // 0.5. DSH 桌面客户端自带的 Python 运行环境
+  const dshPy = getDshPrimaryRuntimePython();
+  if (dshPy) candidates.push(dshPy);
 
   // 1. 命令行参数 --python 指定
   const pyArgIdx = process.argv.indexOf('--python');
@@ -85,6 +90,7 @@ function getCandidatePythonPaths() {
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolve) => {
+    let settled = false;
     const proc = spawn(command, args, {
       cwd: options.cwd || ROOT_DIR,
       shell: false,
@@ -101,6 +107,16 @@ function runCommand(command, args, options = {}) {
     let stdout = '';
     let stderr = '';
 
+    const timeoutMs = options.timeoutMs || 60000;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try { proc.kill(); } catch {}
+        resolve({ code: 1, stdout: stdout.trim(), stderr: `Command timed out after ${timeoutMs}ms` });
+      }
+    }, timeoutMs);
+    timer.unref?.();
+
     if (proc.stdout) {
       proc.stdout.on('data', (data) => {
         stdout += data.toString();
@@ -116,11 +132,19 @@ function runCommand(command, args, options = {}) {
     }
 
     proc.on('close', (code) => {
-      resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
+      }
     });
 
     proc.on('error', (err) => {
-      resolve({ code: 1, stdout: '', stderr: err.message });
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve({ code: 1, stdout: '', stderr: err.message });
+      }
     });
   });
 }
@@ -218,7 +242,7 @@ async function main() {
   console.log('======================================================\n');
 
   // Step 0: 平台与架构基准检测
-  console.log('[0/5] 校验系统架构与基础运行平台...');
+  console.log('[0/6] 校验系统架构与基础运行平台...');
   const isWin = process.platform === 'win32';
   const arch = os.arch();
   console.log(`    操作系统: ${process.platform} (${os.release()}), 架构: ${arch}`);
@@ -229,7 +253,7 @@ async function main() {
   }
 
   // Step 1: 探测 Python 解释器
-  console.log('\n[1/5] 正在检测 Python 运行时环境 (>= 3.10 64-bit)...');
+  console.log('\n[1/6] 正在检测 Python 运行时环境 (>= 3.10 64-bit)...');
   const pythonInfo = await findSuitablePython();
 
   if (!pythonInfo) {
@@ -250,7 +274,7 @@ async function main() {
   const scriptsDir = path.join(venvDir, 'Scripts');
   const cfgFile = path.join(venvDir, 'pyvenv.cfg');
 
-  console.log('\n[2/5] 检查独立虚拟环境 (.venv)...');
+  console.log('\n[2/6] 检查独立虚拟环境 (.venv)...');
   let activePython = pythonInfo.cmd;
   let activePip = null;
 
@@ -308,21 +332,22 @@ async function main() {
     }
   }
 
-  // 解析国内镜像源参数
+  // 解析国内镜像源参数（默认启用清华/阿里云镜像加速以提升普通用户开箱速度，可用 --official 禁用）
   let mirrorArgs = [];
-  if (process.argv.includes('--tsinghua')) {
-    mirrorArgs = ['-i', 'https://pypi.tuna.tsinghua.edu.cn/simple'];
+  if (process.argv.includes('--official') || process.argv.includes('--no-mirror')) {
+    mirrorArgs = [];
   } else if (process.argv.includes('--aliyun')) {
     mirrorArgs = ['-i', 'https://mirrors.aliyun.com/pypi/simple/'];
   } else {
-    const mirrorIdx = process.argv.indexOf('--mirror');
-    if (mirrorIdx !== -1 && process.argv[mirrorIdx + 1]) {
-      mirrorArgs = ['-i', process.argv[mirrorIdx + 1]];
-    }
+    // 默认启用高可用镜像源与官方源双向兜底
+    mirrorArgs = [
+      '-i', 'https://pypi.tuna.tsinghua.edu.cn/simple',
+      '--extra-index-url', 'https://pypi.org/simple',
+    ];
   }
 
   // Step 3: 安装依赖包（具备幂等跳过）
-  console.log('\n[3/5] 正在安装与校验运行时核心依赖 (mcp, pydantic, pywin32, comtypes)...');
+  console.log('\n[3/6] 正在安装与校验运行时核心依赖 (mcp, pydantic, pywin32, comtypes)...');
   const reqPath = path.join(ROOT_DIR, 'requirements.txt');
   if (!existsSync(reqPath)) {
     console.error(`[✖] 未找到依赖配置文件: ${reqPath}`);
@@ -335,19 +360,28 @@ async function main() {
   if (isAlreadyInstalled && !forceReinstall) {
     console.log('[✔] 核心依赖已全部就绪（幂等验证通过，跳过重复下载）！');
   } else {
-    console.log('[*] 正在安装核心依赖包...');
+    console.log('[*] 正在安装核心依赖包 (启用镜像加速)...');
     let pipRes;
     const baseArgs = ['install', '-r', reqPath, '--disable-pip-version-check', ...mirrorArgs];
     if (activePip && existsSync(activePip)) {
-      pipRes = await runCommand(activePip, baseArgs);
+      pipRes = await runCommand(activePip, baseArgs, { timeoutMs: 180000 });
     } else {
-      pipRes = await runCommand(activePython, ['-m', 'pip', ...baseArgs]);
+      pipRes = await runCommand(activePython, ['-m', 'pip', ...baseArgs], { timeoutMs: 180000 });
+    }
+
+    if (pipRes.code !== 0) {
+      console.warn(`[!] 首选镜像安装未完成，正在切换官方备用源重试...`);
+      const fallbackArgs = ['install', '-r', reqPath, '--disable-pip-version-check'];
+      if (activePip && existsSync(activePip)) {
+        pipRes = await runCommand(activePip, fallbackArgs, { timeoutMs: 180000 });
+      } else {
+        pipRes = await runCommand(activePython, ['-m', 'pip', ...fallbackArgs], { timeoutMs: 180000 });
+      }
     }
 
     if (pipRes.code !== 0) {
       console.error(`[✖] 依赖安装失败:\n${pipRes.stderr}`);
-      console.error('    提示: 如果网络连接超时，可尝试使用清华镜像源重试:');
-      console.error('          npm run setup -- --tsinghua');
+      console.error('    提示: 请检查本地网络连接，或尝试手动安装 requirements.txt');
       process.exit(1);
     }
     console.log('[✔] 核心 Python 依赖包已就绪！');
@@ -372,53 +406,84 @@ async function main() {
   }
 
   // Step 4: 注册 pywin32 COM 组件
-  console.log('\n[4/5] 正在配置并注册 Windows COM 自动化服务 (pywin32)...');
+  console.log('\n[4/6] 正在配置并注册 Windows COM 自动化服务 (pywin32)...');
   if (isWin) {
-    const candidatePostInstalls = [
-      path.join(venvDir, 'Scripts', 'pywin32_postinstall.py'),
-      path.join(path.dirname(activePython), 'Scripts', 'pywin32_postinstall.py'),
-      path.join(path.dirname(activePython), 'pywin32_postinstall.py'),
-    ];
-
-    let postFound = null;
-    for (const p of candidatePostInstalls) {
-      if (existsSync(p)) {
-        postFound = p;
-        break;
-      }
-    }
-
-    if (postFound) {
-      console.log(`    正在执行 pywin32_postinstall.py -install ...`);
-      const postRes = await runCommand(activePython, [postFound, '-install', '-silent']);
-      if (postRes.code === 0) {
-        console.log('[✔] pywin32 COM 注册成功！');
-      } else {
-        console.log(`[!] pywin32_postinstall 提示: ${postRes.stderr || '已完成'}`);
-      }
-    }
-
-    // 验证 COM 导入
-    const testComRes = await runCommand(activePython, [
+    // 优先快速验证 COM 导入
+    const preCheckCom = await runCommand(activePython, [
       '-c',
       'import win32com.client, pythoncom; print("COM_VERIFIED_OK")',
-    ]);
-    if (testComRes.code === 0 && testComRes.stdout.includes('COM_VERIFIED_OK')) {
-      console.log('[✔] Windows COM 运行时测试通过！');
+    ], { timeoutMs: 10000 });
+
+    if (preCheckCom.code === 0 && preCheckCom.stdout.includes('COM_VERIFIED_OK')) {
+      console.log('[✔] Windows COM 自动化运行时已就绪（验证通过，跳过重复注册）！');
     } else {
-      console.warn(`[!] COM 导入检测异常: ${testComRes.stderr}`);
+      const candidatePostInstalls = [
+        path.join(venvDir, 'Scripts', 'pywin32_postinstall.py'),
+        path.join(path.dirname(activePython), 'Scripts', 'pywin32_postinstall.py'),
+        path.join(path.dirname(activePython), 'pywin32_postinstall.py'),
+      ];
+
+      let postFound = null;
+      for (const p of candidatePostInstalls) {
+        if (existsSync(p)) {
+          postFound = p;
+          break;
+        }
+      }
+
+      if (postFound) {
+        console.log(`    正在执行 pywin32_postinstall.py -install ...`);
+        const postRes = await runCommand(activePython, [postFound, '-install', '-silent'], { timeoutMs: 15000 });
+        if (postRes.code === 0) {
+          console.log('[✔] pywin32 COM 注册成功！');
+        } else {
+          console.log(`[!] pywin32_postinstall 提示: ${postRes.stderr || '已完成'}`);
+        }
+      }
+
+      // 再次验证 COM 导入
+      const testComRes = await runCommand(activePython, [
+        '-c',
+        'import win32com.client, pythoncom; print("COM_VERIFIED_OK")',
+      ], { timeoutMs: 10000 });
+      if (testComRes.code === 0 && testComRes.stdout.includes('COM_VERIFIED_OK')) {
+        console.log('[✔] Windows COM 运行时测试通过！');
+      } else {
+        console.warn(`[!] COM 导入检测异常: ${testComRes.stderr}`);
+      }
     }
   } else {
     console.log('[*] 非 Windows 平台，跳过 pywin32 COM 注册。');
   }
 
   // Step 5: 生成 MCP 标准配置
-  console.log('\n[5/5] 生成标准 MCP 客户端接入配置...');
+  console.log('\n[5/6] 生成标准 MCP 客户端接入配置...');
   const cfgPath = generateMcpConfig(activePython);
   if (cfgPath) {
     console.log(`[✔] 专属 MCP 配置文件已更新: ${cfgPath}`);
   } else {
     console.warn(`[!] 无法自动写入 MCP 配置文件`);
+  }
+
+  // Step 6: 自动接入 DeepSeek Harness (DSH) 客户端
+  console.log('\n[6/6] 自动接入 DeepSeek Harness (DSH) 宿主环境...');
+  if (isDshDesktopInstalled()) {
+    const regRes = registerToDshProfile({
+      pythonPath: activePython,
+      mode: 'read-only',
+      toolTimeoutMs: 300000,
+      pluginRoot: ROOT_DIR,
+    });
+    if (regRes.ok) {
+      console.log(`[✔] 已成功接入 DSH 桌面配置文件: ${regRes.patchFile}`);
+      if (regRes.backupPath) {
+        console.log(`    (已自动备份原始配置至: ${path.basename(regRes.backupPath)})`);
+      }
+    } else {
+      console.warn(`[!] DSH 自动接入提示: ${regRes.reason}`);
+    }
+  } else {
+    console.log('    (未检测到本机的 DSH 桌面配置文件，跳过自动挂载)');
   }
 
   console.log('\n======================================================');

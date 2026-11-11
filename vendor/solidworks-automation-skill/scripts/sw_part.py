@@ -9,9 +9,16 @@ from contextlib import contextmanager
 try:
     from .sw_connect import get_com_member
     from .sw_preflight import import_com_dependencies
+    from .sw_compat import safe_extrude_boss, safe_extrude_cut, safe_mirror_feature
 except ImportError:
     from sw_connect import get_com_member
     from sw_preflight import import_com_dependencies
+    try:
+        from sw_compat import safe_extrude_boss, safe_extrude_cut, safe_mirror_feature
+    except ImportError:
+        safe_extrude_boss = None
+        safe_extrude_cut = None
+        safe_mirror_feature = None
 
 
 def _callout_variant():
@@ -736,7 +743,7 @@ def add_sketch_relation(model, relation_type):
 
 def extrude_boss(model, sketch_name, depth, direction=True, merge=True):
     """
-    凸台拉伸
+    凸台拉伸（多版本自适应与降级保护）。
 
     参数:
         model: IModelDoc2
@@ -746,36 +753,29 @@ def extrude_boss(model, sketch_name, depth, direction=True, merge=True):
         merge: True=合并结果
     """
     _ensure_sketch_selected(model, sketch_name)
+    if safe_extrude_boss is not None:
+        return safe_extrude_boss(
+            model.FeatureManager,
+            single_dir=True,
+            flip=False,
+            direction=direction,
+            termination1=0,
+            termination2=0,
+            depth1=depth,
+            depth2=0.0,
+            merge=merge
+        )
     return model.FeatureManager.FeatureExtrusion3(
-        True,         # Sd: 单向拉伸
-        False,        # Flip
-        direction,    # Dir: 拉伸方向
-        0,            # T1: Blind
-        0,            # T2: Blind
-        depth,        # D1
-        0.0,          # D2
-        False,        # Dchk1
-        False,        # Dchk2
-        False,        # Ddir1
-        False,        # Ddir2
-        0.0,          # Dang1
-        0.0,          # Dang2
-        False,        # OffsetReverse1
-        False,        # OffsetReverse2
-        False,        # TranslateSurface1
-        False,        # TranslateSurface2
-        merge,        # Merge
-        False,        # UseFeatScope
-        True,         # UseAutoSelect
-        0,            # T0: 从草图平面开始
-        0.0,          # StartOffset
-        False         # FlipStartOffset
+        True, False, direction, 0, 0, depth, 0.0,
+        False, False, False, False, 0.0, 0.0,
+        False, False, False, False, merge, False, True,
+        0, 0.0, False
     )
 
 
 def extrude_cut(model, sketch_name, depth, direction=True, flip=False):
     """
-    切除拉伸
+    切除拉伸（增强多版本兼容、方向自愈与特征校验版）。
 
     参数:
         model: IModelDoc2
@@ -786,54 +786,71 @@ def extrude_cut(model, sketch_name, depth, direction=True, flip=False):
     """
     _ensure_sketch_selected(model, sketch_name)
     if depth == 0:
-        # 完全贯穿
         end_condition = 1  # swEndCondThroughAll
-        depth = 0.01  # 占位值
+        actual_depth = 0.01  # 占位值
     else:
         end_condition = 0  # swEndCondBlind
+        actual_depth = float(depth)
 
-    return model.FeatureManager.FeatureCut4(
-        True, bool(flip), bool(direction),  # Sd, Flip, Dir
-        end_condition, 0, depth, 0,
+    if safe_extrude_cut is not None:
+        return safe_extrude_cut(
+            model.FeatureManager,
+            single_dir=True,
+            flip=bool(flip),
+            direction=bool(direction),
+            termination1=end_condition,
+            termination2=0,
+            depth1=actual_depth,
+            depth2=0.0
+        )
+
+    # 兜底直接调用
+    feat = model.FeatureManager.FeatureCut4(
+        True, bool(flip), bool(direction),
+        end_condition, 0, actual_depth, 0,
         False, False, False, False, 0.0, 0.0,
         False, False, False, False, False,
-        True, True, False, False,  # assembly-scope flags -> False for part docs
+        True, True, False, False,
         False, 0, 0, False, False
     )
+    if feat is None:
+        _ensure_sketch_selected(model, sketch_name)
+        feat = model.FeatureManager.FeatureCut4(
+            True, bool(flip), not bool(direction),
+            end_condition, 0, actual_depth, 0,
+            False, False, False, False, 0.0, 0.0,
+            False, False, False, False, False,
+            True, True, False, False,
+            False, 0, 0, False, False
+        )
+    return feat
 
 
 def extrude_midplane(model, sketch_name, total_depth):
     """
-    中面拉伸（两侧对称拉伸）
+    中面拉伸（两侧对称拉伸，多版本自适应）。
 
     参数:
         total_depth: 总深度（米），每侧为 total_depth/2
     """
     _ensure_sketch_selected(model, sketch_name)
+    if safe_extrude_boss is not None:
+        return safe_extrude_boss(
+            model.FeatureManager,
+            single_dir=True,
+            flip=False,
+            direction=True,
+            termination1=6,  # swEndCondMidPlane
+            termination2=0,
+            depth1=total_depth,
+            depth2=0.0,
+            merge=True
+        )
     return model.FeatureManager.FeatureExtrusion3(
-        True,         # Sd: 单向定义，终止条件控制为中面
-        False,        # Flip
-        True,         # Dir
-        6,            # T1: swEndCondMidPlane
-        0,            # T2
-        total_depth,  # D1
-        0.0,          # D2
-        False,        # Dchk1
-        False,        # Dchk2
-        False,        # Ddir1
-        False,        # Ddir2
-        0.0,          # Dang1
-        0.0,          # Dang2
-        False,        # OffsetReverse1
-        False,        # OffsetReverse2
-        False,        # TranslateSurface1
-        False,        # TranslateSurface2
-        True,         # Merge
-        False,        # UseFeatScope
-        True,         # UseAutoSelect
-        0,            # T0
-        0.0,          # StartOffset
-        False         # FlipStartOffset
+        True, False, True, 6, 0, total_depth, 0.0,
+        False, False, False, False, 0.0, 0.0,
+        False, False, False, False, True, False, True,
+        0, 0.0, False
     )
 
 
@@ -960,14 +977,36 @@ def shell(model, thickness, faces_to_remove=None):
 
 def mirror_feature(model, feature_name, mirror_plane_name):
     """
-    镜像特征
+    镜像特征（多版本自适应）。
 
     参数:
         feature_name: 要镜像的特征名称
-        mirror_plane_name: 镜像基准面名称
+        mirror_plane_name: 镜像基准面名称（支持中英文别名自动解析）
     """
-    _select_by_id(model.Extension, feature_name, "BODYFEATURE", mark=4)
-    _select_by_id(model.Extension, mirror_plane_name, "PLANE", append=True, mark=1)
+    model.ClearSelection2(True)
+    plane_selected = False
+    for plane_candidate in _get_plane_name_candidates(mirror_plane_name):
+        if _select_by_id(model.Extension, plane_candidate, "PLANE", append=False, mark=1):
+            plane_selected = True
+            break
+    if not plane_selected:
+        raise ValueError(f"无法选择镜像基准面: {mirror_plane_name}")
+
+    feat_selected = False
+    feat_obj = get_com_member(model, "FeatureByName", str(feature_name))
+    if feat_obj is not None:
+        try:
+            feat_selected = bool(get_com_member(feat_obj, "Select2", True, 2))
+        except Exception:
+            pass
+    if not feat_selected:
+        feat_selected = _select_by_id(model.Extension, feature_name, "BODYFEATURE", append=True, mark=2)
+
+    if not feat_selected:
+        raise ValueError(f"无法选择被镜像特征: {feature_name}")
+
+    if safe_mirror_feature is not None:
+        return safe_mirror_feature(model.FeatureManager)
     return model.FeatureManager.InsertMirrorFeature2(False, False, False, False, 0)
 
 
@@ -994,3 +1033,80 @@ def rib(model, sketch_name, thickness, direction=True):
     return model.FeatureManager.InsertRib(
         direction, False, thickness, 0, False, False, False, 0, False
     )
+
+
+def verify_feature_tree(model, target_feature_name=None):
+    """
+    检查文档特征树有效性，避免'返回成功但实际上是空特征或错误特征'的假阳性。
+
+    返回:
+        dict: {
+            "valid": bool,
+            "feature_count": int,
+            "target_found": bool,
+            "suppressed_count": int,
+            "has_errors": bool,
+            "features": list[dict]
+        }
+    """
+    features = []
+    feat = get_com_member(model, "FirstFeature")
+    target_found = False
+    has_errors = False
+    suppressed_count = 0
+
+    while feat is not None:
+        try:
+            name = str(get_com_member(feat, "Name") or "")
+        except Exception:
+            name = "UnknownFeature"
+        try:
+            type_name = str(get_com_member(feat, "GetTypeName2") or "")
+        except Exception:
+            type_name = "UnknownType"
+        try:
+            is_supp = bool(get_com_member(feat, "IsSuppressed"))
+        except Exception:
+            is_supp = False
+        if is_supp:
+            suppressed_count += 1
+
+        # 检查错误码
+        err_code = 0
+        try:
+            err_code = int(get_com_member(feat, "GetErrorCode2") or 0)
+        except Exception:
+            pass
+        
+        feat_info = {
+            "name": name,
+            "type": type_name,
+            "suppressed": is_supp,
+            "error_code": err_code
+        }
+        features.append(feat_info)
+
+        if target_feature_name and (name == target_feature_name or name.lower() == str(target_feature_name).lower()):
+            target_found = True
+            if err_code != 0 or is_supp:
+                has_errors = True
+
+        try:
+            feat = get_com_member(feat, "GetNextFeature")
+        except Exception:
+            break
+
+    is_valid = True
+    if target_feature_name and not target_found:
+        is_valid = False
+    if has_errors:
+        is_valid = False
+
+    return {
+        "valid": is_valid,
+        "feature_count": len(features),
+        "target_found": target_found if target_feature_name else None,
+        "suppressed_count": suppressed_count,
+        "has_errors": has_errors,
+        "features": features
+    }

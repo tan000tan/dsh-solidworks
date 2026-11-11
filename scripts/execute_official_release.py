@@ -12,7 +12,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-BASE_DIR = r"D:\Agent工作区\DeepSeek Harness工作区\dsh-solidworks-plugin"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUDIT_DIR = os.path.join(BASE_DIR, "audit_round2_final")
 TARBALL_PATH = os.path.join(BASE_DIR, "dsh-solidworks-0.2.0.tgz")
 

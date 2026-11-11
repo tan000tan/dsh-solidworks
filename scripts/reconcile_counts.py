@@ -2,7 +2,7 @@
 import csv
 import os
 
-AUDIT_DIR = r"D:\Agent工作区\DeepSeek Harness工作区\dsh-solidworks-plugin\audit_round2_final"
+AUDIT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "audit_round2_final")
 matrix_csv = os.path.join(AUDIT_DIR, "TEST_EXECUTION_MATRIX.csv")
 
 with open(matrix_csv, "r", encoding="utf-8-sig") as f:

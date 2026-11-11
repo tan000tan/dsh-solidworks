@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-11-10T16:31:13.629Z",
+  "stages": [
+    {
+      "stage": "plugin_host_init",
+      "registeredTools": 73,
+      "status": "PASS"
+    },
+    {
+      "stage": "solidworks_status",
+      "result": {
+        "text": "{\"plugin\":{\"name\":\"dsh-solidworks\",\"version\":\"0.3.0\",\"root\":\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\"},\"policy\":{\"mode\":\"full\",\"registeredTools\":73,\"pendingGrants\":0},\"environment\":{\"state\":\"ok\",\"python\":{\"command\":\"D:\\\\SWCAD-MCP\\\\Python313\\\\python.exe\",\"args\":[],\"version\":\"3.13.16\"},\"serverScript\":\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\vendor\\\\solidworks-automation-skill\\\\mcp-server\\\\server.py\",\"serverCwd\":\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\vendor\\\\solidworks-automation-skill\",\"notes\":[\"python: pyvenv.cfg executable: D:\\\\SWCAD-MCP\\\\Python313\\\\python.exe -> D:\\\\SWCAD-MCP\\\\Python313\\\\python.exe  (3.13.16)\"]},\"connection\":{\"running\":true,\"tools\":71}}"
+      },
+      "status": "PASS"
+    },
+    {
+      "stage": "solidworks_health_check",
+      "result": {
+        "text": "{\n  \"status\": \"ok\",\n  \"checks\": {\n    \"python_executable\": \"D:\\\\SWCAD-MCP\\\\Python313\\\\python.exe\",\n    \"python_version\": \"3.13.16\",\n    \"platform\": \"Windows-11-10.0.26200-SP0\",\n    \"missing_com_dependencies\": [],\n    \"solidworks_detected\": true,\n    \"server_path\": \"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\vendor\\\\solidworks-automation-skill\\\\mcp-server\\\\server.py\",\n    \"motion_type_library\": \"D:\\\\Solidwork\\\\SOLIDWORKS\\\\swmotionstudy.tlb\",\n    \"motion_type_library_ready\": true\n  },\n  \"issues\": []\n}"
+      },
+      "status": "PASS"
+    },
+    {
+      "stage": "real_cad_closure",
+      "status": "PASS",
+      "log": ".sldasm\r\n已创建新工程图文档\r\n[2026-11-11 00:31:32] [CAD-08] Drawing_Create_View: PASS - 工程图成功创建模型前视投影视图: 工程图视图1\r\n已复用打开文档: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_cad_closure_1794328275\\drawing_test.slddrw\r\n[2026-11-11 00:31:32] [CAD-09] Drawing_Save_And_Reopen: PASS - 工程图序列化保存与重开成功: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_cad_closure_1794328275\\drawing_test.slddrw\r\n已打开: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_cad_closure_1794328275\\part_a.sldprt\r\n[2026-11-11 00:31:34] [CAD-10] Mass_Properties_Verification: PASS - 高精度与回退双路径质量核验自洽: mass=0.046858 kg, vol=0.000046858 m3\r\n[2026-11-11 00:31:34] [CAD-11] Mirror_Feature_Capability: PASS - 镜像特征 InsertMirrorFeature2/1 调度链路具备反射响应与回退能力\r\n[2026-11-11 00:31:34] [四维文档守恒核算] 初始用户数: 0, 结束用户数: 0, 守恒: True, 残留数: 0\r\n[2026-11-11 00:31:34] 已导出全量 CAD 闭环证据至: D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030_compat\\D-Real-CAD-Regression\\comprehensive_cad_closure.json\r\n[2026-11-11 00:31:34] >>> [SUCCESS] SolidWorks 2026 SP4.1 全量核心 CAD 闭环回归测试 100% PASS！"
+    },
+    {
+      "stage": "evidence_validation",
+      "evidencePath": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030_compat\\D-Real-CAD-Regression\\comprehensive_cad_closure.json",
+      "status": "PASS"
+    }
+  ],
+  "success": true
+}

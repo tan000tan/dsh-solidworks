@@ -74,7 +74,7 @@ Sub main()
     swModel.SketchManager.InsertSketch True
     swModel.SketchManager.CreateCenterRectangle 0#, 0#, 0#, 0.025, 0.025, 0#
     swModel.SketchManager.InsertSketch True
-    swModel.FeatureManager.FeatureExtrusion3 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, False, False, False, True, False, True, 0, 0#, False
+    swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, False, False, False, True, False
     swModel.ForceRebuild3 False
 End Sub
 '''.strip(),
@@ -96,7 +96,7 @@ Sub main()
     swModel.SketchManager.InsertSketch True
     swModel.SketchManager.CreateCircleByRadius 0#, 0#, 0#, 0.025
     swModel.SketchManager.InsertSketch True
-    swModel.FeatureManager.FeatureExtrusion3 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, False, False, False, True, False, True, 0, 0#, False
+    swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, False, False, False, True, False
     swModel.ForceRebuild3 False
 End Sub
 '''.strip(),
@@ -118,7 +118,7 @@ Sub main()
     swModel.SketchManager.InsertSketch True
     swModel.SketchManager.CreateCornerRectangle -0.03, -0.02, 0#, 0.03, 0.02, 0#
     swModel.SketchManager.InsertSketch True
-    swModel.FeatureManager.FeatureExtrusion3 True, False, True, 0, 0, 0.01, 0#, False, False, False, False, 0#, 0#, False, False, False, False, True, False, True, 0, 0#, False
+    swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.01, 0#, False, False, False, False, 0#, 0#, False, False, False, False, True, False
     swModel.ForceRebuild3 False
 End Sub
 '''.strip(),

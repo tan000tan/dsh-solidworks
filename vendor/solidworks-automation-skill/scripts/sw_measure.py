@@ -15,8 +15,13 @@ import math
 
 try:
     from .sw_connect import get_com_member
+    from .sw_compat import safe_mass_properties
 except ImportError:
     from sw_connect import get_com_member
+    try:
+        from sw_compat import safe_mass_properties
+    except ImportError:
+        safe_mass_properties = None
 
 
 # swMassPropertyStatus_e
@@ -109,11 +114,24 @@ def collect_mass_properties(model, density_kg_m3=None):
         extension = get_com_member(model, "Extension")
         mass_property = get_com_member(extension, "CreateMassProperty")
     except Exception as exc:
-        result["errors"].append(f"创建质量属性对象失败: {exc}")
-        return result
+        mass_property = None
 
     if mass_property is None:
-        result["errors"].append("CreateMassProperty 返回空对象")
+        if safe_mass_properties is not None:
+            fallback = safe_mass_properties(model)
+            if fallback and (fallback["volume_m3"] > 0 or fallback["mass_kg"] > 0):
+                result["status"] = "calculated"
+                result["mass_g"] = _round(fallback["mass_kg"] * _KG_TO_G, 6)
+                result["volume_mm3"] = _round(fallback["volume_m3"] * (_MM_PER_M**3), 6)
+                result["surface_area_mm2"] = _round(fallback["surface_area_m2"] * (_MM_PER_M**2), 6)
+                result["center_of_mass_mm"] = {
+                    "x": _round(fallback["center_of_mass_x"] * _MM_PER_M, 6),
+                    "y": _round(fallback["center_of_mass_y"] * _MM_PER_M, 6),
+                    "z": _round(fallback["center_of_mass_z"] * _MM_PER_M, 6),
+                }
+                result["warnings"].append("已通过旧版接口 GetMassProperties2 成功提取质量属性。")
+                return result
+        result["errors"].append("CreateMassProperty 返回空对象且回退接口未获取到数据")
         return result
 
     if density_kg_m3 is not None:
