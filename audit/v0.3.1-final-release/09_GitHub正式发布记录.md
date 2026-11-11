@@ -1,23 +1,24 @@
 # dsh-solidworks v0.3.1 GitHub 正式发布记录
 
-**发布编号：** `RELEASE-GITHUB-v0.3.1`  
+**发布编号：** `RELEASE-GITHUB-v0.3.1` (GitHub Release ID: `441453566`)  
 **仓库地址：** `https://github.com/tan000tan/dsh-solidworks`  
+**Release 页面：** `https://github.com/tan000tan/dsh-solidworks/releases/tag/v0.3.1`  
 **发布版本：** `v0.3.1`  
-**Git Tag：** `v0.3.1`  
-**目标分支：** `feat/v0.3.0-phase1-6`  
-**Release 类型：** 正式发布（Full Release，非 Draft，非 Pre-release）  
+**Git Tag：** `v0.3.1` (`72b8ebe2ef57cdc9cc218a335e719dbcd533199d`)  
+**主分支合并提交：** `main` (`293c87f536dff962b9e3b1552a783880cbd8fafd`)  
+**Release 类型：** 正式发布（Full Release，`draft: false`, `prerelease: false`）  
 **时间戳：** 2026-11-11
 
 ---
 
-## 一、发布资产清单与哈希登记
+## 一、发布资产清单与线上下载哈希复核
 
-| 资产文件名称 | 大小 (Bytes) | SHA-256 校验和 | 官方公开下载 URL |
+| 资产文件名称 (本地 / GitHub Release) | 大小 (Bytes) | SHA-256 校验和 (本地与线上下载 100% 一致) | 官方公开下载 URL |
 | :--- | :--- | :--- | :--- |
 | `dsh-solidworks-0.3.1.tgz` | 7,678,948 | `501a9655eb37c4b0651f75da6cdd9ffb8c4785eefce468724b2664522dd96785` | `https://github.com/tan000tan/dsh-solidworks/releases/download/v0.3.1/dsh-solidworks-0.3.1.tgz` |
 | `dsh-solidworks-v0.3.1-windows-installer.zip` | 8,046,537 | `83dac29c88d618b48bfdd4896c6675b3d96c82caf4e15db3145a1a566958b55a` | `https://github.com/tan000tan/dsh-solidworks/releases/download/v0.3.1/dsh-solidworks-v0.3.1-windows-installer.zip` |
 | `v0.3.1-e2e-cad-and-diagnostics-evidence.zip` | 13,614 | `4d714294b8d07fc12edb625d3ded3f0e647d9ec087538cd0079b95c4c23cbbef` | `https://github.com/tan000tan/dsh-solidworks/releases/download/v0.3.1/v0.3.1-e2e-cad-and-diagnostics-evidence.zip` |
-| `SHA256清单.txt` | 425 | `f289cf005b82eefaa6a4396bc75cb8ec8be6bf58df932b5aa7ee1bb864387aa4` | `https://github.com/tan000tan/dsh-solidworks/releases/download/v0.3.1/SHA256清单.txt` |
+| `SHA256清单.txt` (`SHA256.txt`) | 429 | `c9c718fc84758134fa50d910f5c9c27650c4c738d3f25d4bff78487cc27095b9` | `https://github.com/tan000tan/dsh-solidworks/releases/download/v0.3.1/SHA256.txt` |
 
 ---
 

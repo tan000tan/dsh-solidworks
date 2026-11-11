@@ -19,24 +19,26 @@ name: tan000tan/dsh-solidworks
 category: tools
 tarball: https://github.com/tan000tan/dsh-solidworks/releases/download/v0.3.1/dsh-solidworks-0.3.1.tgz
 description:
-  en: Connects DeepSeek Harness to a local SolidWorks install through an MCP server with a read-only default mode and zero-trust cryptographic ticket confirmation for high-risk operations. Windows 10/11 x64 only; automatically provisions an isolated private virtual environment (.venv) without polluting host Python or DSH Primary Runtime. Supports SolidWorks 2020-2026 (physically verified on SolidWorks 2026 SP4.1).
-  zh: 通过 MCP 服务器把 DeepSeek Harness 接入本机 SolidWorks，默认只读模式，高风险操作通过零信任密码学票据逐次确认（彻底杜绝 AI 自授权）。仅限 Windows 10/11 x64；自动在插件专属目录构建私有隔离虚拟环境（.venv），绝不污染宿主全局 Python 或 DSH Primary Runtime。支持 SolidWorks 2020–2026 多版本（已在 SolidWorks 2026 SP4.1 实机全量闭环验证）。
+  en: 'Connects DeepSeek Harness to a local SolidWorks install through an MCP server, with a read-only default mode and per-call confirmation for high-risk operations. Windows 10/11 x64 only; needs Python 3.10+ x64 and a local SolidWorks desktop (README: 2020-2026, verified on 2026) started at least once; npm run setup builds a local .venv with the Python packages and registers the pywin32 COM components. On start, if the Python interpreter it finds lacks mcp or pywin32, it creates a plugin-local .venv and runs pip install for them automatically inside that .venv (Tsinghua PyPI mirror, pypi.org as a second index) unless pythonPath is set.'
+  zh: '通过 MCP 服务器把 DeepSeek Harness 接入本机 SolidWorks，默认只读模式，高风险操作逐次确认。仅 Windows 10/11 x64；需 Python 3.10+ x64，且本机已安装并至少启动过一次 SolidWorks 桌面版（README 标称 2020–2026，实机仅验证 2026）；npm run setup 会建本地 .venv 装好 Python 依赖并注册 pywin32 的 COM 组件。启动时如果找到的 Python 解释器缺少 mcp 或 pywin32，会自动在插件本地建 .venv 并在该 .venv 里 pip 安装（清华 PyPI 镜像，pypi.org 作为第二个源），配置了 pythonPath 则不会。'
 ```
 
 ---
 
-## 二、真实状态区分确认
+## 二、真实状态区分确认（8 阶段独立追踪）
 
-依据交付指令，严禁以“PR 已创建”混淆“市场已合并更新”。特此明确区分各阶段状态：
+依据交付指令，严格区分市场更新全流程各阶段真实状态：
 
 | 检查阶段 | 目标状态要求 | 当前实际状态 | 事实依据与说明 |
 | :--- | :--- | :--- | :--- |
-| **1. 本地元数据就绪** | YAML 字段精确更新 | **已完成 (COMPLETED)** | 版本号、tarball 下载 URL (`.../v0.3.1/dsh-solidworks-0.3.1.tgz`) 与描述均已准确同步 |
-| **2. 更新分支创建** | 基于 `origin/main` 切出新分支 | **已完成 (COMPLETED)** | 分支名：`feat/update-tan000tan-dsh-solidworks-v031` (base: `aa37dc1a`) |
-| **3. 提交与推送 Fork** | Commit 并推送到用户 Fork 仓 | **已完成 (COMPLETED)** | Commit `5b7739f2` 已推送到 `https://github.com/tan000tan/awesome-dsh-plugin.git` |
-| **4. 提交市场更新 PR** | 向 upstream 提交 Pull Request | **已就绪 / 提交阶段** | PR 链接：`https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/compare/main...tan000tan:awesome-dsh-plugin:feat/update-tan000tan-dsh-solidworks-v031` |
-| **5. 市场上游合并** | upstream maintainer 审核合并 | **等待上游合并** | 遵循开源规范，等待上游维护者正常合并，不绕过规则 |
-| **6. 客户端自动刷新** | DSH 市场索引在线拉取 | **待合并后刷新** | 客户端将在上游合并后自动拉取最新 v0.3.1 资产 |
+| **1. Fork 分支更新** | 同步官方 `main` 并提交推送 | **已完成 (COMPLETED)** | 分支 `feat/update-tan000tan-dsh-solidworks-v031` (HEAD: `639afc82`) 已推送至 `tan000tan/awesome-dsh-plugin` |
+| **2. 官方 PR 已创建** | 向 `awesome-dsh-plugin:main` 提交 PR | **已完成 (COMPLETED)** | **PR #14280**：`https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/14280` (仅修改 `data/plugins/tan000tan__dsh-solidworks.yml`, +3/-3) |
+| **3. 官方 PR 已审核** | 官方仓库维护者审核 | **等待审核 (PENDING REVIEW)** | 等待 upstream maintainer 审核 |
+| **4. 官方 PR 已合并** | 合入 `awesome-dsh-plugin:main` | **尚未合并 (`merged: false`)** | 遵循授权边界，未擅自合并 |
+| **5. 官方 main YAML 已更新** | 官方 `main` 分支指向 v0.3.1 | **尚未更新 (待 PR #14280 合并)** | 当前官方 `main` (`a98c9e6d`) 仍为 v0.3.0，待 PR #14280 合并后生效 |
+| **6. 官方市场索引已重新生成** | `sync-readme` / `build-site` 触发 | **待合并后自动触发** | PR #14280 合并后由官方 GitHub Actions 自动执行 |
+| **7. DSH 客户端可以获取 v0.3.1** | 在线索引拉取 v0.3.1 | **待官方索引生成后生效** | 目前可通过 GitHub Release v0.3.1 离线/直链安装；市场在线拉取需待 PR #14280 合并后生效 |
+| **8. 用户实际安装成功** | 客户端真实安装验证 | **本地沙盒/包安装已验证；线上市场索引安装待 PR 合并** | 严格区分本地包安装验证与线上市场合并后客户端拉取 |
 
 ---
 
