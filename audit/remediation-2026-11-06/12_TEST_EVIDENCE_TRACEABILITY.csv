@@ -1,0 +1,7 @@
+test_suite_id,test_name,test_script_path,raw_console_log_path,cases_count,exit_code,verification_status,evidence_type,remediation_status
+TS-USER-REM,用户场景自动化测试套件 (10 cases),tests\rem_user_test.py,audit\remediation-2026-11-06\test_execution_logs\01_user_interaction_10_cases.log,10,0,PASSED,RAW_CONSOLE_EXECUTION_LOG,REMEDIATED_WITH_RAW_EVIDENCE
+TS-STRESS-REM,极端压力与异常注入测试套件 (38 cases),tests\rem_stress_test.py,audit\remediation-2026-11-06\test_execution_logs\02_abuse_and_stress_38_cases.log,38,0,PASSED,RAW_CONSOLE_EXECUTION_LOG,REMEDIATED_WITH_RAW_EVIDENCE
+TS-COMPAT-REM,环境兼容性矩阵测试套件 (18 cases),tests\rem_compat_test.py,audit\remediation-2026-11-06\test_execution_logs\03_environment_compat_18_cases.log,18,0,PASSED,RAW_CONSOLE_EXECUTION_LOG,REMEDIATED_WITH_RAW_EVIDENCE
+TS-NODE-68,Node.js 核心协议/Schema/Policy/Package 自动化测试套件 (68 cases),tests/*.test.js,audit/final-independent-review/INDEPENDENT_FORENSIC_AUDIT/current_retest_logs/current_retest_node_68.log,68,0,PASSED,AUTOMATED_TEST_RUNNER,VERIFIED
+TS-PYTHON-S5,Python 第五阶段 S5-A..S5-E 及增强质量检验测试 (38 cases),"tests/stage5_*_test.py, tests/remediation_cad_quality_inspector_test.py",audit/final-independent-review/INDEPENDENT_FORENSIC_AUDIT/current_retest_logs/current_retest_python_30.log,38,0,PASSED,UNITTEST_SUITE,VERIFIED
+TS-CAD-REMEDIATION-E2E,真实 SolidWorks 2026 E2E 阶梯轴/阵列/装配配合/工程图三视图闭环验证,audit/remediation-2026-11-06/cad_test_sandbox/run_all_remediation_cad.py,audit/remediation-2026-11-06/cad_test_sandbox/remediation_execution_metrics.json,12,0,PASSED,REAL_CAD_COM_INSTANCE,REMEDIATED_AND_VERIFIED

@@ -1,6 +1,6 @@
 {
   "name": "dsh-solidworks",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": false,
   "description": "SolidWorks CAD tools for DeepSeek Harness: a policy-gated plugin that drives a local SolidWorks desktop through the bundled SolidWorks MCP server.",
   "type": "module",

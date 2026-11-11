@@ -1,0 +1,67 @@
+test_case_id,test_function_name,script_file,tested_functionality,execution_mechanism,calls_physical_solidworks,mock_or_evidence_type,execution_result,exit_code,auditor_critical_comments
+TS-REM-USER-U01,test_u01_tool_metadata_discovery,tests/rem_user_test.py,静态读取 lib/policy.js 检查 RISK_TABLE 字符串,STATIC_FILE_INSPECT,NO,MOCK/STATIC,PASS,0,有效但仅为字符串检查
+TS-REM-USER-U02,test_u02_parameter_normalization,tests/rem_user_test.py,测试 normalize_doc_type 纯函数,UNIT_HELPER,NO,ALGORITHMIC_UNIT,PASS,0,纯函数单元测试
+TS-REM-USER-U03,test_u03_missing_parameter_rejection,tests/rem_user_test.py,测试 normalize_doc_type 空入参抛异常,UNIT_HELPER,NO,ALGORITHMIC_UNIT,PASS,0,纯函数单元测试
+TS-REM-USER-U04,test_u04_boundary_dimension_validation,tests/rem_user_test.py,在测试体内就地定义内嵌函数并断言,INLINE_LOCAL_FUNC,NO,SYNTHETIC_MOCK,PASS,0,断言测试内自建函数，未测实际代码
+TS-REM-USER-U05,test_u05_type_safety_validation,tests/rem_user_test.py,在测试体内就地定义 parse_length_mm 并断言,INLINE_LOCAL_FUNC,NO,SYNTHETIC_MOCK,PASS,0,断言测试内自建函数，未测实际代码
+TS-REM-USER-U06,test_u06_write_policy_risk_tier,tests/rem_user_test.py,静态读取 lib/policy.js 检查 WRITE 字符串,STATIC_FILE_INSPECT,NO,MOCK/STATIC,PASS,0,静态文本正则断言
+TS-REM-USER-U07,test_u07_destructive_operation_protection,tests/rem_user_test.py,静态读取 lib/policy.js 检查 HIGH 字符串,STATIC_FILE_INSPECT,NO,MOCK/STATIC,PASS,0,静态文本正则断言
+TS-REM-USER-U08,test_u08_workspace_path_sandbox,tests/rem_user_test.py,测试 validate_path_against_allowed_roots 路径截断,UNIT_HELPER,NO,ALGORITHMIC_UNIT,PASS,0,路径算法白盒测试
+TS-REM-USER-U09,test_u09_worker_responsiveness_and_timeout,tests/rem_user_test.py,测试 STA Worker 线程健康探活与派发,THREADING_UNIT,NO,LOCAL_STA_WORKER,PASS,0,线程调度真实执行，未触及 CAD
+TS-REM-USER-U10,test_u10_plane_name_internationalization,tests/rem_user_test.py,断言 PLANE_NAME_ALIASES 字典静态键值,STATIC_DICT_INSPECT,NO,MOCK/STATIC,PASS,0,静态配置字典检查
+TS-REM-STRESS-01,test_stress_case_01,tests/rem_stress_test.py,CAT-A: 极值边界,UNITTEST_EXECUTION,NO,IN_MEMORY_FLOAT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-02,test_stress_case_02,tests/rem_stress_test.py,CAT-A: 极值边界,UNITTEST_EXECUTION,NO,IN_MEMORY_FLOAT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-03,test_stress_case_03,tests/rem_stress_test.py,CAT-A: 极值边界,UNITTEST_EXECUTION,NO,IN_MEMORY_FLOAT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-04,test_stress_case_04,tests/rem_stress_test.py,CAT-A: 极值边界,UNITTEST_EXECUTION,NO,IN_MEMORY_FLOAT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-05,test_stress_case_05,tests/rem_stress_test.py,CAT-A: 极值边界,UNITTEST_EXECUTION,NO,IN_MEMORY_FLOAT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-06,test_stress_case_06,tests/rem_stress_test.py,CAT-A: 极值边界,UNITTEST_EXECUTION,NO,IN_MEMORY_FLOAT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-07,test_stress_case_07,tests/rem_stress_test.py,CAT-B: 畸形输入,UNITTEST_EXECUTION,NO,IN_MEMORY_PARAM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-08,test_stress_case_08,tests/rem_stress_test.py,CAT-B: 畸形输入,UNITTEST_EXECUTION,NO,IN_MEMORY_PARAM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-09,test_stress_case_09,tests/rem_stress_test.py,CAT-B: 畸形输入,UNITTEST_EXECUTION,NO,IN_MEMORY_PARAM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-10,test_stress_case_10,tests/rem_stress_test.py,CAT-B: 畸形输入,UNITTEST_EXECUTION,NO,IN_MEMORY_PARAM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-11,test_stress_case_11,tests/rem_stress_test.py,CAT-B: 畸形输入,UNITTEST_EXECUTION,NO,IN_MEMORY_PARAM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-12,test_stress_case_12,tests/rem_stress_test.py,CAT-B: 畸形输入,UNITTEST_EXECUTION,NO,IN_MEMORY_PARAM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-13,test_stress_case_13,tests/rem_stress_test.py,CAT-C: STA并发队列,UNITTEST_EXECUTION,NO,STA_QUEUE_SEQUENTIAL,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-14,test_stress_case_14,tests/rem_stress_test.py,CAT-C: STA并发队列,UNITTEST_EXECUTION,NO,STA_QUEUE_SEQUENTIAL,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-15,test_stress_case_15,tests/rem_stress_test.py,CAT-C: STA并发队列,UNITTEST_EXECUTION,NO,STA_QUEUE_SEQUENTIAL,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-16,test_stress_case_16,tests/rem_stress_test.py,CAT-C: STA并发队列,UNITTEST_EXECUTION,NO,STA_QUEUE_SEQUENTIAL,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-17,test_stress_case_17,tests/rem_stress_test.py,CAT-C: STA并发队列,UNITTEST_EXECUTION,NO,STA_QUEUE_SEQUENTIAL,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-18,test_stress_case_18,tests/rem_stress_test.py,CAT-D: 路径逃逸,UNITTEST_EXECUTION,NO,PATH_ALGORITHM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-19,test_stress_case_19,tests/rem_stress_test.py,CAT-D: 路径逃逸,UNITTEST_EXECUTION,NO,PATH_ALGORITHM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-20,test_stress_case_20,tests/rem_stress_test.py,CAT-D: 路径逃逸,UNITTEST_EXECUTION,NO,PATH_ALGORITHM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-21,test_stress_case_21,tests/rem_stress_test.py,CAT-D: 路径逃逸,UNITTEST_EXECUTION,NO,PATH_ALGORITHM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-22,test_stress_case_22,tests/rem_stress_test.py,CAT-D: 路径逃逸,UNITTEST_EXECUTION,NO,PATH_ALGORITHM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-23,test_stress_case_23,tests/rem_stress_test.py,CAT-D: 路径逃逸,UNITTEST_EXECUTION,NO,PATH_ALGORITHM,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-24,test_stress_case_24,tests/rem_stress_test.py,CAT-E: 版本与错误映射,UNITTEST_EXECUTION,NO,STATIC_MAPPING,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-25,test_stress_case_25,tests/rem_stress_test.py,CAT-E: 版本与错误映射,UNITTEST_EXECUTION,NO,STATIC_MAPPING,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-26,test_stress_case_26,tests/rem_stress_test.py,CAT-E: 版本与错误映射,UNITTEST_EXECUTION,NO,STATIC_MAPPING,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-27,test_stress_case_27,tests/rem_stress_test.py,CAT-E: 版本与错误映射,UNITTEST_EXECUTION,NO,STATIC_MAPPING,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-28,test_stress_case_28,tests/rem_stress_test.py,CAT-E: 版本与错误映射,UNITTEST_EXECUTION,NO,STATIC_MAPPING,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-29,test_stress_case_29,tests/rem_stress_test.py,CAT-F: 质量检验计算,UNITTEST_EXECUTION,NO,ALGORITHMIC_UNIT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-30,test_stress_case_30,tests/rem_stress_test.py,CAT-F: 质量检验计算,UNITTEST_EXECUTION,NO,ALGORITHMIC_UNIT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-31,test_stress_case_31,tests/rem_stress_test.py,CAT-F: 质量检验计算,UNITTEST_EXECUTION,NO,ALGORITHMIC_UNIT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-32,test_stress_case_32,tests/rem_stress_test.py,CAT-F: 质量检验计算,UNITTEST_EXECUTION,NO,ALGORITHMIC_UNIT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-33,test_stress_case_33,tests/rem_stress_test.py,CAT-F: 质量检验计算,UNITTEST_EXECUTION,NO,ALGORITHMIC_UNIT,PASS,0,本地白盒断言，无物理COM调用
+TS-REM-STRESS-34,test_stress_case_34,tests/rem_stress_test.py,CAT-G: 预算与状态机,UNITTEST_EXECUTION,NO,LOCAL_STATE_MACHINE,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-35,test_stress_case_35,tests/rem_stress_test.py,CAT-G: 预算与状态机,UNITTEST_EXECUTION,NO,LOCAL_STATE_MACHINE,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-36,test_stress_case_36,tests/rem_stress_test.py,CAT-G: 预算与状态机,UNITTEST_EXECUTION,NO,LOCAL_STATE_MACHINE,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-37,test_stress_case_37,tests/rem_stress_test.py,CAT-G: 预算与状态机,UNITTEST_EXECUTION,NO,LOCAL_STATE_MACHINE,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-STRESS-38,test_stress_case_38,tests/rem_stress_test.py,CAT-G: 预算与状态机,UNITTEST_EXECUTION,NO,LOCAL_STATE_MACHINE,PASS,0,并发实为单线程STA队列顺序执行
+TS-REM-COMPAT-M01,test_m01_os_version,tests/rem_compat_test.py,读取 platform.system(),HOST_PROBE,NO,ENVIRONMENT_INFO,PASS,0,仅读取当前机器系统信息
+TS-REM-COMPAT-M02,test_m02_64bit_architecture,tests/rem_compat_test.py,读取 sys.maxsize > 2**32,HOST_PROBE,NO,ENVIRONMENT_INFO,PASS,0,仅读取当前 Python 架构
+TS-REM-COMPAT-M03,test_m03_python_version,tests/rem_compat_test.py,读取 sys.version_info,HOST_PROBE,NO,ENVIRONMENT_INFO,PASS,0,仅读取当前 Python 版本
+TS-REM-COMPAT-M04,test_m04_nodejs_environment,tests/rem_compat_test.py,os.path.exists('package.json'),FILE_EXIST_CHECK,NO,SHALLOW_CHECK,PASS,0,仅检查 package.json 是否存在
+TS-REM-COMPAT-M05,test_m05_solidworks_installation,tests/rem_compat_test.py,_prog_id_for_version(2026),DICT_LOOKUP,NO,STATIC_MAPPING,PASS,0,仅查询本地字典映射
+TS-REM-COMPAT-M06,test_m06_sw2026_main_revision,tests/rem_compat_test.py,_prog_id_for_version(2026),DICT_LOOKUP,NO,DUPLICATE_COUNT,PASS,0,与 M05 完全一模一样重复计数
+TS-REM-COMPAT-M07,test_m07_backward_versions_mapping,tests/rem_compat_test.py,_prog_id_for_version(2024/2025),DICT_LOOKUP,NO,STATIC_MAPPING,PASS,0,仅查询向后版本字典映射
+TS-REM-COMPAT-M08,test_m08_com_sta_support,tests/rem_compat_test.py,worker._running,THREADING_PROBE,NO,LOCAL_STATE,PASS,0,仅检查线程启动标志
+TS-REM-COMPAT-M09,test_m09_default_desktop_detection,tests/rem_compat_test.py,"isinstance(_is_default_desktop(), bool)",TRIVIAL_ASSERT,NO,TAUTOLOGY,PASS,0,断言结果为布尔值(恒真弱断言)
+TS-REM-COMPAT-M10,test_m10_cross_thread_sta_dispatch,tests/rem_compat_test.py,worker.execute(lambda: 100*2),THREADING_UNIT,NO,DUPLICATE_COUNT,PASS,0,与 U09 重复测试 lambda 派发
+TS-REM-COMPAT-M11,test_m11_mcp_jsonrpc_protocol,tests/rem_compat_test.py,os.path.exists('lib/mcp.js'),FILE_EXIST_CHECK,NO,SHALLOW_CHECK,PASS,0,仅检查 lib/mcp.js 是否存在
+TS-REM-COMPAT-M12,test_m12_fastmcp_schema_adapter,tests/rem_compat_test.py,os.path.exists('lib/schema.js'),FILE_EXIST_CHECK,NO,SHALLOW_CHECK,PASS,0,仅检查 lib/schema.js 是否存在
+TS-REM-COMPAT-M13,test_m13_charset_encoding,tests/rem_compat_test.py,字符串 UTF-8 / GBK 编码测试,PYTHON_BUILTIN,NO,SYNTHETIC_MOCK,PASS,0,仅测试 Python 内置编码函数
+TS-REM-COMPAT-M14,test_m14_path_length_support,tests/rem_compat_test.py,os.path.isabs(get_default_workspace()),PATH_PROBE,NO,LOCAL_STATE,PASS,0,仅检查工作区路径是否为绝对路径
+TS-REM-COMPAT-M15,test_m15_process_lifecycle,tests/rem_compat_test.py,worker.is_healthy(),THREADING_PROBE,NO,DUPLICATE_COUNT,PASS,0,与 U09 重复探活
+TS-REM-COMPAT-M16,test_m16_dependencies_integrity,tests/rem_compat_test.py,"import pydantic, win32com, pythoncom",IMPORT_CHECK,NO,MODULE_IMPORT,PASS,0,仅检查依赖库导入是否成功
+TS-REM-COMPAT-M17,test_m17_dsh_allowed_roots,tests/rem_compat_test.py,validate_path_against_allowed_roots,UNIT_HELPER,NO,DUPLICATE_COUNT,PASS,0,与 U08 重复测试路径沙箱
+TS-REM-COMPAT-M18,test_m18_recovery_state_machine,tests/rem_compat_test.py,WorkerTask.state == QUEUED,STATE_CHECK,NO,LOCAL_STATE,PASS,0,仅断言初始化枚举状态

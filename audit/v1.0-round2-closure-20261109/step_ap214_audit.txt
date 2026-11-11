@@ -1,0 +1,9 @@
+docs\FEATURE_MATRIX.md: | **通用 CAD 交换导出 (STEP)** | `sw_export.py: export_to_step` | **✔ PRODUCTION_READY** | 标准 AP203/AP214 格式无损导出 |
+scripts\generate_review_package_data.py: "Requirement_Description": "支持 STEP AP214、STL 网格与矢量 PDF 导出",
+tests\real_cad\run_v10_rework_e2e.py: 原生圆柱同心配合 (Concentric Mate)、四视图工程图投影、STEP AP214 实际导出；
+tests\real_cad\run_v10_rework_e2e.py: # 特征测试 4: 装配体与同心配合 (Concentric Mate & STEP AP214)
+tests\real_cad\run_v10_rework_e2e.py: # STEP AP214 实际导出
+tests\real_cad\run_v10_rework_e2e.py: swApp.SetUserPreferenceIntegerValue(75, 214)  # 75 = swStepAP, 214 = AP214
+tests\real_cad\run_v10_rework_e2e.py: if "automotive_design" in line_lower or "step ap214" in line_lower:
+tests\real_cad\run_v10_rework_e2e.py: step_protocol = "AP214 (automotive_design)"
+tests\real_cad\run_v10_rework_e2e.py: log(f"STEP AP214 导出核验: {step_path} ({os.path.getsize(step_path)} 字节, 协议={step_protocol}, 实体数={manifold_brep_count}, 闭合壳数={closed_shell_count}, 高阶面数={adv_face_count})")

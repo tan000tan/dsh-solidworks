@@ -1,0 +1,177 @@
+{
+  "2684": [
+    {
+      "file": "fourth-remediation-2026-11-06/08_STEPPED_SHAFT_GEOMETRY.md",
+      "match_count": 1,
+      "sample": [
+        "| **CAD 原生实体** ($V_{cad}$) | **252684.717** | +0.29631% | 0.0000% (基准) | SolidWorks B-Rep 精确核算，包含台阶处圆角过渡补偿增量与轴端倒角减量 |"
+      ]
+    },
+    {
+      "file": "fourth-remediation-2026-11-06/13_FINAL_ACCEPTANCE_REPORT.md",
+      "match_count": 1,
+      "sample": [
+        "SolidWorks B-Rep 高斯积分核算，含台阶过渡圆角补偿增量与端面倒角减量，体积 $V_{cad} = \\mathbf{252684.717\\text{ mm}^3}$（相对理论基准偏差 +0.296%）。"
+      ]
+    },
+    {
+      "file": "fourth-remediation-2026-11-06/14_CHANGELOG.md",
+      "match_count": 1,
+      "sample": [
+        "- **体积三级度量**：严谨分离解析理论值（$251938.210\\text{ mm}^3$）、CAD 连续实体值（$252684.717\\text{ mm}^3$）与 STL 离散网格值（$251944.796\\text{ mm}^3$），详细论述 2,462 面弦割离散微小误差（+0.0026%）。"
+      ]
+    },
+    {
+      "file": "fourth-remediation-2026-11-06/ISSUE_DATABASE_FOURTH_REMEDIATION.json",
+      "match_count": 1,
+      "sample": [
+        "\"round4_resolution\": \"严格区分解析理论值 (251938.210 mm³)、CAD B-Rep 连续实体值 (252684.717 mm³)、STL 离散四面体网格值 (251944.796 mm³)；2,462 面弦割离散误差仅 +0.0026%；180mm 轴向总长物理校验通过\","
+      ]
+    },
+    {
+      "file": "fourth-remediation-2026-11-06/cad_test_sandbox/fourth_remediation_summary.json",
+      "match_count": 2,
+      "sample": [
+        "\"volume_mm3\": 252684.717216,",
+        "\"cad_analytical_volume_mm3\": 252684.717216,"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/COMPLETE_TEST_EXECUTION_MATRIX.md",
+      "match_count": 1,
+      "sample": [
+        "| **CASE 1: 阶梯轴零件** | 创建双凸台、键槽、倒角 (Chamfer1)、圆角 (Fillet1) | 原生体积 252684.717 mm³，STL 数值积分 251944.796 mm³（误差 0.0026%），文件大小 92,927 字节 | **PASS** |"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/REAL_SOLIDWORKS_E2E_EVIDENCE.md",
+      "match_count": 1,
+      "sample": [
+        "- $252684.717\\text{ mm}^3$（差异源于实际倒角 $1\\times 45^\\circ$ 与圆角 $R2$ 过渡曲面特征）"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/cad_e2e_sandbox/v10_rework_e2e_summary.json",
+      "match_count": 1,
+      "sample": [
+        "\"cad_volume_mm3\": 252684.717216,"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/logs/e2e_solidworks_raw.log",
+      "match_count": 1,
+      "sample": [
+        "[2026-11-09 00:09:11] 几何核算: 理论解析=251938.210 mm³, CAD原生=252684.717 mm³ (误差=0.2963%), STL积分=251944.796 mm³ (误差=0.0026%)"
+      ]
+    },
+    {
+      "file": "v1.0-rework-20261108/cad_e2e_sandbox/v10_rework_e2e_summary.json",
+      "match_count": 1,
+      "sample": [
+        "\"cad_volume_mm3\": 252684.717216,"
+      ]
+    },
+    {
+      "file": "v1.0-rework-20261108/logs/e2e_solidworks_raw.log",
+      "match_count": 1,
+      "sample": [
+        "[2026-11-08 21:36:23] 几何核算: 理论解析=251938.210 mm³, CAD原生=252684.717 mm³ (误差=0.2963%), STL积分=251944.796 mm³ (误差=0.0026%)"
+      ]
+    }
+  ],
+  "32500": [],
+  "27164": [
+    {
+      "file": "v1.0-final-closure-20261108/FINAL_ENGINEERING_REWORK_AND_ACCEPTANCE_REPORT.md",
+      "match_count": 3,
+      "sample": [
+        "- 在真实 SolidWorks 2026 SP0（PID=27164，Revision 34.4.1）实机环境中全自动完成 5 大核心模型构建（阶梯轴、底座基板、齿轮法兰、同心装配体、4 视图工程图）；",
+        "| **禁止触碰用户会话与已有文档** | **严格遵循** | 实机测试前扫描系统 SolidWorks 进程快照为 `{}`（0 运行进程）；全过程仅操作本任务自行启动的 PID=27164 实例与专用沙箱目录 `audit/v1.0-rework-20261108/cad_e2e_sandbox/` |",
+        "| **P0-01** | 实机 E2E 缺乏真实物证，存在 `taskkill` 痕迹，STEP 协议未识别 | 阻断 | 1. 彻底清除 `taskkill`；<br>2. 修复 STEP 格式大小写匹配；<br>3. 引入 B-Rep 实体深度断言；<br>4. 执行实机端到端全量物理重跑 | **彻底闭环**。<br>STEP AP214 协议识别为 `AP214 (automotive_design)`；实体数=3，闭合壳=3，高阶面=50；PID=27164 优雅退出，系统纯净待机基线恢复 |"
+      ]
+    },
+    {
+      "file": "v1.0-final-closure-20261108/TEST_SUITES_EXECUTION_MATRIX.md",
+      "match_count": 2,
+      "sample": [
+        "| **实例安全启动** | 独立启动受控实例 | **PASS** | PID=27164，`ProgID='SldWorks.Application'`, `Revision='34.4.1'` |",
+        "| **STEP 8: 优雅退出**| COM 优雅关闭无 taskkill | **PASS** | `close_owned_solidworks(PID=27164)` 3 秒内平稳退出，测试后快照 `{}` 恢复待机基线 |"
+      ]
+    },
+    {
+      "file": "v1.0-rework-20261108/cad_e2e_sandbox/v10_rework_e2e_summary.json",
+      "match_count": 2,
+      "sample": [
+        "\"launched_pid\": 27164,",
+        "\"launched_pid\": 27164,"
+      ]
+    },
+    {
+      "file": "v1.0-rework-20261108/logs/e2e_solidworks_raw.log",
+      "match_count": 3,
+      "sample": [
+        "[2026-11-08 21:36:06] 2. COM 连接已建立: ProgID='SldWorks.Application', PID=27164, 本轮启动=True",
+        "[2026-11-08 21:37:33] close_owned_solidworks(PID=27164) 调用结果: True",
+        "[2026-11-08 21:37:36] PID=27164 已优雅退出，系统纯净待机基线已恢复。"
+      ]
+    }
+  ],
+  "38364": [
+    {
+      "file": "v1.0-final-release/COMPLETE_TEST_EXECUTION_MATRIX.md",
+      "match_count": 2,
+      "sample": [
+        "执行脚本：`tests/real_cad/run_v10_rework_e2e.py`（独立调起 SolidWorks 2026 PID: 38364）",
+        "| **CASE 8: 优雅会话退出** | 调用 `close_owned_solidworks(PID=38364)`，轮询等待进程释放 | 进程优雅终止，系统当前 `SLDWORKS.exe` 进程数归零（0 进程），零 taskkill 强杀 | **PASS** |"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/FINAL_RELEASE_ACCEPTANCE_REPORT.md",
+      "match_count": 1,
+      "sample": [
+        "- 独立调起 SolidWorks 2026 (PID: 38364)，在专用隔离沙箱 `audit/v1.0-final-release/cad_e2e_sandbox/` 中成功创建阶梯轴、底座基板、齿轮法兰、装配体与 4 视图工程图；"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/REAL_SOLIDWORKS_E2E_EVIDENCE.md",
+      "match_count": 4,
+      "sample": [
+        "| **COM 连接** | 00:08:29 | 独立拉起受管测试实例 | `{38364: 'SLDWORKS.exe'}` (本轮启动=True) | **合规** |",
+        "| **测试执行** | 00:08:29 ~ 00:11:50 | 仅在 PID 38364 实例内操作自建沙箱文档 | `{38364: 'SLDWORKS.exe'}` | **合规** |",
+        "| **会话关闭** | 00:11:50 | 调用 `close_owned_solidworks(PID=38364)` | COM Exit API 触发成功，返回 True | **合规** |",
+        "| **进程释放** | 00:11:56 | 优雅轮询等待进程释放退出 | `{}` (PID 38364 已安全退出) | **合规** |"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/REQUIREMENTS_TRACEABILITY_MATRIX.md",
+      "match_count": 1,
+      "sample": [
+        "| **第5.9节 COM 优雅退出** | 真实 SolidWorks 2026 实机交互，保证测试后待机进程完全归零 | `lib/cad_task_context.py` | `tests/real_cad/run_v10_rework_e2e.py` | 测试调起 PID 38364，退出后待机进程数精确为 0，零强杀 | **已闭环** |"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/task_ledger.json",
+      "match_count": 1,
+      "sample": [
+        "\"outcome\": \"测试启动前 SLDWORKS 进程数：0；测试调起专用实例 PID 38364；测试完成后正常调用 ExitApp，结束时进程数精确归零（0 进程）。\","
+      ]
+    },
+    {
+      "file": "v1.0-final-release/cad_e2e_sandbox/v10_rework_e2e_summary.json",
+      "match_count": 2,
+      "sample": [
+        "\"launched_pid\": 38364,",
+        "\"launched_pid\": 38364,"
+      ]
+    },
+    {
+      "file": "v1.0-final-release/logs/e2e_solidworks_raw.log",
+      "match_count": 3,
+      "sample": [
+        "[2026-11-09 00:08:29] 2. COM 连接已建立: ProgID='SldWorks.Application', PID=38364, 本轮启动=True",
+        "[2026-11-09 00:11:50] close_owned_solidworks(PID=38364) 调用结果: True",
+        "[2026-11-09 00:11:56] PID=38364 已优雅退出，系统纯净待机基线已恢复。"
+      ]
+    }
+  ]
+}

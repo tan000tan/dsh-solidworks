@@ -1,0 +1,120 @@
+{
+  "timestamp": "2026-11-10T23:04:31+0800",
+  "installed_versions_detected": [
+    {
+      "path": "D:\\Solidwork\\SOLIDWORKS\\SLDWORKS.exe",
+      "file_version": "34.4.1.1011",
+      "product_version": "34.4.1.1011",
+      "size_bytes": 718936
+    }
+  ],
+  "registry_installations": [
+    {
+      "hive": "HKLM",
+      "path": "SOFTWARE\\SolidWorks",
+      "subkeys": [
+        "AddIns",
+        "Applications",
+        "General",
+        "IM",
+        "Licenses",
+        "Security",
+        "SOLIDWORKS 2026"
+      ]
+    },
+    {
+      "hive": "HKLM",
+      "path": "SOFTWARE\\WOW6432Node\\SolidWorks",
+      "subkeys": [
+        "Common Install",
+        "IM",
+        "Licenses",
+        "Security",
+        "SOLIDWORKS 2026"
+      ]
+    },
+    {
+      "hive": "HKCU",
+      "path": "SOFTWARE\\SolidWorks",
+      "subkeys": [
+        "AddInsStartup",
+        "AllowList",
+        "Diagnostics",
+        "General",
+        "IM",
+        "Licenses",
+        "SOLIDWORKS 2026",
+        "STEP",
+        "SW3DEAddin",
+        "TipOfDay",
+        "User Interface"
+      ]
+    }
+  ],
+  "registered_progids": {
+    "SldWorks.Application.25": {
+      "registered": false,
+      "corresponding_year": 2017
+    },
+    "SldWorks.Application.26": {
+      "registered": false,
+      "corresponding_year": 2018
+    },
+    "SldWorks.Application.27": {
+      "registered": false,
+      "corresponding_year": 2019
+    },
+    "SldWorks.Application.28": {
+      "registered": false,
+      "corresponding_year": 2020
+    },
+    "SldWorks.Application.29": {
+      "registered": false,
+      "corresponding_year": 2021
+    },
+    "SldWorks.Application.30": {
+      "registered": false,
+      "corresponding_year": 2022
+    },
+    "SldWorks.Application.31": {
+      "registered": false,
+      "corresponding_year": 2023
+    },
+    "SldWorks.Application.32": {
+      "registered": false,
+      "corresponding_year": 2024
+    },
+    "SldWorks.Application.33": {
+      "registered": false,
+      "corresponding_year": 2025
+    },
+    "SldWorks.Application.34": {
+      "registered": false,
+      "corresponding_year": 2026
+    },
+    "SldWorks.Application.35": {
+      "registered": false,
+      "corresponding_year": 2027
+    },
+    "SldWorks.Application": {
+      "registered": false,
+      "error": "module 'pythoncom' has no attribute 'CLSIDFromProgID'"
+    }
+  },
+  "running_instances": [],
+  "active_com_probe": {
+    "connected": false,
+    "error": "(-2147221021, '操作无法使用', None, None)"
+  },
+  "summary": {
+    "total_detected_installations": 1,
+    "total_running_instances": 0,
+    "primary_installed_version": {
+      "path": "D:\\Solidwork\\SOLIDWORKS\\SLDWORKS.exe",
+      "file_version": "34.4.1.1011",
+      "product_version": "34.4.1.1011",
+      "size_bytes": 718936
+    },
+    "has_old_version_installed": false
+  }
+}

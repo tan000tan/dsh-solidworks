@@ -9,7 +9,7 @@ def remove_readonly(func, path, excinfo):
     except Exception:
         pass
 
-root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ignore_dirs = {".git", ".venv", "node_modules"}
 
 count_files = 0

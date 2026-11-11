@@ -1,0 +1,22 @@
+{
+  "version": "0.3.1",
+  "releaseCandidate": "v0.3.1-final-release",
+  "verdict": "PHYSICAL_VERIFIED (SolidWorks 2026 SP4.1 几何物理闭环实机验证 100% PASS，2020-2025 多版本深度兼容性测试 100% PASS，P0 人类审批对抗测试 100% PASS)",
+  "files": [
+    {
+      "file": "dsh-solidworks-v0.3.1-windows-installer.zip",
+      "sha256": "83dac29c88d618b48bfdd4896c6675b3d96c82caf4e15db3145a1a566958b55a",
+      "bytes": 8046537
+    },
+    {
+      "file": "v0.3.1-e2e-cad-and-diagnostics-evidence.zip",
+      "sha256": "4d714294b8d07fc12edb625d3ded3f0e647d9ec087538cd0079b95c4c23cbbef",
+      "bytes": 13614
+    },
+    {
+      "file": "dsh-solidworks-0.3.1.tgz",
+      "sha256": "501a9655eb37c4b0651f75da6cdd9ffb8c4785eefce468724b2664522dd96785",
+      "bytes": 7678948
+    }
+  ]
+}

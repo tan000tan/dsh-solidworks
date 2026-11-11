@@ -1,0 +1,155 @@
+{
+  "timestamp": "2026-11-11T16:33:44+0800",
+  "solidworks_info": {
+    "raw": "34.4.1",
+    "major": 34,
+    "year": 2026,
+    "sp": 4,
+    "hotfix": 1,
+    "valid": true,
+    "raw_revision": "34.4.1"
+  },
+  "capabilities": {
+    "raw_revision": "34.4.1",
+    "detected_year": 2026,
+    "service_pack": 4,
+    "hotfix": 1,
+    "bound_pid": 37636,
+    "api_tier": "modern",
+    "supported_apis": {
+      "FeatureExtrusion3": true,
+      "FeatureExtrusion2": true,
+      "FeatureCut4": true,
+      "FeatureCut3": true,
+      "InsertMirrorFeature2": true,
+      "InsertMirrorFeature": true,
+      "CreateMassProperty": true,
+      "GetMassProperties2": true,
+      "AddMate5": true,
+      "CreateDrawViewFromModelView3": true
+    },
+    "degradation_routes": {
+      "extrusion": "FeatureExtrusion3",
+      "cut": "FeatureCut4",
+      "mirror": "InsertMirrorFeature2",
+      "mass": "CreateMassProperty"
+    }
+  },
+  "modules_tested": [
+    "Part_Modeling",
+    "Cut_Extrusion_Healing",
+    "Mirror_Capability",
+    "Assembly_And_Mates",
+    "Drawing_View_Projection",
+    "Mass_Properties_Dual_Path"
+  ],
+  "steps": [
+    {
+      "step_id": "CAD-01",
+      "name": "Create_Part_A",
+      "status": "PASS",
+      "detail": "成功创建隔离零件 A: 零件9",
+      "extra": {
+        "title": "零件9"
+      }
+    },
+    {
+      "step_id": "CAD-02",
+      "name": "Extrude_Boss_A",
+      "status": "PASS",
+      "detail": "凸台拉伸完成，实测体积: 50000.000 mm3 (误差 0.0000%)",
+      "extra": {
+        "volume_mm3": 50000.0
+      }
+    },
+    {
+      "step_id": "CAD-03",
+      "name": "Extrude_Cut_A",
+      "status": "PASS",
+      "detail": "盲切10mm成功，实测切除后体积: 46858.407 mm3 (误差 0.0000%)",
+      "extra": {
+        "volume_mm3": 46858.407346
+      }
+    },
+    {
+      "step_id": "CAD-04",
+      "name": "Save_And_Close_Part_A",
+      "status": "PASS",
+      "detail": "零件 A 保存至沙箱: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_cad_closure_1794386024\\part_a.sldprt",
+      "extra": {}
+    },
+    {
+      "step_id": "CAD-05",
+      "name": "Create_And_Save_Part_B",
+      "status": "PASS",
+      "detail": "配合零件 B 保存成功: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_cad_closure_1794386024\\part_b.sldprt",
+      "extra": {}
+    },
+    {
+      "step_id": "CAD-06",
+      "name": "Assembly_Add_Components",
+      "status": "PASS",
+      "detail": "装配体 装配体5 成功插入组件 A 与组件 B",
+      "extra": {}
+    },
+    {
+      "step_id": "CAD-07",
+      "name": "Assembly_Save_And_Reopen",
+      "status": "PASS",
+      "detail": "装配体序列化保存与重开成功: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_cad_closure_1794386024\\assembly_test.sldasm",
+      "extra": {}
+    },
+    {
+      "step_id": "CAD-08",
+      "name": "Drawing_Create_View",
+      "status": "PASS",
+      "detail": "工程图成功创建模型前视投影视图: 工程图视图1",
+      "extra": {}
+    },
+    {
+      "step_id": "CAD-09",
+      "name": "Drawing_Save_And_Reopen",
+      "status": "PASS",
+      "detail": "工程图序列化保存与重开成功: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_cad_closure_1794386024\\drawing_test.slddrw",
+      "extra": {}
+    },
+    {
+      "step_id": "CAD-10",
+      "name": "Mass_Properties_Verification",
+      "status": "PASS",
+      "detail": "高精度与回退双路径质量核验自洽: mass=0.046858 kg, vol=0.000046858 m3",
+      "extra": {
+        "mass_kg": 0.04685840734641022,
+        "volume_m3": 4.6858407346410215e-05,
+        "surface_area_m2": 0.00962831853071796,
+        "center_of_mass_x": -7.731464942705459e-20,
+        "center_of_mass_y": 0.0,
+        "center_of_mass_z": -0.01033522187708653
+      }
+    },
+    {
+      "step_id": "CAD-11",
+      "name": "Mirror_Feature_Capability",
+      "status": "PASS",
+      "detail": "镜像特征 InsertMirrorFeature2/1 调度链路具备反射响应与回退能力",
+      "extra": {}
+    }
+  ],
+  "document_accounting": {
+    "user_initial_doc_count": 0,
+    "user_initial_docs": [],
+    "test_session_created_docs": [
+      "零件9",
+      "零件10",
+      "装配体5",
+      "工程图5 - 图纸1"
+    ],
+    "user_final_doc_count": 0,
+    "user_final_docs": [],
+    "test_final_doc_count": 0,
+    "user_documents_conserved": true,
+    "test_documents_purged": true,
+    "conservation_explanation": "口径清晰定义：测试前宿主机用户打开文档数为 0（无用户工作文件被占用）；测试期间由自动化脚本创建并拥有的临时文档包括零件A、零件B、测试装配体、测试工程图；测试完成后，自动化测试脚本仅清理属于本会话的临时文档，测试后用户文档数严格保持为 0，测试残留文档数为 0，绝对守恒，完全杜绝会话污染与数据残留。"
+  },
+  "overall_status": "PASS"
+}

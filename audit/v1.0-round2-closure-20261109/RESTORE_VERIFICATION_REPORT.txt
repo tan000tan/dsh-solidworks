@@ -1,0 +1,10 @@
+RESTORE VERIFICATION AUDIT
+Status: SUCCESS
+package.json: MATCH (SHA256: 4797cf7e1517402b4d131c4c0491e70b24be1d0c13926b1ec3b0e89437d6b22e)
+dsh-plugin.json: MATCH (SHA256: 995aba0e9636f26386c88c5408f9270771ec027c87e05b9162a6660509830ebb)
+bin/dsh-solidworks.js: MATCH (SHA256: d2822d1327bc7e62aaf589a707958f70ad829b624df15601e21c3854b0570647)
+lib/index.js: MATCH (SHA256: b75b31af923b82dd26ead7b125ba9169a368cc57d7c03bc2e319aedc28a14480)
+lib/policy.js: MATCH (SHA256: f3d2dae143ec45bf0d553db5e09326fd6b724404e04a4dd4addab3cbfc28caf9)
+vendor/solidworks-automation-skill/mcp-server/server.py: MATCH (SHA256: 31b2166467a786f563a5bb6e67712a720c7d95c7b83bea53e04e72c2993e235f)
+vendor/solidworks-automation-skill/scripts/sw_connect.py: MATCH (SHA256: e26b37c7da50a296cf862a7dae7d318b83fb1953bca1ac5d3cd4972003707ae3)
+vendor/solidworks-automation-skill/scripts/sw_export.py: MATCH (SHA256: 20b447b3b5100394c7c3bf11f030a09e321cf42304e8983fe034c1cff31f98b1)

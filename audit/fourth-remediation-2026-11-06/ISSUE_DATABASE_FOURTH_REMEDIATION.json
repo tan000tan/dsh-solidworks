@@ -1,0 +1,148 @@
+{
+  "audit_round": "Round 4",
+  "baseline_commit": "7d70bc0",
+  "audit_date": "2026-11-06",
+  "overall_verdict": "CONDITIONALLY_VERIFIED_READY_FOR_INDEPENDENT_REVIEW",
+  "issues": [
+    {
+      "id": "DEF-SEC-01",
+      "severity": "P0",
+      "category": "Safety Incident",
+      "title": "CloseAllDocuments(True) 导致未保存用户文件丢失安全事故",
+      "status": "RESOLVED",
+      "round3_status": "SAFETY INCIDENT — UNRESOLVED",
+      "round4_resolution": "彻底从源码与测试中根除 CloseAllDocuments(True)；sw_connect.py close_document 实现三层防御（非空校验、沙箱所有权校验、未保存脏检查拦截）；新增 security_regression_test.py 6项全通",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/04_SECURITY_REMEDIATION.md"
+    },
+    {
+      "id": "DEF-SEC-02",
+      "severity": "P0",
+      "category": "Safety Incident",
+      "title": "未经进程隔离杀死用户外部 SolidWorks 进程",
+      "status": "RESOLVED",
+      "round3_status": "SAFETY INCIDENT — UNRESOLVED",
+      "round4_resolution": "会话生命周期严格受 started_by_cad_studio 与 PID 双重绑定；严禁执行全局 taskkill 或退出未持有进程",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/04_SECURITY_REMEDIATION.md"
+    },
+    {
+      "id": "DEF-01",
+      "severity": "HIGH",
+      "category": "CAD Features",
+      "title": "原生阵列与倒角圆角未完成或被替代",
+      "status": "RESOLVED",
+      "round3_status": "PARTIALLY IMPLEMENTED",
+      "round4_resolution": "倒角 VT_R8 COM 浮点参数修复；原生线性阵列 (阵列(线性)1) 与圆周阵列 (阵列(圆周)1) 实机生成并通过特征树校验",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/05_CAD_FEATURE_REMEDIATION.md"
+    },
+    {
+      "id": "DEF-02",
+      "severity": "MEDIUM",
+      "category": "Drawing",
+      "title": "工程图视图方向模糊与等轴测图缺失",
+      "status": "RESOLVED",
+      "round3_status": "PARTIALLY VERIFIED",
+      "round4_resolution": "实机生成主视、俯视、右视及等轴测 (*等轴测) 4个完整视图；导出 54,276 字节真实矢量 PDF",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/07_DRAWING_VERIFICATION.md"
+    },
+    {
+      "id": "DEF-03",
+      "severity": "HIGH",
+      "category": "Assembly",
+      "title": "装配体使用平面重合替代真实同心配合",
+      "status": "RESOLVED",
+      "round3_status": "WORKAROUND USED",
+      "round4_resolution": "彻底废除平面重合替代；使用 add_concentric_mate_by_cylinders 原生创建 Base 孔<->Shaft 轴、Gear 孔<->Shaft 轴 swMateCONCENTRIC (枚举值1) 配合并保存于 SLDASM",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/06_ASSEMBLY_CONCENTRIC_MATE.md"
+    },
+    {
+      "id": "DEF-04",
+      "severity": "MEDIUM",
+      "category": "CAD Geometry",
+      "title": "阶梯轴解析理论体积与 STL 离散网格体积口径混淆",
+      "status": "RESOLVED",
+      "round3_status": "INCONSISTENT REPORTING",
+      "round4_resolution": "严格区分解析理论值 (251938.210 mm³)、CAD B-Rep 连续实体值 (252684.717 mm³)、STL 离散四面体网格值 (251944.796 mm³)；2,462 面弦割离散误差仅 +0.0026%；180mm 轴向总长物理校验通过",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/08_STEPPED_SHAFT_GEOMETRY.md"
+    },
+    {
+      "id": "DEF-05",
+      "severity": "HIGH",
+      "category": "Quality Inspector Security",
+      "title": "质检审查员存在明文 provenance/source 伪造漏洞",
+      "status": "RESOLVED",
+      "round3_status": "VULNERABLE",
+      "round4_resolution": "重构质量审查员；引入基于 HMAC-SHA256 的 BenchmarkCredential 凭证与克隆检测器；14 项对抗性攻击全部被拦截，15 项对抗测试全通",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/09_QUALITY_INSPECTOR_SECURITY.md"
+    },
+    {
+      "id": "DEF-06",
+      "severity": "MEDIUM",
+      "category": "Traceability",
+      "title": "主张与证据追溯链条不严密",
+      "status": "RESOLVED",
+      "round3_status": "POOR TRACEABILITY",
+      "round4_resolution": "在 02_THIRD_AUDIT_TRACEABILITY.md 中建立逐项缺陷到源码、测试及物理产物的闭环追溯",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/02_THIRD_AUDIT_TRACEABILITY.md"
+    },
+    {
+      "id": "DEF-07",
+      "severity": "MEDIUM",
+      "category": "Testing",
+      "title": "rem_compat_test.py 中 M09 测试存在条件跳过空断言",
+      "status": "RESOLVED",
+      "round3_status": "WEAK ASSERTION",
+      "round4_resolution": "移除 if not is_def 条件跳过，增加对 STA Worker _running、is_healthy() 及往返调度的实质性强制断言；全环境必须无条件执行",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/11_TEST_RECONCILIATION.md"
+    },
+    {
+      "id": "DEF-08",
+      "severity": "LOW",
+      "category": "Integrity",
+      "title": "JSON 指标与 Markdown 报告数据不一致",
+      "status": "RESOLVED",
+      "round3_status": "DATA MISMATCH",
+      "round4_resolution": "全部数据直接由 fourth_remediation_summary.json 实机执行结果注入 Markdown，杜绝人工笔误",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/cad_test_sandbox/fourth_remediation_summary.json"
+    },
+    {
+      "id": "DEF-09",
+      "severity": "LOW",
+      "category": "Documentation",
+      "title": "独立审查重现指导说明不充分",
+      "status": "RESOLVED",
+      "round3_status": "LACK OF GUIDANCE",
+      "round4_resolution": "在全部 15 份交付物中提供明确只读复现命令与校验哈希",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/13_FINAL_ACCEPTANCE_REPORT.md"
+    },
+    {
+      "id": "DEF-10",
+      "severity": "MEDIUM",
+      "category": "Testing",
+      "title": "测试执行日志缺失或口径混淆",
+      "status": "RESOLVED",
+      "round3_status": "INCOMPLETE LOGS",
+      "round4_resolution": "提供分层测试执行对账报告，覆盖全部 196 个单元/集成测试与 CAD 实机沙箱物证",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/11_TEST_RECONCILIATION.md"
+    },
+    {
+      "id": "DEF-11",
+      "severity": "HIGH",
+      "category": "CAD Export",
+      "title": "STEP 协议导出为 AP203 而非用户要求的 AP214",
+      "status": "RESOLVED",
+      "round3_status": "NOT IMPLEMENTED / FAILED",
+      "round4_resolution": "修正 SolidWorks COM 偏好设置 API 参数为 swStepAP(75) = 214；导出的 remediated_assembly.step 物理文件头确认输出 AUTOMOTIVE_DESIGN 协议",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/10_STEP_AP214_VERIFICATION.md"
+    },
+    {
+      "id": "DEF-12",
+      "severity": "LOW",
+      "category": "Issue Management",
+      "title": "缺陷跟踪数据库与审计报告存在脱节",
+      "status": "RESOLVED",
+      "round3_status": "DESYNCHRONIZED",
+      "round4_resolution": "更新缺陷数据库为 ISSUE_DATABASE_FOURTH_REMEDIATION.json，与 14 项缺陷修复实机物证完全对齐",
+      "evidence_file": "audit/fourth-remediation-2026-11-06/12_ISSUE_DATABASE_REVALIDATION.md"
+    }
+  ]
+}

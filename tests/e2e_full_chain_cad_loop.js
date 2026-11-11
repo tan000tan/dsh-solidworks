@@ -164,6 +164,7 @@ async function main() {
   console.log(`  🎉 全链路端到端真实使用测试全部 PASS！`);
   console.log(`  证据记录已保存至: ${outJson}`);
   console.log(`======================================================\n`);
+  process.exit(0);
 }
 
 main().catch((err) => {

@@ -2,7 +2,7 @@
 /**
  * scripts/doctor.js
  *
- * dsh-solidworks-plugin 全生命周期健康诊断与自检系统 (Doctor v0.3.0)。
+ * dsh-solidworks-plugin 全生命周期健康诊断与自检系统 (Doctor v0.3.1)。
  * 纯 Node.js 驱动，支持 12 大核心维度自动化探测：
  * 1. OS_PLATFORM_ARCH       操作系统平台与 Node.js 运行时合规性
  * 2. PYTHON_RUNTIME         Python 解释器版本与虚拟环境合法性 (>= 3.10 64-bit)
@@ -165,7 +165,7 @@ async function getUsablePython() {
 
 async function main() {
   console.log('\n======================================================');
-  console.log('   dsh-solidworks-plugin 系统全项健康诊断 (Doctor v0.3.0)   ');
+  console.log('   dsh-solidworks-plugin 系统全项健康诊断 (Doctor v0.3.1)   ');
   console.log('======================================================\n');
 
   const report = [];

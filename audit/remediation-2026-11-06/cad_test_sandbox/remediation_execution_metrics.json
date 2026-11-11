@@ -1,0 +1,506 @@
+{
+  "timestamp": "2026-11-06T16:29:50",
+  "solidworks_revision": "34.4.1",
+  "parts": {
+    "stepped_shaft": {
+      "file": "remediated_stepped_shaft.SLDPRT",
+      "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_stepped_shaft.SLDPRT",
+      "features": [
+        {
+          "name": "收藏",
+          "type": "FavoriteFolder",
+          "suppressed": false
+        },
+        {
+          "name": "历史记录",
+          "type": "HistoryFolder",
+          "suppressed": false
+        },
+        {
+          "name": "选择集",
+          "type": "SelectionSetFolder",
+          "suppressed": false
+        },
+        {
+          "name": "传感器",
+          "type": "SensorFolder",
+          "suppressed": false
+        },
+        {
+          "name": "设计活页夹",
+          "type": "DocsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "注解",
+          "type": "DetailCabinet",
+          "suppressed": false
+        },
+        {
+          "name": "标注",
+          "type": "InkMarkupFolder",
+          "suppressed": false
+        },
+        {
+          "name": "光源与相机",
+          "type": "EnvFolder",
+          "suppressed": false
+        },
+        {
+          "name": "实体",
+          "type": "SolidBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "曲面实体",
+          "type": "SurfaceBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "备注",
+          "type": "CommentsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "方程式",
+          "type": "EqnFolder",
+          "suppressed": false
+        },
+        {
+          "name": "材质 <未指定>",
+          "type": "MaterialFolder",
+          "suppressed": false
+        },
+        {
+          "name": "前视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "上视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "右视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "原点",
+          "type": "OriginProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "Tables",
+          "type": "ConfigTableFolder",
+          "suppressed": false
+        },
+        {
+          "name": "草图1",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸1",
+          "type": "Extrusion",
+          "suppressed": false
+        },
+        {
+          "name": "草图2",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸2",
+          "type": "ICE",
+          "suppressed": false
+        },
+        {
+          "name": "草图3",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "切除-拉伸1",
+          "type": "ICE",
+          "suppressed": false
+        }
+      ],
+      "volume_mm3": 158286.478581,
+      "surface_area_mm2": 17994.304835,
+      "stl_export": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_stepped_shaft.STL"
+    },
+    "linear_base": {
+      "file": "remediated_linear_base.SLDPRT",
+      "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_linear_base.SLDPRT",
+      "features": [
+        {
+          "name": "收藏",
+          "type": "FavoriteFolder",
+          "suppressed": false
+        },
+        {
+          "name": "历史记录",
+          "type": "HistoryFolder",
+          "suppressed": false
+        },
+        {
+          "name": "选择集",
+          "type": "SelectionSetFolder",
+          "suppressed": false
+        },
+        {
+          "name": "传感器",
+          "type": "SensorFolder",
+          "suppressed": false
+        },
+        {
+          "name": "设计活页夹",
+          "type": "DocsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "注解",
+          "type": "DetailCabinet",
+          "suppressed": false
+        },
+        {
+          "name": "标注",
+          "type": "InkMarkupFolder",
+          "suppressed": false
+        },
+        {
+          "name": "光源与相机",
+          "type": "EnvFolder",
+          "suppressed": false
+        },
+        {
+          "name": "实体",
+          "type": "SolidBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "曲面实体",
+          "type": "SurfaceBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "备注",
+          "type": "CommentsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "方程式",
+          "type": "EqnFolder",
+          "suppressed": false
+        },
+        {
+          "name": "材质 <未指定>",
+          "type": "MaterialFolder",
+          "suppressed": false
+        },
+        {
+          "name": "前视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "上视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "右视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "原点",
+          "type": "OriginProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "Tables",
+          "type": "ConfigTableFolder",
+          "suppressed": false
+        },
+        {
+          "name": "草图1",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸1",
+          "type": "Extrusion",
+          "suppressed": false
+        },
+        {
+          "name": "草图2",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "草图3",
+          "type": "ProfileFeature",
+          "suppressed": false
+        }
+      ],
+      "volume_mm3": 600000.0,
+      "surface_area_mm2": 64000.0,
+      "has_lpattern": false
+    },
+    "circular_gear": {
+      "file": "remediated_circular_gear.SLDPRT",
+      "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_circular_gear.SLDPRT",
+      "features": [
+        {
+          "name": "收藏",
+          "type": "FavoriteFolder",
+          "suppressed": false
+        },
+        {
+          "name": "历史记录",
+          "type": "HistoryFolder",
+          "suppressed": false
+        },
+        {
+          "name": "选择集",
+          "type": "SelectionSetFolder",
+          "suppressed": false
+        },
+        {
+          "name": "传感器",
+          "type": "SensorFolder",
+          "suppressed": false
+        },
+        {
+          "name": "设计活页夹",
+          "type": "DocsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "注解",
+          "type": "DetailCabinet",
+          "suppressed": false
+        },
+        {
+          "name": "标注",
+          "type": "InkMarkupFolder",
+          "suppressed": false
+        },
+        {
+          "name": "光源与相机",
+          "type": "EnvFolder",
+          "suppressed": false
+        },
+        {
+          "name": "实体",
+          "type": "SolidBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "曲面实体",
+          "type": "SurfaceBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "备注",
+          "type": "CommentsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "方程式",
+          "type": "EqnFolder",
+          "suppressed": false
+        },
+        {
+          "name": "材质 <未指定>",
+          "type": "MaterialFolder",
+          "suppressed": false
+        },
+        {
+          "name": "前视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "上视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "右视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "原点",
+          "type": "OriginProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "Tables",
+          "type": "ConfigTableFolder",
+          "suppressed": false
+        },
+        {
+          "name": "草图1",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸1",
+          "type": "Extrusion",
+          "suppressed": false
+        },
+        {
+          "name": "草图2",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "草图3",
+          "type": "ProfileFeature",
+          "suppressed": false
+        }
+      ],
+      "volume_mm3": 237582.944428,
+      "surface_area_mm2": 27646.015352,
+      "has_cirpattern": false
+    }
+  },
+  "assembly": {
+    "file": "remediated_assembly.SLDASM",
+    "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_assembly.SLDASM",
+    "features": [
+      {
+        "name": "Comments",
+        "type": "CommentsFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Favorites",
+        "type": "FavoriteFolder",
+        "suppressed": false
+      },
+      {
+        "name": "History",
+        "type": "HistoryFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Selection Sets",
+        "type": "SelectionSetFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Sensors",
+        "type": "SensorFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Live Section Planes",
+        "type": "LiveSectionFolder",
+        "suppressed": false
+      },
+      {
+        "name": "设计活页夹",
+        "type": "DocsFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Annotations",
+        "type": "DetailCabinet",
+        "suppressed": false
+      },
+      {
+        "name": "Markups",
+        "type": "InkMarkupFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Lights and Cameras",
+        "type": "EnvFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Equations",
+        "type": "EqnFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Front Plane",
+        "type": "RefPlane",
+        "suppressed": false
+      },
+      {
+        "name": "Top Plane",
+        "type": "RefPlane",
+        "suppressed": false
+      },
+      {
+        "name": "Right Plane",
+        "type": "RefPlane",
+        "suppressed": false
+      },
+      {
+        "name": "Origin",
+        "type": "OriginProfileFeature",
+        "suppressed": false
+      },
+      {
+        "name": "remediated_linear_base-1",
+        "type": "Reference",
+        "suppressed": false
+      },
+      {
+        "name": "remediated_stepped_shaft-1",
+        "type": "Reference",
+        "suppressed": false
+      },
+      {
+        "name": "remediated_circular_gear-1",
+        "type": "Reference",
+        "suppressed": false
+      },
+      {
+        "name": "Mates",
+        "type": "MateGroup",
+        "suppressed": false
+      }
+    ],
+    "step_export": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_assembly.step",
+    "mate_count": 2,
+    "mate_group_found": true
+  },
+  "drawing": {
+    "file": "remediated_drawing.SLDDRW",
+    "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_drawing.SLDDRW",
+    "pdf_path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\remediation-2026-11-06\\cad_test_sandbox\\remediated_drawing.pdf",
+    "views_created_count": 3,
+    "reopened_views_count": 0,
+    "views": [
+      "工程图视图1",
+      "工程图视图2",
+      "工程图视图3"
+    ],
+    "standard_views_success": true
+  },
+  "exports": {},
+  "quality_inspection": {
+    "overall_score": 97.0,
+    "verification_status": "VERIFIED",
+    "is_acceptable": true,
+    "geometry_score": 90.0,
+    "metrics": {
+      "volume_measured_mm3": 158286.478581,
+      "volume_theoretical_mm3": 157724.76,
+      "volume_relative_error": 0.003561384915088751
+    },
+    "passed_checks": [],
+    "warnings": [
+      "宏观体积相对误差偏大 (相对误差=0.36%)"
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "timestamp": "2026-11-11T16:34:17+0800",
+  "total_tests": 19,
+  "passed": 19,
+  "failed": 0,
+  "cases": [
+    {
+      "name": "Version_Info_Structured_Parsing",
+      "status": "PASS",
+      "detail": "版本年份、SP 与非法字符串解析符合规范"
+    },
+    {
+      "name": "Capabilities_Probe_No_Default_Assumption",
+      "status": "PASS",
+      "detail": "无连接时不盲目假定为 2026"
+    },
+    {
+      "name": "Error_Classification_Interface_vs_Geometry",
+      "status": "PASS",
+      "detail": "严格区分接口缺失与几何业务异常"
+    },
+    {
+      "name": "Geometry_Failure_No_Blind_Degradation",
+      "status": "PASS",
+      "detail": "几何失败直接向上冒泡，不执行非幂等降级"
+    },
+    {
+      "name": "Boss_Extrusion_Modern_Path",
+      "status": "PASS",
+      "detail": "现代版本调度 FeatureExtrusion3 (23 参数)"
+    },
+    {
+      "name": "Boss_Extrusion_Legacy_Path",
+      "status": "PASS",
+      "detail": "旧版调度 FeatureExtrusion2 (19 参数)"
+    },
+    {
+      "name": "Cut_Extrusion_Modern_Path",
+      "status": "PASS",
+      "detail": "现代切除调度 FeatureCut4 (27 参数)"
+    },
+    {
+      "name": "Cut_Extrusion_Legacy_Path",
+      "status": "PASS",
+      "detail": "旧版切除调度 FeatureCut3 (21 参数)"
+    },
+    {
+      "name": "Mirror_Feature_Modern_And_Fallback",
+      "status": "PASS",
+      "detail": "镜像调度与平滑回退正确"
+    },
+    {
+      "name": "Assembly_Mate_Modern_And_Fallback",
+      "status": "PASS",
+      "detail": "装配配合 AddMate5 与 AddMate3 回退正确"
+    },
+    {
+      "name": "Drawing_View_Modern_And_Fallback",
+      "status": "PASS",
+      "detail": "工程图视图接口回退正确"
+    },
+    {
+      "name": "Mass_Properties_Modern_And_Legacy_Array",
+      "status": "PASS",
+      "detail": "质量属性高精度与旧版数组解析完全一致"
+    },
+    {
+      "name": "Global_Degradation_Audit_Log",
+      "status": "PASS",
+      "detail": "捕获到 5 条降级审计事件"
+    },
+    {
+      "name": "Dedicated_Matrix_Verification_SW_2020",
+      "status": "PASS",
+      "detail": "年份 2020 (Major 28): boss=FeatureExtrusion2, cut=FeatureCut3, mirror=InsertMirrorFeature, mate=AddMate3, drw=CreateDrawViewFromModelView2"
+    },
+    {
+      "name": "Dedicated_Matrix_Verification_SW_2021",
+      "status": "PASS",
+      "detail": "年份 2021 (Major 29): boss=FeatureExtrusion2, cut=FeatureCut3, mirror=InsertMirrorFeature, mate=AddMate3, drw=CreateDrawViewFromModelView2"
+    },
+    {
+      "name": "Dedicated_Matrix_Verification_SW_2022",
+      "status": "PASS",
+      "detail": "年份 2022 (Major 30): boss=FeatureExtrusion2, cut=FeatureCut3, mirror=InsertMirrorFeature, mate=AddMate3, drw=CreateDrawViewFromModelView2"
+    },
+    {
+      "name": "Dedicated_Matrix_Verification_SW_2023",
+      "status": "PASS",
+      "detail": "年份 2023 (Major 31): boss=FeatureExtrusion2, cut=FeatureCut3, mirror=InsertMirrorFeature, mate=AddMate3, drw=CreateDrawViewFromModelView2"
+    },
+    {
+      "name": "Dedicated_Matrix_Verification_SW_2024",
+      "status": "PASS",
+      "detail": "年份 2024 (Major 32): boss=FeatureExtrusion3, cut=FeatureCut4, mirror=InsertMirrorFeature2, mate=AddMate5, drw=CreateDrawViewFromModelView3"
+    },
+    {
+      "name": "Dedicated_Matrix_Verification_SW_2025",
+      "status": "PASS",
+      "detail": "年份 2025 (Major 33): boss=FeatureExtrusion3, cut=FeatureCut4, mirror=InsertMirrorFeature2, mate=AddMate5, drw=CreateDrawViewFromModelView3"
+    }
+  ]
+}

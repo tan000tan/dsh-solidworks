@@ -1,0 +1,7 @@
+# DSH-SolidWorks v0.3.1 正式发布交付物 SHA-256 清单
+# 生成时间: 2026-11-11
+# 编码: UTF-8 (不含 BOM)
+
+83dac29c88d618b48bfdd4896c6675b3d96c82caf4e15db3145a1a566958b55a  dsh-solidworks-v0.3.1-windows-installer.zip
+4d714294b8d07fc12edb625d3ded3f0e647d9ec087538cd0079b95c4c23cbbef  v0.3.1-e2e-cad-and-diagnostics-evidence.zip
+501a9655eb37c4b0651f75da6cdd9ffb8c4785eefce468724b2664522dd96785  dsh-solidworks-0.3.1.tgz

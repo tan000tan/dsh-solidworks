@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-11-10T23:24:07+0800",
+  "suites": [
+    {
+      "name": "Node_Package_Test",
+      "status": "PASS",
+      "elapsed_ms": 524.22,
+      "exit_code": 0,
+      "stdout": "✔ package.json declares the identity and the bundle patch the host needs (1.4725ms)\n✔ the files allowlist ships every runtime dependency and nothing missing (0.3813ms)\n✔ cordis.patch.yml inserts this plugin with only known config keys (1.0065ms)\n✔ manifest agrees with package.json and points at files that exist (3.5027ms)\n✔ manifest tool list matches the risk table exactly (0.7284ms)\n✔ licence and notice travel with the package (3.7276ms)\n✔ the vendored engine is complete and carries no build ju"
+    },
+    {
+      "name": "Node_Policy_Test",
+      "status": "PASS",
+      "elapsed_ms": 138.23,
+      "exit_code": 0,
+      "stdout": "✔ every shipped tool has an explicit risk tier (0.764ms)\n✔ unknown tools are never classified as read (default to HIGH) (0.6706ms)\n✔ unknown tools are refused by evaluate unless explicitly allowed (0.6148ms)\n✔ explicit customTiers allow explicit test binding without ambient prefix privileges (0.2962ms)\n✔ solidworks_health_check start_solidworks=true side-effect is gated by policy mode (0.3355ms)\n✔ read-only mode publishes reads and withholds writes and high-risk tools (0.1223ms)\n✔ standard mode "
+    },
+    {
+      "name": "Node_MCP_Test",
+      "status": "PASS",
+      "elapsed_ms": 1331.15,
+      "exit_code": 0,
+      "stdout": "✔ initialize + tools/list round-trip (118.8203ms)\n✔ tools/call returns text for success and isError for failure (99.6789ms)\n✔ json-rpc errors surface as McpError with the server code (79.8316ms)\n✔ a hung call times out instead of hanging the host (390.7136ms)\n✔ abort signal cancels an in-flight call (275.7026ms)\n✔ close is idempotent and rejects later calls (124.1422ms)\n✔ probe rejects a command that cannot run (4.2849ms)\n✔ discover reports a readable error when the server script is missing (100"
+    },
+    {
+      "name": "Node_Schema_Test",
+      "status": "PASS",
+      "elapsed_ms": 74.54,
+      "exit_code": 0,
+      "stdout": "PASS  detects the params wrapper\nPASS  hoists the inner properties\nPASS  keeps inner $ref intact\nPASS  carries $defs so the inner $ref still resolves\nPASS  defaults type to object\nPASS  leaves no params property behind\nPASS  a normal schema is not touched\nPASS  returns the same object when it does not unwrap\nPASS  refuses to unwrap when params is not the only input\nPASS  refuses when required names another key\nPASS  unwraps an inline (non-$ref) params object\nPASS  wraps a flat argument object\nPA"
+    },
+    {
+      "name": "Python_Architecture_Test",
+      "status": "PASS",
+      "elapsed_ms": 489.55,
+      "exit_code": 0,
+      "stdout": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.151s\n\nOK\n已连接到运行中的 SolidWorks 实例（ProgID: SldWorks.Application）\n当前没有打开的文档\n"
+    },
+    {
+      "name": "Node_Productization_Test",
+      "status": "PASS",
+      "elapsed_ms": 1329.03,
+      "exit_code": 0,
+      "stdout": "✔ embeddedCandidates discovers .runtime/python/python.exe when present (0.7624ms)\n✔ discover returns friendly Chinese diagnostic when interpreter cannot be found (5.0574ms)\n✔ discover succeeds with valid active python interpreter (1234.908ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1245.3708\n"
+    },
+    {
+      "name": "Node_Security_Approval_Test",
+      "status": "PASS",
+      "elapsed_ms": 113.37,
+      "exit_code": 0,
+      "stdout": "✔ Policy approvalMode defaults to balanced and supports custom modes (0.5185ms)\n✔ Session-scoped grant allows multiple invocations during TTL (2.6019ms)\n✔ Single-use grant is consumed immediately upon first evaluation (0.7646ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 8.2731\n"
+    },
+    {
+      "name": "Python_Compat_Matrix_Test",
+      "status": "PASS",
+      "elapsed_ms": 277.08,
+      "exit_code": 0,
+      "stdout": "=== 开始运行 SolidWorks 2020-2026 深度兼容性与异常分类测试 ===\n[PASS] Version_Info_Structured_Parsing\n[PASS] Capabilities_Probe_No_Default_Assumption\n[PASS] Error_Classification_Interface_vs_Geometry\n[PASS] Geometry_Failure_No_Blind_Degradation\n[PASS] Boss_Extrusion_Modern_Path\n[PASS] Boss_Extrusion_Legacy_Path\n[PASS] Cut_Extrusion_Modern_Path\n[PASS] Cut_Extrusion_Legacy_Path\n[PASS] Mirror_Feature_Modern_And_Fallback\n[PASS] Assembly_Mate_Modern_And_Fallback\n[PASS] Drawing_View_Modern_And_Fallback\n[PASS] Mass_Pr"
+    }
+  ],
+  "overall_status": "PASS"
+}

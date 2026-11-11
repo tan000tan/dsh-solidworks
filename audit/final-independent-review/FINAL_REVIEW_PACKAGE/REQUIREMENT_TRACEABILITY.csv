@@ -1,0 +1,16 @@
+﻿Requirement_ID,Category,Requirement_Description,User_Value,Implementation_Module,Verification_Method,Evidence_Path,Status,Residual_Limits
+REQ-01,草图建模,支持自然语言指令绘制基础草图并自动闭合约束,降低草图门槛，快速生成三维底图,sw_part.py / start_sketch,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_shaft.SLDPRT,PASS,复杂样条曲线目前仅支持离散点插值
+REQ-02,实体特征,支持凸台拉伸（盲孔/对称/双向）特征成型,标准机械零件主干成型,sw_part.py / extrude_boss,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_base.SLDPRT,PASS,非平面拔模需要显式指定基准面
+REQ-03,实体特征,支持拉伸切除（键槽、孔、异形腔体）,实现机械减重、定位孔与轴槽成型,sw_part.py / extrude_cut,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_shaft.SLDPRT,PASS,自交切削面需要事务回滚机制保护
+REQ-04,实体特征,支持旋转凸台与回转体成型,实现轴套、回转轮与法兰成型,sw_part.py / revolve_boss,单元测试与实机结合,tests/stage5_feature_tree_optimizer_test.py,PASS,旋转轴必须在同一活动草图中作为中心线
+REQ-05,工艺特征,支持倒角与圆角处理,消除尖角应力集中，满足加工工艺,sw_part.py / add_fillet,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_gear.SLDPRT,PASS,夹角过锐且微小半径可能受限于 Parasolid 几何拓扑
+REQ-06,特征复用,支持线性阵列与圆周特征阵列,批量生成螺栓孔与齿轮减重孔,sw_part.py / feature_pattern,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_base.SLDPRT,PASS,前期缺失实机物证，阶段7已补齐闭环
+REQ-07,特征复用,支持特征级实体镜像,对称零件快速建模与设计效率提升,sw_part.py / feature_mirror,单元测试与实机结合,tests/stage5_advanced_aicad_integration_test.py,PASS,必须预先定义完整的对称基准面
+REQ-08,几何验证,支持高精度几何测量与物理质量抽取,获取体积/表面积/质心，提供客观验收数据,sw_measure.py / collect_mass_properties,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_execution_metrics.json,PASS,精度依赖 SolidWorks 细分曲面网格公差设置
+REQ-09,参数化CAD,支持尺寸参数化驱动与 ECO 单调递增变更,支持模型二次修改，维持设计意图保真,sw_document_data.py / update_dimension_mm,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/07_COMPLEX_MODEL_EXECUTION_REPORT.md,PASS,中文版需遵循本地化映射规则
+REQ-10,装配体,支持装配体构建、组件插入与接地约束,多零件机构协同设计与干涉检查基础,sw_assembly.py / add_component,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_assembly.SLDASM,PASS,复杂齿轮啮合/凸轮柔性配合暂未完全封装
+REQ-11,工程图,支持标准三视图自动投射与图纸生成,传统机械图纸出图与车间加工对接,sw_drawing.py / create_standard_views,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_drawing.SLDDRW,PASS,剖视图与局部放大需显式提供截断线坐标
+REQ-12,工业交换,支持 STEP AP214、STL 网格与矢量 PDF 导出,无缝对接 3D 打印、CAE 仿真与激光下料,sw_connect.py / SaveAs3 / export_sheet_to_pdf,SolidWorks 2026 物理实机,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_assembly.step,PASS,需宿主文件系统拥有完整读写权限
+REQ-13,自审与质检,S5-E 质量检验与空间多维坐标采样自审系统,杜绝假成功，独立验证几何/拓扑/工艺性,cad_quality_inspector.py,算法单元 + 物理实机抽取,audit/final-independent-review/stage7-extreme-real-world-validation/08_GEOMETRY_AND_DESIGN_INTENT_VERIFICATION.md,PASS,复杂自由曲面曲率依赖外部网格库
+REQ-14,安全防护,路径沙箱守卫、Junction 解析与只读模式隔离,保护系统文件与企业图纸安全，杜绝逃逸,lib/policy.js / is_safe_path,Node.js 门禁测试,tests/policy.test.js,PASS,无法防御系统级外部硬件内存调试
+REQ-15,DSH生态,标准 MCP JSON-RPC 协议通信与 DSH 插件规范,供 DeepSeek Harness Agent 自主发现并规划使用,lib/index.js / server.py,Node.js 门禁测试,tests/mcp.test.js,PASS,依赖本地 Node 22+ 与 Python 3.10+ 运行时

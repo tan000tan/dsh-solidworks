@@ -1,0 +1,128 @@
+{
+  "timestamp": "2026-11-11T08:31:44.227Z",
+  "total_tests": 5,
+  "passed_tests": 5,
+  "failed_tests": 0,
+  "details": [
+    {
+      "test": "TTL_Grant_Expiry_Check",
+      "passed": true,
+      "detail": {
+        "grant_ttl_ms": 5000,
+        "active_at_3s_result": {
+          "allowed": true,
+          "risk": "high",
+          "granted": true,
+          "rewrittenArgs": {
+            "filepath": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\test.sldprt"
+          }
+        },
+        "expired_at_6s_result": {
+          "allowed": false,
+          "tool": "solidworks_save_document",
+          "code": "CONFIRMATION_REQUIRED",
+          "reason": "solidworks_save_document is high-risk (persists, exports, deletes, closes, or solves). Operation blocked by zero-trust security gate. A human approval challenge has been generated. To proceed, obtain a signed authorization ticket from the trusted human authority and submit via solidworks_confirm. Challenge ID: chal_7635e7c653b3c58a8830ef52589dd0d7",
+          "challenge": {
+            "challengeId": "chal_7635e7c653b3c58a8830ef52589dd0d7",
+            "tool": "solidworks_save_document",
+            "canonical": "{\"filepath\":\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\temp_evidence_v030\\\\sandbox_safe\\\\test.sldprt\"}",
+            "digest": "51f2e29ba92fe45d",
+            "targetFiles": [
+              "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\test.sldprt"
+            ],
+            "scope": "single",
+            "expiresAt": 1129000,
+            "riskLevel": "high",
+            "instruction": "Human approval required. The human user must review these parameters and provide a signed authorization ticket via the trusted local channel. AI self-authorization is prohibited."
+          },
+          "canonicalArgs": "{\"filepath\":\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\temp_evidence_v030\\\\sandbox_safe\\\\test.sldprt\"}",
+          "digest": "51f2e29ba92fe45d",
+          "targetFiles": [
+            "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\test.sldprt"
+          ],
+          "expiresAt": 1129000
+        }
+      }
+    },
+    {
+      "test": "Argument_Tampering_Resistance",
+      "passed": true,
+      "detail": {
+        "original_args": {
+          "filepath": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\modelA.sldprt"
+        },
+        "tampered_args": {
+          "filepath": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\modelB_tampered.sldprt"
+        },
+        "eval_result": {
+          "allowed": false,
+          "tool": "solidworks_save_document",
+          "code": "CONFIRMATION_REQUIRED",
+          "reason": "solidworks_save_document is high-risk (persists, exports, deletes, closes, or solves). Operation blocked by zero-trust security gate. A human approval challenge has been generated. To proceed, obtain a signed authorization ticket from the trusted human authority and submit via solidworks_confirm. Challenge ID: chal_47dc5f3bdb245ec127019ead22cef2b2",
+          "challenge": {
+            "challengeId": "chal_47dc5f3bdb245ec127019ead22cef2b2",
+            "tool": "solidworks_save_document",
+            "canonical": "{\"filepath\":\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\temp_evidence_v030\\\\sandbox_safe\\\\modelB_tampered.sldprt\"}",
+            "digest": "809bc16ff273d700",
+            "targetFiles": [
+              "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\modelB_tampered.sldprt"
+            ],
+            "scope": "single",
+            "expiresAt": 2120000,
+            "riskLevel": "high",
+            "instruction": "Human approval required. The human user must review these parameters and provide a signed authorization ticket via the trusted local channel. AI self-authorization is prohibited."
+          },
+          "canonicalArgs": "{\"filepath\":\"D:\\\\Agent工作区\\\\DeepSeek Harness工作区\\\\dsh-solidworks-plugin\\\\temp_evidence_v030\\\\sandbox_safe\\\\modelB_tampered.sldprt\"}",
+          "digest": "809bc16ff273d700",
+          "targetFiles": [
+            "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\modelB_tampered.sldprt"
+          ],
+          "expiresAt": 2120000
+        }
+      }
+    },
+    {
+      "test": "Path_Traversal_And_Device_DOS_Defense",
+      "passed": true,
+      "detail": {
+        "traversal_eval": {
+          "allowed": false,
+          "tool": "solidworks_sketch_and_extrude",
+          "code": "PATH_OUTSIDE_ALLOWED_ROOTS",
+          "reason": "solidworks_sketch_and_extrude targets D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\secret\\passwords.txt, which is outside the allowed roots for this plugin."
+        },
+        "con_device_rejected": true,
+        "unc_path_rejected": true
+      }
+    },
+    {
+      "test": "Protected_Standard_Parts_Refusal",
+      "passed": true,
+      "detail": {
+        "target_file": "垫圈.sldprt",
+        "eval_result": {
+          "allowed": false,
+          "tool": "solidworks_fillet",
+          "code": "PROTECTED_FILE_REFUSED",
+          "reason": "Target \"垫圈.sldprt\" is a permanently protected reference part and cannot be modified."
+        }
+      }
+    },
+    {
+      "test": "ReadOnly_Mode_SideEffect_Gate",
+      "passed": true,
+      "detail": {
+        "tool": "solidworks_health_check",
+        "args": {
+          "start_solidworks": true
+        },
+        "eval_result": {
+          "allowed": false,
+          "tool": "solidworks_health_check",
+          "code": "POLICY_MODE",
+          "reason": "solidworks_health_check with start_solidworks=true may launch an external SolidWorks process and is not permitted in \"read-only\" mode. Pass start_solidworks=false or switch policy mode to standard."
+        }
+      }
+    }
+  ]
+}
