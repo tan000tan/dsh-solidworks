@@ -1,0 +1,472 @@
+{
+  "timestamp": "2026-11-10T23:21:35+0800",
+  "solidworks_info": {
+    "raw": "34.4.1",
+    "major": 34,
+    "year": 2026,
+    "sp": 4,
+    "hotfix": 1,
+    "valid": true,
+    "raw_revision": "34.4.1"
+  },
+  "capabilities": {
+    "raw_revision": "34.4.1",
+    "detected_year": 2026,
+    "service_pack": 4,
+    "hotfix": 1,
+    "bound_pid": 33136,
+    "api_tier": "modern",
+    "supported_apis": {
+      "FeatureExtrusion3": true,
+      "FeatureExtrusion2": true,
+      "FeatureCut4": true,
+      "FeatureCut3": true,
+      "InsertMirrorFeature2": true,
+      "InsertMirrorFeature": true,
+      "CreateMassProperty": true,
+      "GetMassProperties2": true,
+      "AddMate5": true,
+      "CreateDrawViewFromModelView3": true
+    },
+    "degradation_routes": {
+      "extrusion": "FeatureExtrusion3",
+      "cut": "FeatureCut4",
+      "mirror": "InsertMirrorFeature2",
+      "mass": "CreateMassProperty"
+    }
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Create_Part_Document",
+      "status": "PASS",
+      "detail": "成功创建隔离零件: 零件5",
+      "extra": {
+        "title": "零件5"
+      }
+    },
+    {
+      "step": 2,
+      "name": "Sketch_Rectangle_50x50",
+      "status": "PASS",
+      "detail": "前视基准面矩形草图已生成: 草图1",
+      "extra": {
+        "sketch_ref": "草图1"
+      }
+    },
+    {
+      "step": 3,
+      "name": "Adaptive_Extrude_Boss",
+      "status": "PASS",
+      "detail": "自适应拉伸凸台成功生成特征: 凸台-拉伸1",
+      "extra": {
+        "feature_name": "凸台-拉伸1"
+      }
+    },
+    {
+      "step": 4,
+      "name": "Verify_Boss_Feature_Tree",
+      "status": "PASS",
+      "detail": "凸台特征树有效性: True, 节点数: 20",
+      "extra": {
+        "valid": true,
+        "feature_count": 20,
+        "target_found": true,
+        "suppressed_count": 0,
+        "has_errors": false,
+        "features": [
+          {
+            "name": "收藏",
+            "type": "FavoriteFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "历史记录",
+            "type": "HistoryFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "选择集",
+            "type": "SelectionSetFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "传感器",
+            "type": "SensorFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "设计活页夹",
+            "type": "DocsFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "注解",
+            "type": "DetailCabinet",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "标注",
+            "type": "InkMarkupFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "光源与相机",
+            "type": "EnvFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "实体",
+            "type": "SolidBodyFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "曲面实体",
+            "type": "SurfaceBodyFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "备注",
+            "type": "CommentsFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "方程式",
+            "type": "EqnFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "材质 <未指定>",
+            "type": "MaterialFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "前视基准面",
+            "type": "RefPlane",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "上视基准面",
+            "type": "RefPlane",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "右视基准面",
+            "type": "RefPlane",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "原点",
+            "type": "OriginProfileFeature",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "Tables",
+            "type": "ConfigTableFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "草图1",
+            "type": "ProfileFeature",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "凸台-拉伸1",
+            "type": "Extrusion",
+            "suppressed": false,
+            "error_code": 0
+          }
+        ]
+      }
+    },
+    {
+      "step": 5,
+      "name": "Verify_Boss_Volume",
+      "status": "PASS",
+      "detail": "实测体积 50000.000 mm^3, 理论 50000.0 mm^3, 误差 0.0000%",
+      "extra": {
+        "measured_volume": 50000.0,
+        "expected_volume": 50000.0,
+        "error_pct": 0.0
+      }
+    },
+    {
+      "step": 6,
+      "name": "Sketch_Cut_Circle_D20",
+      "status": "PASS",
+      "detail": "切除圆形草图已生成: 草图2",
+      "extra": {
+        "sketch_ref": "草图2"
+      }
+    },
+    {
+      "step": 7,
+      "name": "Adaptive_Extrude_Cut",
+      "status": "PASS",
+      "detail": "自适应拉伸切除成功生成特征: 切除-拉伸2",
+      "extra": {
+        "feature_name": "切除-拉伸2"
+      }
+    },
+    {
+      "step": 8,
+      "name": "Verify_Cut_Feature_Tree",
+      "status": "PASS",
+      "detail": "切除特征树有效性: True",
+      "extra": {
+        "valid": true,
+        "feature_count": 22,
+        "target_found": true,
+        "suppressed_count": 0,
+        "has_errors": false,
+        "features": [
+          {
+            "name": "收藏",
+            "type": "FavoriteFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "历史记录",
+            "type": "HistoryFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "选择集",
+            "type": "SelectionSetFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "传感器",
+            "type": "SensorFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "设计活页夹",
+            "type": "DocsFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "注解",
+            "type": "DetailCabinet",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "标注",
+            "type": "InkMarkupFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "光源与相机",
+            "type": "EnvFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "实体",
+            "type": "SolidBodyFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "曲面实体",
+            "type": "SurfaceBodyFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "备注",
+            "type": "CommentsFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "方程式",
+            "type": "EqnFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "材质 <未指定>",
+            "type": "MaterialFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "前视基准面",
+            "type": "RefPlane",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "上视基准面",
+            "type": "RefPlane",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "右视基准面",
+            "type": "RefPlane",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "原点",
+            "type": "OriginProfileFeature",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "Tables",
+            "type": "ConfigTableFolder",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "草图1",
+            "type": "ProfileFeature",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "凸台-拉伸1",
+            "type": "Extrusion",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "草图2",
+            "type": "ProfileFeature",
+            "suppressed": false,
+            "error_code": 0
+          },
+          {
+            "name": "切除-拉伸2",
+            "type": "ICE",
+            "suppressed": false,
+            "error_code": 0
+          }
+        ]
+      }
+    },
+    {
+      "step": 9,
+      "name": "Verify_Cut_Volume",
+      "status": "PASS",
+      "detail": "切除后实测 46858.407 mm^3, 理论 46858.407 mm^3, 误差 0.0000%",
+      "extra": {
+        "measured_volume": 46858.407346,
+        "expected_volume": 46858.407346410204,
+        "error_pct": 8.754116104286646e-10
+      }
+    },
+    {
+      "step": 10,
+      "name": "Adaptive_Mirror_Capability",
+      "status": "PASS",
+      "detail": "镜像特征接口探测: InsertMirrorFeature2=True, InsertMirrorFeature=True",
+      "extra": {
+        "has_mirror2": true,
+        "has_mirror1": true
+      }
+    },
+    {
+      "step": 11,
+      "name": "Mass_Properties_Consistency",
+      "status": "PASS",
+      "detail": "质量属性高精度提取与单位换算完全自洽: mass=0.046858kg, vol=0.000046858m3",
+      "extra": {
+        "safe_props": {
+          "mass_kg": 0.04685840734641022,
+          "volume_m3": 4.6858407346410215e-05,
+          "surface_area_m2": 0.00962831853071796,
+          "center_of_mass_x": -7.731464942705459e-20,
+          "center_of_mass_y": -8.001551202832081e-36,
+          "center_of_mass_z": -0.01033522187708653
+        },
+        "diff_vol": 4.1021466822346864e-16
+      }
+    },
+    {
+      "step": 12,
+      "name": "Save_Temporary_Part",
+      "status": "PASS",
+      "detail": "临时文档保存成功: compat_cad_test_1794324109.sldprt (大小: 74017 字节)",
+      "extra": {
+        "file_path": "C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_sw_compat_sandbox\\compat_cad_test_1794324109.sldprt"
+      }
+    },
+    {
+      "step": 13,
+      "name": "Close_Temporary_Part",
+      "status": "PASS",
+      "detail": "测试零件 零件5 已彻底关闭",
+      "extra": {
+        "remaining": [
+          "compat_cad_test_1794324109.SLDPRT"
+        ]
+      }
+    },
+    {
+      "step": 14,
+      "name": "Reopen_Saved_Part",
+      "status": "PASS",
+      "detail": "成功重新打开保存的文档: compat_cad_test_1794324109.SLDPRT",
+      "extra": {
+        "reopened_title": "compat_cad_test_1794324109.SLDPRT"
+      }
+    },
+    {
+      "step": 15,
+      "name": "Verify_Reopened_Integrity",
+      "status": "PASS",
+      "detail": "重开后特征树健康且体积无损: 实测 46858.407 mm^3, 误差 0.0000%",
+      "extra": {
+        "valid": true,
+        "node_count": 22,
+        "volume_mm3": 46858.407346
+      }
+    },
+    {
+      "step": 16,
+      "name": "Purge_Temporary_Artifacts",
+      "status": "PASS",
+      "detail": "测试零件文件与磁盘残留已彻底清理: C:\\Users\\Khalil\\AppData\\Local\\Temp\\dsh_sw_compat_sandbox\\compat_cad_test_1794324109.sldprt",
+      "extra": {
+        "deleted": true
+      }
+    }
+  ],
+  "metrics": {},
+  "initial_documents": [],
+  "final_documents": [],
+  "document_conserved": true,
+  "overall_status": "PASS",
+  "initial_count": 0,
+  "final_count": 0
+}

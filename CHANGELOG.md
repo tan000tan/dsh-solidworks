@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-11-11
+
+### Security Hardening (P0 Fixes)
+- **Zero-Trust Cryptographic Human Approval System (`lib/policy.js`, `lib/index.js`)**:
+  - Completely eliminated the vulnerable `confirmedByHuman: true` boolean check which previously allowed AI models to self-authorize high-risk operations.
+  - Implemented an HMAC-SHA256 Challenge-Response ticket architecture. High-risk operations without prior authorization trigger a tamper-proof challenge (`challengeId`, canonical arguments digest, target paths, expiresAt).
+  - Authorization tickets are strictly generated via unexposed private host secret keys (`#secretKey`), binding authorization directly to the exact tool, parameters digest, challenge ID, and session ID.
+  - Passed 18 rigorous adversarial attack tests (`tests/approval_security_adversarial_test.mjs`): ticket tampering, parameter mutations, replay attacks (single-use consumption), TTL expiration, cross-session abuse, tool swapping, race conditions, path traversal, and fail-closed security gating.
+
+### Runtime Isolation & Productization (P1 Fixes)
+- **Dedicated Python Virtual Environment Isolation (`lib/discover.js`)**:
+  - Fixed runtime discovery so host Python installations and DSH Primary Runtimes are treated strictly as seed interpreters.
+  - All dependency auto-bootstrapping now creates a dedicated `.venv` inside `<pluginRoot>` and installs core packages (`mcp>=1.0.0`, `pywin32>=306`) inside the private `.venv` only.
+  - Ensured host Python and DSH Primary Runtime site-packages remain 100% pristine and uncontaminated.
+- **CAD Toolset & Manifest Reconciliation**:
+  - Unified exact tool accounting: 71 vendored CAD tools (19 READ, 26 WRITE, 26 HIGH) plus 2 DSH host meta/policy tools (`solidworks_status`, `solidworks_confirm`), totaling 73 declared tools in `dsh-plugin.json` and registered into the DSH host.
+- **Physical CAD Verification on SolidWorks 2026 SP4.1**:
+  - Validated 11 core CAD modeling, assembly, drawing view, and mass properties steps with 0.0000% volume error and 4D document count conservation (initial 0 -> final 0, residue 0).
+- **Diagnostics & Lifecycle Verification**:
+  - Full PASS on `node scripts/doctor.js` (12/12 checks, 0 blocking errors).
+  - Full PASS on `python -B tests/sw_compat_matrix_test.py` (19/19 checks across SolidWorks 2020-2026 compatibility paths).
+  - Full PASS on `node tests/package.test.js` (12/12 checks).
+
+## [0.3.0] - 2026-11-10
+
+### Added
+- **Multi-Version SolidWorks Compatibility Matrix (`sw_compat.py`)**: Seamless compatibility adapters across SolidWorks 2020 through 2026, dynamic feature probe, and transparent degradation to legacy COM interfaces when modern APIs are unavailable.
+- **DSH Plugin Manifest v0.15 Compliance (`dsh-plugin.json`)**: Upgraded to DSH manifest schema v0.15, declaring complete tool permissions, process spawn facets, and multi-language display metadata.
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

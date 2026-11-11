@@ -15,6 +15,7 @@
 import { existsSync, rmSync, readdirSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unregisterFromDshProfile } from './dsh_adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -93,6 +94,18 @@ for (const item of toRemove) {
     } catch (err) {
       console.warn(`[!] 清理失败 (${item.path}): ${err.message}`);
     }
+  }
+}
+
+// 解除 DSH Profile 挂载
+if (!isDryRun) {
+  try {
+    const unreg = unregisterFromDshProfile();
+    if (unreg.removed) {
+      console.log(`[✔ 已解除] DeepSeek Harness 客户端插件挂载配置 (备份: ${unreg.backupPath ? path.basename(unreg.backupPath) : '无'})`);
+    }
+  } catch (err) {
+    console.warn(`[!] 解除 DSH 挂载提示: ${err.message}`);
   }
 }
 

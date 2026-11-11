@@ -1,0 +1,17 @@
+# dsh-solidworks 终审交付物与实机 CAD 物理物证 SHA-256 清单
+# 生成时间: 2026-11-08 21:41 (UTC+8)
+# 校验算法: SHA-256
+
+1998c7f70ada645ad8dfd17f408cad8a3379fc3a747fb84a60fd860840ce0166        7897 bytes  CODE_CHANGES_DIFF.md
+4959d94b448ac5066458dad1eba0bfb8adac9cd9fd296957e301ce1e603b27a9        9943 bytes  FINAL_ENGINEERING_REWORK_AND_ACCEPTANCE_REPORT.md
+58c9cad1de9d5dcd98413bab521cf90fca78d88205130a6ba03150a2848e6479      589750 bytes  git_tracked.diff
+d87054610566945035ff5660815f0c93361a5b3b4ea9c08d60b4a4c5d1417be5        8366 bytes  TEST_SUITES_EXECUTION_MATRIX.md
+c9a995c7bd1efa6647df91e78c41856a662db161060f09a2255d981b364277f6       93113 bytes  cad_e2e_sandbox/v10_assembly.SLDASM
+0ca4f794b10fa4c6976f203e3ee986bac899f3ee8662ca9c8949adfb4916cc4e      132896 bytes  cad_e2e_sandbox/v10_assembly.step
+8033b2ca9625a043a28983154502279a38b85872d78c8c60bcd4f6ad3ae284a8       87242 bytes  cad_e2e_sandbox/v10_base.SLDPRT
+6dd7c963f99fe620929579fc6a87a46b08d01838f76a09c8d88c40f4d294e044       54521 bytes  cad_e2e_sandbox/v10_drawing.pdf
+af32641e2557bd200eb91e4327286a8c295240516c51a23cb358687a4bb6e815      122378 bytes  cad_e2e_sandbox/v10_drawing.SLDDRW
+5aeccd1e620dfdc7e438f3d8dc6f9704ab5ae5582a3a75535cb34954e6cad9ca       95792 bytes  cad_e2e_sandbox/v10_gear.SLDPRT
+c77f57c2a8790d3c5eba4a3eaf709358f540e6a9dfdce72cb33196cabebb5ec9       14663 bytes  cad_e2e_sandbox/v10_rework_e2e_summary.json
+d0c3ae5cbcdd05f0038aecd024676a8887817f8a60fc74c9c71a539e0e641eed       93069 bytes  cad_e2e_sandbox/v10_stepped_shaft.SLDPRT
+c698eea80149164c3dc0c79c928cdf8f45d3ce054584dc29e7fc966e6be7ba66      123184 bytes  cad_e2e_sandbox/v10_stepped_shaft.STL

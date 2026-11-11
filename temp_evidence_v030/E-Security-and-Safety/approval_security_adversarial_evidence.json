@@ -1,0 +1,216 @@
+{
+  "suite": "P0_HUMAN_APPROVAL_ADVERSARIAL_SUITE",
+  "timestamp": "2026-11-11T08:38:31.862Z",
+  "total_tests": 18,
+  "passed_tests": 18,
+  "failed_tests": 0,
+  "details": [
+    {
+      "test": "Vector_01_Missing_Confirmation_Or_Ticket",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "CHALLENGE_INVALID",
+        "tool": "solidworks_save_document",
+        "challengeId": "",
+        "message": "安全防护阻断：Missing or invalid challengeId."
+      }
+    },
+    {
+      "test": "Vector_02_ConfirmedByHuman_False_Rejected",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "CHALLENGE_INVALID",
+        "tool": "solidworks_save_document",
+        "challengeId": "",
+        "message": "安全防护阻断：Missing or invalid challengeId."
+      }
+    },
+    {
+      "test": "Vector_03_AI_Self_Authorization_True_Blocked",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "CHALLENGE_INVALID",
+        "tool": "solidworks_save_document",
+        "challengeId": "",
+        "message": "安全防护阻断：Missing or invalid challengeId."
+      }
+    },
+    {
+      "test": "Vector_04_Fabricated_Ticket_Rejected",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "TICKET_INVALID",
+        "tool": "solidworks_save_document",
+        "challengeId": "chal_0277a4444a30868493cd1ba2ab1ccf70",
+        "message": "安全防护阻断：Invalid cryptographic ticket. Signature verification failed."
+      }
+    },
+    {
+      "test": "Vector_05_Ticket_Tampering_Rejected",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "TICKET_INVALID",
+        "tool": "solidworks_save_document",
+        "challengeId": "chal_97eb0ef20aa70b909ce0a0af0c5fc7b5",
+        "message": "安全防护阻断：Invalid cryptographic ticket. Signature verification failed."
+      }
+    },
+    {
+      "test": "Vector_06_Argument_Tampering_Detected_And_Refused",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "ARGUMENTS_MUTATED",
+        "tool": "solidworks_save_document",
+        "challengeId": "chal_dc4a76b01b4b22f2281c639aebc8eea9",
+        "message": "安全防护阻断：Arguments do not match the parameters originally approved in this challenge."
+      }
+    },
+    {
+      "test": "Vector_07_Replay_Attack_Blocked_Single_Use",
+      "passed": true,
+      "detail": {
+        "dataFirst": {
+          "status": "granted",
+          "tool": "solidworks_save_document",
+          "challengeId": "chal_b97ae55169c342d4e1b9585c8284343c",
+          "digest": "a098b7dd4da4053d",
+          "scope": "single",
+          "ttlMs": 5000,
+          "next": "已验证可信人类授权凭证，操作授权生效。现在可以使用该精确参数执行 solidworks_save_document 了。"
+        },
+        "dataReplay": {
+          "status": "refused",
+          "code": "CHALLENGE_NOT_FOUND",
+          "tool": "solidworks_save_document",
+          "challengeId": "chal_b97ae55169c342d4e1b9585c8284343c",
+          "message": "安全防护阻断：Challenge ID not found, expired, or already consumed."
+        }
+      }
+    },
+    {
+      "test": "Vector_08_Expired_Challenge_Refused",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "CHALLENGE_EXPIRED",
+        "tool": "solidworks_save_document",
+        "challengeId": "chal_a190c1c1b2ba3f5277b3e902ecdedce6",
+        "message": "安全防护阻断：Challenge has expired. A fresh challenge must be requested."
+      }
+    },
+    {
+      "test": "Vector_09_Path_Swap_Attack_Blocked",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "ARGUMENTS_MUTATED",
+        "tool": "solidworks_save_document",
+        "challengeId": "chal_0a5dbe49b25cea71fff08f3df66e0bb3",
+        "message": "安全防护阻断：Arguments do not match the parameters originally approved in this challenge."
+      }
+    },
+    {
+      "test": "Vector_10_Cross_Session_Abuse_Blocked",
+      "passed": true,
+      "detail": {
+        "ok": false,
+        "code": "SESSION_MISMATCH",
+        "message": "Challenge was issued in a different session context."
+      }
+    },
+    {
+      "test": "Vector_11_Tool_Swap_Attack_Blocked",
+      "passed": true,
+      "detail": {
+        "status": "refused",
+        "code": "TOOL_MISMATCH",
+        "tool": "solidworks_close_documents",
+        "challengeId": "chal_1a0c054262e4c3b8a57c3cda582edd58",
+        "message": "安全防护阻断：Challenge was issued for tool \"solidworks_export_active\", but received \"solidworks_close_documents\"."
+      }
+    },
+    {
+      "test": "Vector_12_Concurrent_Race_Condition_Defense",
+      "passed": true,
+      "detail": {
+        "data1": {
+          "status": "granted",
+          "tool": "solidworks_save_document",
+          "challengeId": "chal_1c87d1acad55be192bbde151935fb1d0",
+          "digest": "a098b7dd4da4053d",
+          "scope": "single",
+          "ttlMs": 5000,
+          "next": "已验证可信人类授权凭证，操作授权生效。现在可以使用该精确参数执行 solidworks_save_document 了。"
+        },
+        "data2": {
+          "status": "refused",
+          "code": "CHALLENGE_NOT_FOUND",
+          "tool": "solidworks_save_document",
+          "challengeId": "chal_1c87d1acad55be192bbde151935fb1d0",
+          "message": "安全防护阻断：Challenge ID not found, expired, or already consumed."
+        }
+      }
+    },
+    {
+      "test": "Vector_13_Read_Tool_Confirmation_Not_Required",
+      "passed": true,
+      "detail": {
+        "status": "not_required",
+        "tool": "solidworks_list_edges",
+        "message": "solidworks_list_edges 是普通操作，无需申请高危授权，可直接调用。"
+      }
+    },
+    {
+      "test": "Vector_14_Write_Tool_Confirmation_Not_Required",
+      "passed": true,
+      "detail": {
+        "status": "not_required",
+        "tool": "solidworks_sketch_and_extrude",
+        "message": "solidworks_sketch_and_extrude 是普通操作，无需申请高危授权，可直接调用。"
+      }
+    },
+    {
+      "test": "Vector_15_Deny_List_Absolute_Override",
+      "passed": true,
+      "detail": {
+        "allowed": false,
+        "tool": "solidworks_save_document",
+        "code": "TOOL_DENIED",
+        "reason": "The user denied solidworks_save_document in the dsh-solidworks configuration."
+      }
+    },
+    {
+      "test": "Vector_16_ReadOnly_Mode_Ceiling_Enforced",
+      "passed": true,
+      "detail": {
+        "allowed": false,
+        "tool": "solidworks_save_document",
+        "code": "POLICY_MODE",
+        "reason": "solidworks_save_document is a high-risk tool and the plugin runs in \"read-only\" mode. Switch the plugin policy to \"full\", or allow this single tool in settings, to use it."
+      }
+    },
+    {
+      "test": "Vector_17_Malformed_ChallengeId_Fail_Closed",
+      "passed": true,
+      "detail": {
+        "malformedCount": 7
+      }
+    },
+    {
+      "test": "Vector_18_Missing_Allowed_Roots_Fail_Closed",
+      "passed": true,
+      "detail": {
+        "allowed": false,
+        "tool": "solidworks_save_document",
+        "code": "PATH_OUTSIDE_ALLOWED_ROOTS",
+        "reason": "solidworks_save_document targets D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\temp_evidence_v030\\sandbox_safe\\partA.sldprt, which is outside the allowed roots for this plugin."
+      }
+    }
+  ]
+}

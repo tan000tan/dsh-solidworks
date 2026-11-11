@@ -1,0 +1,95 @@
+{
+  "timestamp": "2026-11-11T02:33:58.002Z",
+  "product_name": "dsh-solidworks",
+  "version": "0.3.0",
+  "tests": [
+    {
+      "name": "Runtime_Environment_Discovery",
+      "passed": true,
+      "detail": {
+        "ok": true,
+        "python": {
+          "command": "D:\\SWCAD-MCP\\Python313\\python.exe",
+          "args": [],
+          "version": "3.13.16"
+        },
+        "serverScript": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\vendor\\solidworks-automation-skill\\mcp-server\\server.py",
+        "notes": [
+          "python: pyvenv.cfg executable: D:\\SWCAD-MCP\\Python313\\python.exe -> D:\\SWCAD-MCP\\Python313\\python.exe  (3.13.16)"
+        ]
+      }
+    },
+    {
+      "name": "Missing_Python_Graceful_Guidance",
+      "passed": true,
+      "detail": {
+        "ok": false,
+        "code": "PYTHON_INVALID",
+        "message": "configured pythonPath failed the import check (cannot execute: spawn C:\\FakeNonExistentPython\\python.exe ENOENT)"
+      }
+    },
+    {
+      "name": "Uninstall_DryRun_Safety_Assurance",
+      "passed": true,
+      "detail": {
+        "exit_code": 0,
+        "has_banner": true,
+        "has_safety_pledge": true,
+        "stdout_preview": "\n======================================================\n   dsh-solidworks-plugin 安全卸载与清理程序   \n======================================================\n\n【演练模式 (Dry-Run)】仅扫描可清理项，不会执行实际删除。\n\n[1/2] 扫描安全可清理资源...\n  - [发现] 插件隔离 Python 虚拟运行环境 (.venv)\n          路径: D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\.venv\n  - [发现] 本地自动生成的 MCP 客户端接入配置文件 (dsh-mcp-config.json)\n          路径: D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\dsh-mcp-config.json\n  - [发现] 测试沙箱基准零件临时生成物\n          路径: D:\\Agent"
+      }
+    },
+    {
+      "name": "Bundled_Assets_Integrity_Check",
+      "passed": true,
+      "detail": {
+        "file_checks": [
+          {
+            "file": "vendor/solidworks-automation-skill/mcp-server/server.py",
+            "exists": true
+          },
+          {
+            "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+            "exists": true
+          },
+          {
+            "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+            "exists": true
+          },
+          {
+            "file": "vendor/solidworks-automation-skill/scripts/sw_connect.py",
+            "exists": true
+          },
+          {
+            "file": "vendor/solidworks-automation-skill/scripts/sw_export.py",
+            "exists": true
+          },
+          {
+            "file": "lib/index.js",
+            "exists": true
+          },
+          {
+            "file": "lib/policy.js",
+            "exists": true
+          },
+          {
+            "file": "lib/discover.js",
+            "exists": true
+          },
+          {
+            "file": "package.json",
+            "exists": true
+          },
+          {
+            "file": "dsh-plugin.json",
+            "exists": true
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0
+  }
+}

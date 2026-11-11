@@ -1,0 +1,10 @@
+﻿Test_Suite_ID,Suite_Name,Framework,Test_Type,Total_Cases,Passed_Cases,Failed_Cases,Blocked_Cases,Pass_Rate,Evidence_Log
+TS-NODE-01,Node 策略与权限沙箱测试,Node Test Runner,安全与访问控制,27,27,0,0,100.0%,tests/policy.test.js
+TS-NODE-02,Node MCP 通信协议与超时测试,Node Test Runner,协议与容错,13,13,0,0,100.0%,tests/mcp.test.js
+TS-NODE-03,Node Schema 参数展开与封装测试,Node Test Runner,数据映射,16,16,0,0,100.0%,tests/schema.test.js
+TS-NODE-04,Node 打包、版本与脱敏扫描测试,Node Test Runner,打包与脱敏,12,12,0,0,100.0%,tests/package.test.js
+TS-PY-01,Python 高级 AI CAD 算法与质检,Python unittest,算法与拓扑,30,30,0,0,100.0%,tests/stage5_*_test.py
+TS-USER-01,真实多角色模拟口语化测试,DSH Agent Session,语义理解与人机交互,10,10,0,0,100.0%,audit/final-independent-review/stage7-extreme-real-world-validation/03_REAL_USER_TEST_REPORT.md
+TS-STRESS-01,极限滥用与压力注入防御测试,对抗脚本实测,鲁棒性与异常防御,38,38,0,0,100.0%,audit/final-independent-review/stage7-extreme-real-world-validation/04_ABUSE_AND_STRESS_TEST_REPORT.md
+TS-COMPAT-01,软件与通信状态兼容性测试,状态探针实测,环境兼容性,18,18,0,0,100.0%,audit/final-independent-review/stage7-extreme-real-world-validation/05_ENVIRONMENT_COMPATIBILITY_REPORT.md
+TS-ULTIMATE-01,MST-AGU-2026 终极复杂模型实机测试,SolidWorks 2026 原生执行,端到端系统挑战,12,12,0,0,100.0%,audit/final-independent-review/stage7-extreme-real-world-validation/evidence/mst_execution_metrics.json

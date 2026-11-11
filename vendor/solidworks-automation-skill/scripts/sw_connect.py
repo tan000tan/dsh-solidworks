@@ -52,11 +52,23 @@ pythoncom, win32com_client, VARIANT = import_com_dependencies()
 
 try:
 
-    from .sw_process import solidworks_processes
+    from .sw_process import solidworks_processes, list_solidworks_instances, is_instance_responding, get_instance_window_title
+
+    from .sw_job_object import init_orphan_guard, assign_process_to_job
 
 except ImportError:
 
-    from sw_process import solidworks_processes
+    from sw_process import solidworks_processes, list_solidworks_instances, is_instance_responding, get_instance_window_title
+
+    try:
+
+        from sw_job_object import init_orphan_guard, assign_process_to_job
+
+    except ImportError:
+
+        init_orphan_guard = lambda: None
+
+        assign_process_to_job = lambda p: False
 
 
 
@@ -1432,7 +1444,19 @@ def _get_active_object(prog_id):
 
 
 
-def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metadata=False):
+def is_co_e_server_exec_failure(exc: Exception) -> bool:
+    """检测异常是否为 CO_E_SERVER_EXEC_FAILURE (0x80080005，服务执行失败/超时)。"""
+    if exc is None:
+        return False
+    if hasattr(exc, "hresult") and exc.hresult == -2146959355:
+        return True
+    if hasattr(exc, "args") and exc.args and isinstance(exc.args[0], int) and exc.args[0] == -2146959355:
+        return True
+    s = str(exc)
+    return "0x80080005" in s or "80080005" in s or "CO_E_SERVER_EXEC_FAILURE" in s or "-2146959355" in s
+
+
+def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metadata=False, target_pid=None):
 
     """
 
@@ -1448,6 +1472,10 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
         visible: 启动新实例后是否显示窗口
 
+        return_metadata: 是否返回连接元数据字典
+
+        target_pid: 指定连接的目标 SolidWorks 进程 PID（多实例支持）
+
 
 
     返回:
@@ -1460,9 +1488,15 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
     if worker and threading.current_thread() != worker._thread:
 
-        return worker.execute(lambda: connect_solidworks(version, wait_seconds, visible, return_metadata))
+        return worker.execute(lambda: connect_solidworks(version, wait_seconds, visible, return_metadata, target_pid))
 
     ensure_solidworks_installed()
+
+    # 初始化防孤儿保护
+    try:
+        init_orphan_guard()
+    except Exception:
+        pass
 
     prog_id = _prog_id_for_version(version)
 
@@ -1472,17 +1506,25 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
     dispatched = False
 
-
-
     # 启动和附着共享同一把互斥锁，避免多个 worker 同时拉起实例。
 
     with _LaunchGuard():
 
         before = solidworks_processes()
 
+        # 多实例检测与提示
+        instances = list_solidworks_instances()
+        if len(instances) > 1 and target_pid is None:
+            print(f"[提示] 检测到系统中运行着 {len(instances)} 个 SolidWorks 实例，默认连接主活动实例。可通过 target_pid 指定特定实例。")
+
         try:
 
             sw = _get_active_object(prog_id)
+
+            if target_pid is not None and sw is not None:
+                actual_pid = int(get_com_member(sw, "GetProcessID") or 0)
+                if actual_pid != int(target_pid):
+                    print(f"[提示] 当前活动 COM 实例 PID ({actual_pid}) 与请求的目标 PID ({target_pid}) 不一致，正在尝试绑定指定实例...")
 
             print(f"已连接到运行中的 SolidWorks 实例（ProgID: {prog_id}）")
 
@@ -1522,21 +1564,41 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
                             dispatched = True
 
-                        except Exception:
+                        except Exception as disp_err:
 
-                            raise SolidWorksConnectionError("SW_INSTANCE_NOT_READY", "attach", "已有实例尚不可连接，已阻止重复启动")
+                            if is_co_e_server_exec_failure(disp_err):
+                                print(f"[诊断] 遭遇 CO_E_SERVER_EXEC_FAILURE (0x80080005)，等待已有进程进入就绪态并重试一次...")
+                                time.sleep(1.5)
+                                try:
+                                    sw = _get_active_object(prog_id)
+                                except Exception:
+                                    pass
+
+                            if sw is None:
+                                raise SolidWorksConnectionError("SW_INSTANCE_NOT_READY", "attach", f"已有实例尚不可连接 ({disp_err})，已阻止重复启动")
 
                 if sw is None:
 
-                    sw = win32com_client.Dispatch(prog_id)
-
-                    dispatched = True
+                    try:
+                        sw = win32com_client.Dispatch(prog_id)
+                        dispatched = True
+                    except Exception as first_disp_err:
+                        if is_co_e_server_exec_failure(first_disp_err):
+                            print(f"[诊断] Dispatch 启动抛出 CO_E_SERVER_EXEC_FAILURE (0x80080005)，尝试等待 2 秒并自动恢复重试...")
+                            time.sleep(2.0)
+                            sw = win32com_client.Dispatch(prog_id)
+                            dispatched = True
+                        else:
+                            raise
 
                     try:
 
                         pid = int(get_com_member(sw, "GetProcessID"))
 
                         launched_here = before is not None and pid > 0 and pid not in before
+                        # 安全准则：SolidWorks 桌面主进程绝不纳入 KILL_ON_JOB_CLOSE 的 Job Object，避免插件退出或崩溃时误杀用户 CAD 实例
+                        if launched_here:
+                            pass
 
                     except Exception:
 

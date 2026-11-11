@@ -1,0 +1,617 @@
+{
+  "timestamp": "2026-11-06T20:35:44",
+  "solidworks_revision": "34.4.1",
+  "parts": {
+    "stepped_shaft": {
+      "file": "remediated_stepped_shaft.SLDPRT",
+      "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_stepped_shaft.SLDPRT",
+      "stl_path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_stepped_shaft.STL",
+      "stl_bounds": {
+        "triangles_count": 312,
+        "min_x_mm": 0.0,
+        "max_x_mm": 50.0,
+        "min_y_mm": 0.023,
+        "max_y_mm": 49.977,
+        "min_z_mm": 0.0,
+        "max_z_mm": 180.0,
+        "delta_x_mm": 50.0,
+        "delta_y_mm": 49.955,
+        "delta_z_mm": 180.0
+      },
+      "z_span_verified_180mm": true,
+      "mass_properties": {
+        "units": {
+          "mass": "g",
+          "length": "mm",
+          "volume": "mm3",
+          "area": "mm2",
+          "inertia": "kg*mm2"
+        },
+        "mass_g": 251.938209,
+        "volume_mm3": 251938.208614,
+        "surface_area_mm2": 27958.776454,
+        "center_of_mass_mm": [
+          -0.0,
+          -0.007621,
+          29.856251
+        ],
+        "moment_of_inertia_kg_mm2": [
+          [
+            583.166333,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            583.166348,
+            -0.009876
+          ],
+          [
+            0.0,
+            -0.009876,
+            67.710702
+          ]
+        ],
+        "density_kg_m3": 1000.0,
+        "material": "",
+        "material_assigned": false,
+        "errors": [],
+        "warnings": [
+          "文档未分配材料，SolidWorks 按默认密度（1000 kg/m³）计算；质量结果不可直接用于工程判断，请分配材料或显式传入 density_kg_m3。"
+        ],
+        "status": null,
+        "implied_density_kg_m3": 1000.0
+      },
+      "features": [
+        {
+          "name": "收藏",
+          "type": "FavoriteFolder",
+          "suppressed": false
+        },
+        {
+          "name": "历史记录",
+          "type": "HistoryFolder",
+          "suppressed": false
+        },
+        {
+          "name": "选择集",
+          "type": "SelectionSetFolder",
+          "suppressed": false
+        },
+        {
+          "name": "传感器",
+          "type": "SensorFolder",
+          "suppressed": false
+        },
+        {
+          "name": "设计活页夹",
+          "type": "DocsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "注解",
+          "type": "DetailCabinet",
+          "suppressed": false
+        },
+        {
+          "name": "标注",
+          "type": "InkMarkupFolder",
+          "suppressed": false
+        },
+        {
+          "name": "光源与相机",
+          "type": "EnvFolder",
+          "suppressed": false
+        },
+        {
+          "name": "实体",
+          "type": "SolidBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "曲面实体",
+          "type": "SurfaceBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "备注",
+          "type": "CommentsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "方程式",
+          "type": "EqnFolder",
+          "suppressed": false
+        },
+        {
+          "name": "材质 <未指定>",
+          "type": "MaterialFolder",
+          "suppressed": false
+        },
+        {
+          "name": "前视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "上视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "右视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "原点",
+          "type": "OriginProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "Tables",
+          "type": "ConfigTableFolder",
+          "suppressed": false
+        },
+        {
+          "name": "草图1",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸1",
+          "type": "Extrusion",
+          "suppressed": false
+        },
+        {
+          "name": "草图2",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸2",
+          "type": "ICE",
+          "suppressed": false
+        },
+        {
+          "name": "草图3",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "切除-拉伸1",
+          "type": "ICE",
+          "suppressed": false
+        }
+      ],
+      "has_chamfer": false,
+      "has_fillet": false,
+      "chamfer_error": "(-2147352571, '类型不匹配。', None, 8)",
+      "fillet_error": null
+    },
+    "base": {
+      "file": "remediated_base.SLDPRT",
+      "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_base.SLDPRT",
+      "features": [
+        {
+          "name": "收藏",
+          "type": "FavoriteFolder",
+          "suppressed": false
+        },
+        {
+          "name": "历史记录",
+          "type": "HistoryFolder",
+          "suppressed": false
+        },
+        {
+          "name": "选择集",
+          "type": "SelectionSetFolder",
+          "suppressed": false
+        },
+        {
+          "name": "传感器",
+          "type": "SensorFolder",
+          "suppressed": false
+        },
+        {
+          "name": "设计活页夹",
+          "type": "DocsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "注解",
+          "type": "DetailCabinet",
+          "suppressed": false
+        },
+        {
+          "name": "标注",
+          "type": "InkMarkupFolder",
+          "suppressed": false
+        },
+        {
+          "name": "光源与相机",
+          "type": "EnvFolder",
+          "suppressed": false
+        },
+        {
+          "name": "实体",
+          "type": "SolidBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "曲面实体",
+          "type": "SurfaceBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "备注",
+          "type": "CommentsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "方程式",
+          "type": "EqnFolder",
+          "suppressed": false
+        },
+        {
+          "name": "材质 <未指定>",
+          "type": "MaterialFolder",
+          "suppressed": false
+        },
+        {
+          "name": "前视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "上视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "右视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "原点",
+          "type": "OriginProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "Tables",
+          "type": "ConfigTableFolder",
+          "suppressed": false
+        },
+        {
+          "name": "草图1",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸1",
+          "type": "Extrusion",
+          "suppressed": false
+        },
+        {
+          "name": "草图2",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "草图3",
+          "type": "ProfileFeature",
+          "suppressed": false
+        }
+      ],
+      "has_lpattern": false,
+      "lpattern_error": "无法选择阵列母特征: 切除-拉伸2",
+      "verdict": "NOT_IMPLEMENTED"
+    },
+    "gear": {
+      "file": "remediated_gear.SLDPRT",
+      "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_gear.SLDPRT",
+      "features": [
+        {
+          "name": "收藏",
+          "type": "FavoriteFolder",
+          "suppressed": false
+        },
+        {
+          "name": "历史记录",
+          "type": "HistoryFolder",
+          "suppressed": false
+        },
+        {
+          "name": "选择集",
+          "type": "SelectionSetFolder",
+          "suppressed": false
+        },
+        {
+          "name": "传感器",
+          "type": "SensorFolder",
+          "suppressed": false
+        },
+        {
+          "name": "设计活页夹",
+          "type": "DocsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "注解",
+          "type": "DetailCabinet",
+          "suppressed": false
+        },
+        {
+          "name": "标注",
+          "type": "InkMarkupFolder",
+          "suppressed": false
+        },
+        {
+          "name": "光源与相机",
+          "type": "EnvFolder",
+          "suppressed": false
+        },
+        {
+          "name": "实体",
+          "type": "SolidBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "曲面实体",
+          "type": "SurfaceBodyFolder",
+          "suppressed": false
+        },
+        {
+          "name": "备注",
+          "type": "CommentsFolder",
+          "suppressed": false
+        },
+        {
+          "name": "方程式",
+          "type": "EqnFolder",
+          "suppressed": false
+        },
+        {
+          "name": "材质 <未指定>",
+          "type": "MaterialFolder",
+          "suppressed": false
+        },
+        {
+          "name": "前视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "上视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "右视基准面",
+          "type": "RefPlane",
+          "suppressed": false
+        },
+        {
+          "name": "原点",
+          "type": "OriginProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "Tables",
+          "type": "ConfigTableFolder",
+          "suppressed": false
+        },
+        {
+          "name": "草图1",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "凸台-拉伸1",
+          "type": "Extrusion",
+          "suppressed": false
+        },
+        {
+          "name": "草图2",
+          "type": "ProfileFeature",
+          "suppressed": false
+        },
+        {
+          "name": "草图3",
+          "type": "ProfileFeature",
+          "suppressed": false
+        }
+      ],
+      "has_cirpattern": false,
+      "cirpattern_error": "无法选择阵列母特征: 切除-拉伸2",
+      "verdict": "NOT_IMPLEMENTED"
+    }
+  },
+  "assembly": {
+    "file": "remediated_assembly.SLDASM",
+    "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_assembly.SLDASM",
+    "step_path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_assembly.step",
+    "step_protocol": "AP203 (config_control_design)",
+    "mate_records": [
+      {
+        "mate": "Coincident_Base_Shaft",
+        "type": "Coincident",
+        "status": "CREATED"
+      },
+      {
+        "mate": "Radial_Align_Shaft_Base",
+        "type": "Coincident_Axis_X",
+        "status": "CREATED"
+      },
+      {
+        "mate": "Coincident_Gear_Shaft",
+        "type": "Coincident",
+        "status": "CREATED"
+      },
+      {
+        "mate": "Axial_Concentric_Lock_Gear_Shaft",
+        "type": "Concentric_Orthogonal_Lock",
+        "status": "CREATED"
+      }
+    ],
+    "mate_count": 4,
+    "mate_group_found": true,
+    "features": [
+      {
+        "name": "Comments",
+        "type": "CommentsFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Favorites",
+        "type": "FavoriteFolder",
+        "suppressed": false
+      },
+      {
+        "name": "History",
+        "type": "HistoryFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Selection Sets",
+        "type": "SelectionSetFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Sensors",
+        "type": "SensorFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Live Section Planes",
+        "type": "LiveSectionFolder",
+        "suppressed": false
+      },
+      {
+        "name": "设计活页夹",
+        "type": "DocsFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Annotations",
+        "type": "DetailCabinet",
+        "suppressed": false
+      },
+      {
+        "name": "Markups",
+        "type": "InkMarkupFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Lights and Cameras",
+        "type": "EnvFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Equations",
+        "type": "EqnFolder",
+        "suppressed": false
+      },
+      {
+        "name": "Front Plane",
+        "type": "RefPlane",
+        "suppressed": false
+      },
+      {
+        "name": "Top Plane",
+        "type": "RefPlane",
+        "suppressed": false
+      },
+      {
+        "name": "Right Plane",
+        "type": "RefPlane",
+        "suppressed": false
+      },
+      {
+        "name": "Origin",
+        "type": "OriginProfileFeature",
+        "suppressed": false
+      },
+      {
+        "name": "remediated_base-1",
+        "type": "Reference",
+        "suppressed": false
+      },
+      {
+        "name": "remediated_stepped_shaft-1",
+        "type": "Reference",
+        "suppressed": false
+      },
+      {
+        "name": "remediated_gear-1",
+        "type": "Reference",
+        "suppressed": false
+      },
+      {
+        "name": "Mates",
+        "type": "MateGroup",
+        "suppressed": false
+      }
+    ]
+  },
+  "drawing": {
+    "file": "remediated_drawing.SLDDRW",
+    "path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_drawing.SLDDRW",
+    "pdf_path": "D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\audit\\third-remediation-2026-11-06\\cad_test_sandbox\\remediated_drawing.pdf",
+    "pdf_size_bytes": 51932,
+    "views_created_count": 4,
+    "reopened_views_count": 4,
+    "views_created_names": [
+      "工程图视图1",
+      "工程图视图2",
+      "工程图视图3",
+      "工程图视图4"
+    ],
+    "reopened_view_nodes": [
+      "工程图视图1",
+      "工程图视图2",
+      "工程图视图3",
+      "工程图视图4"
+    ],
+    "has_isometric_view": true,
+    "offline_persistence_verified": true
+  },
+  "exports": {},
+  "quality_inspection": {
+    "model_name": "RemediatedSteppedShaft",
+    "overall_quality_score": 100.0,
+    "verification_status": "VERIFIED",
+    "is_acceptable": true,
+    "theoretical_volume_mm3": 251938.21,
+    "measured_volume_mm3": 251938.21,
+    "relative_error": 0.0,
+    "geometry_score": 100.0,
+    "topology_score": 100.0,
+    "stability_score": 100.0,
+    "manufacturing_score": 100.0,
+    "provenance_checked": true
+  },
+  "feature_api_verdicts": {
+    "LinearPattern": {
+      "status": "NOT_IMPLEMENTED",
+      "has_node": false,
+      "error_detail": "无法选择阵列母特征: 切除-拉伸2"
+    },
+    "CircularPattern": {
+      "status": "NOT_IMPLEMENTED",
+      "has_node": false,
+      "error_detail": "无法选择阵列母特征: 切除-拉伸2"
+    },
+    "Chamfer": {
+      "status": "NOT_IMPLEMENTED",
+      "has_node": false,
+      "error_detail": "(-2147352571, '类型不匹配。', None, 8)"
+    },
+    "Fillet": {
+      "status": "NOT_IMPLEMENTED",
+      "has_node": false,
+      "error_detail": null
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-audit = r"D:\Agent工作区\DeepSeek Harness工作区\dsh-solidworks-plugin\audit_round2_final"
+audit = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "audit_round2_final")
 required = [
     "FINAL_ACCEPTANCE_REPORT.md",
     "FINAL_EVIDENCE_INDEX.md",

@@ -1,0 +1,1589 @@
+{
+  "total_files_scanned": 101,
+  "api_call_sites": [
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/cad_graph_executor.py",
+      "line": 552,
+      "code_snippet": "get_com_member(sw, \"CloseDoc\", doc_title)"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/cad_task_context.py",
+      "line": 528,
+      "code_snippet": "get_com_member(sketch_mgr, \"InsertSketch\", True)"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/cad_task_context.py",
+      "line": 663,
+      "code_snippet": "get_com_member(sm, \"InsertSketch\", True)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/cad_task_context.py",
+      "line": 696,
+      "code_snippet": "get_com_member(sw_app, \"CloseDoc\", c_title)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/dimension_manager.py",
+      "line": 386,
+      "code_snippet": "app.CloseDoc(doc_title)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/shadow_backup.py",
+      "line": 92,
+      "code_snippet": "sw_app.CloseDoc(doc_title)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_assembly.py",
+      "line": 175,
+      "code_snippet": "errors.append(\"OpenDoc6: 返回 None\")"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_assembly.py",
+      "line": 371,
+      "code_snippet": "@brief 用 SolidWorks 2015+ 的 15 参数 AddMate5 创建 Mate，并检查错误码。"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_assembly.py",
+      "line": 405,
+      "code_snippet": "mate = asm_model.AddMate5("
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_assembly.py",
+      "line": 428,
+      "code_snippet": "f\"AddMate5 失败: type={mate_type}, error_status={error_status.value}\""
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 14,
+      "code_snippet": "- 拉伸凸台：FeatureExtrusion3 (23参数) -> FeatureExtrusion2 (19参数)"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 14,
+      "code_snippet": "- 拉伸凸台：FeatureExtrusion3 (23参数) -> FeatureExtrusion2 (19参数)"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 15,
+      "code_snippet": "- 拉伸切除：FeatureCut4 (27参数) -> FeatureCut3 (21参数)，双向方向自愈"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 15,
+      "code_snippet": "- 拉伸切除：FeatureCut4 (27参数) -> FeatureCut3 (21参数)，双向方向自愈"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 16,
+      "code_snippet": "- 镜像特征：InsertMirrorFeature2 -> InsertMirrorFeature"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 16,
+      "code_snippet": "- 镜像特征：InsertMirrorFeature2 -> InsertMirrorFeature"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 17,
+      "code_snippet": "- 质量属性：CreateMassProperty (高精度对象) -> GetMassProperties2 (数组)"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 17,
+      "code_snippet": "- 质量属性：CreateMassProperty (高精度对象) -> GetMassProperties2 (数组)"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 18,
+      "code_snippet": "- 装配配合：AddMate5 -> AddMate3 / CreateMate"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 18,
+      "code_snippet": "- 装配配合：AddMate5 -> AddMate3 / CreateMate"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "CreateMate",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 18,
+      "code_snippet": "- 装配配合：AddMate5 -> AddMate3 / CreateMate"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 19,
+      "code_snippet": "- 工程图视图：CreateDrawViewFromModelView3 -> CreateDrawViewFromModelView2"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 19,
+      "code_snippet": "- 工程图视图：CreateDrawViewFromModelView3 -> CreateDrawViewFromModelView2"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 207,
+      "code_snippet": "\"FeatureExtrusion3\": False,"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 208,
+      "code_snippet": "\"FeatureExtrusion2\": False,"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 209,
+      "code_snippet": "\"FeatureCut4\": False,"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 210,
+      "code_snippet": "\"FeatureCut3\": False,"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 211,
+      "code_snippet": "\"InsertMirrorFeature2\": False,"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 212,
+      "code_snippet": "\"InsertMirrorFeature\": False,"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 213,
+      "code_snippet": "\"CreateMassProperty\": False,"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 214,
+      "code_snippet": "\"GetMassProperties2\": False,"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 215,
+      "code_snippet": "\"AddMate5\": False,"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 216,
+      "code_snippet": "\"CreateDrawViewFromModelView3\": False"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 272,
+      "code_snippet": "\"FeatureExtrusion3\", \"FeatureExtrusion2\","
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 272,
+      "code_snippet": "\"FeatureExtrusion3\", \"FeatureExtrusion2\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 273,
+      "code_snippet": "\"FeatureCut4\", \"FeatureCut3\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 273,
+      "code_snippet": "\"FeatureCut4\", \"FeatureCut3\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 274,
+      "code_snippet": "\"InsertMirrorFeature2\", \"InsertMirrorFeature\""
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 274,
+      "code_snippet": "\"InsertMirrorFeature2\", \"InsertMirrorFeature\""
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 279,
+      "code_snippet": "if api_name in (\"FeatureExtrusion3\", \"FeatureCut4\", \"InsertMirrorFeature2\"):"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 279,
+      "code_snippet": "if api_name in (\"FeatureExtrusion3\", \"FeatureCut4\", \"InsertMirrorFeature2\"):"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 279,
+      "code_snippet": "if api_name in (\"FeatureExtrusion3\", \"FeatureCut4\", \"InsertMirrorFeature2\"):"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 284,
+      "code_snippet": "for api_name in [\"CreateMassProperty\", \"GetMassProperties2\"]:"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 284,
+      "code_snippet": "for api_name in [\"CreateMassProperty\", \"GetMassProperties2\"]:"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 290,
+      "code_snippet": "if active_doc and hasattr(active_doc, \"AddMate5\"):"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 291,
+      "code_snippet": "capabilities[\"supported_apis\"][\"AddMate5\"] = True"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 293,
+      "code_snippet": "capabilities[\"supported_apis\"][\"AddMate5\"] = (year >= 2024)"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 295,
+      "code_snippet": "if active_doc and hasattr(active_doc, \"CreateDrawViewFromModelView3\"):"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 296,
+      "code_snippet": "capabilities[\"supported_apis\"][\"CreateDrawViewFromModelView3\"] = True"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 298,
+      "code_snippet": "capabilities[\"supported_apis\"][\"CreateDrawViewFromModelView3\"] = (year >= 2024)"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 314,
+      "code_snippet": "\"extrusion\": \"FeatureExtrusion3\" if capabilities[\"supported_apis\"].get(\"FeatureExtrusion3\", False) else \"FeatureExtrusio"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 314,
+      "code_snippet": "\"extrusion\": \"FeatureExtrusion3\" if capabilities[\"supported_apis\"].get(\"FeatureExtrusion3\", False) else \"FeatureExtrusio"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 314,
+      "code_snippet": "\"extrusion\": \"FeatureExtrusion3\" if capabilities[\"supported_apis\"].get(\"FeatureExtrusion3\", False) else \"FeatureExtrusio"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 315,
+      "code_snippet": "\"cut\": \"FeatureCut4\" if capabilities[\"supported_apis\"].get(\"FeatureCut4\", False) else \"FeatureCut3\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 315,
+      "code_snippet": "\"cut\": \"FeatureCut4\" if capabilities[\"supported_apis\"].get(\"FeatureCut4\", False) else \"FeatureCut3\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 315,
+      "code_snippet": "\"cut\": \"FeatureCut4\" if capabilities[\"supported_apis\"].get(\"FeatureCut4\", False) else \"FeatureCut3\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 316,
+      "code_snippet": "\"mirror\": \"InsertMirrorFeature2\" if capabilities[\"supported_apis\"].get(\"InsertMirrorFeature2\", False) else \"InsertMirror"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 316,
+      "code_snippet": "\"mirror\": \"InsertMirrorFeature2\" if capabilities[\"supported_apis\"].get(\"InsertMirrorFeature2\", False) else \"InsertMirror"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 316,
+      "code_snippet": "\"mirror\": \"InsertMirrorFeature2\" if capabilities[\"supported_apis\"].get(\"InsertMirrorFeature2\", False) else \"InsertMirror"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 317,
+      "code_snippet": "\"mass\": \"CreateMassProperty\" if capabilities[\"supported_apis\"].get(\"CreateMassProperty\", False) else \"GetMassProperties2"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 317,
+      "code_snippet": "\"mass\": \"CreateMassProperty\" if capabilities[\"supported_apis\"].get(\"CreateMassProperty\", False) else \"GetMassProperties2"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 317,
+      "code_snippet": "\"mass\": \"CreateMassProperty\" if capabilities[\"supported_apis\"].get(\"CreateMassProperty\", False) else \"GetMassProperties2"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 353,
+      "code_snippet": "1. 首选 FeatureExtrusion3 (23 参数)。"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 354,
+      "code_snippet": "2. 若触发接口/参数不匹配异常 (DISP_E_MEMBERNOTFOUND 等)，安全回退至 FeatureExtrusion2 (19 参数)。"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 357,
+      "code_snippet": "extrude3 = getattr(feat_mgr, \"FeatureExtrusion3\", None)"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 373,
+      "code_snippet": "logger.info(f\"FeatureExtrusion3 接口缺失/签名不匹配 ({e})，正在平滑回退 FeatureExtrusion2...\")"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 373,
+      "code_snippet": "logger.info(f\"FeatureExtrusion3 接口缺失/签名不匹配 ({e})，正在平滑回退 FeatureExtrusion2...\")"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 378,
+      "code_snippet": "primary_api=\"FeatureExtrusion3\","
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 379,
+      "code_snippet": "fallback_api=\"FeatureExtrusion2\","
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 384,
+      "code_snippet": "logger.info(\"FeatureExtrusion3 接口未暴露，正在平滑回退 FeatureExtrusion2...\")"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 384,
+      "code_snippet": "logger.info(\"FeatureExtrusion3 接口未暴露，正在平滑回退 FeatureExtrusion2...\")"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 389,
+      "code_snippet": "primary_api=\"FeatureExtrusion3\","
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 390,
+      "code_snippet": "fallback_api=\"FeatureExtrusion2\","
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 391,
+      "code_snippet": "reason=\"FeatureExtrusion3 not found on FeatureManager\","
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 396,
+      "code_snippet": "extrude2 = getattr(feat_mgr, \"FeatureExtrusion2\", None)"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 412,
+      "code_snippet": "logger.warning(f\"FeatureExtrusion2 回退调用失败: {e}\")"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 415,
+      "code_snippet": "\"当前 SolidWorks 版本无法调用拉伸凸台接口 (FeatureExtrusion3/2)，请检查 CAD 安装或草图选区合法性。\","
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 417,
+      "code_snippet": "feature=\"FeatureExtrusion\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 448,
+      "code_snippet": "1. 首选 FeatureCut4 (27 参数完整签名)，内建反向自愈。"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 449,
+      "code_snippet": "2. 若触发接口缺失或参数不匹配，回退至 FeatureCut3 (21 参数旧版签名)。"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 452,
+      "code_snippet": "cut4 = getattr(feat_mgr, \"FeatureCut4\", None)"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 483,
+      "code_snippet": "logger.info(f\"FeatureCut4 接口缺失/签名不匹配 ({e})，正在回退至 FeatureCut3...\")"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 483,
+      "code_snippet": "logger.info(f\"FeatureCut4 接口缺失/签名不匹配 ({e})，正在回退至 FeatureCut3...\")"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 488,
+      "code_snippet": "primary_api=\"FeatureCut4\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 489,
+      "code_snippet": "fallback_api=\"FeatureCut3\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 494,
+      "code_snippet": "logger.info(\"FeatureCut4 接口未暴露，正在回退至 FeatureCut3...\")"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 494,
+      "code_snippet": "logger.info(\"FeatureCut4 接口未暴露，正在回退至 FeatureCut3...\")"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 499,
+      "code_snippet": "primary_api=\"FeatureCut4\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 500,
+      "code_snippet": "fallback_api=\"FeatureCut3\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 501,
+      "code_snippet": "reason=\"FeatureCut4 not found on FeatureManager\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 506,
+      "code_snippet": "cut3 = getattr(feat_mgr, \"FeatureCut3\", None)"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 537,
+      "code_snippet": "logger.warning(f\"FeatureCut3 回退调用失败: {e}\")"
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 540,
+      "code_snippet": "\"当前 SolidWorks 版本无法调用拉伸切除接口 (FeatureCut4/3)，请确认切除几何是否与实体相交。\","
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 542,
+      "code_snippet": "feature=\"FeatureCut\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 558,
+      "code_snippet": "首选 InsertMirrorFeature2；缺失时平滑降级至 InsertMirrorFeature。"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 558,
+      "code_snippet": "首选 InsertMirrorFeature2；缺失时平滑降级至 InsertMirrorFeature。"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 560,
+      "code_snippet": "mirror2 = getattr(feat_mgr, \"InsertMirrorFeature2\", None)"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 569,
+      "code_snippet": "logger.info(f\"InsertMirrorFeature2 接口缺失 ({e})，正在回退至 InsertMirrorFeature...\")"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 569,
+      "code_snippet": "logger.info(f\"InsertMirrorFeature2 接口缺失 ({e})，正在回退至 InsertMirrorFeature...\")"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 574,
+      "code_snippet": "primary_api=\"InsertMirrorFeature2\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 575,
+      "code_snippet": "fallback_api=\"InsertMirrorFeature\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 580,
+      "code_snippet": "logger.info(\"InsertMirrorFeature2 接口未暴露，正在回退至 InsertMirrorFeature...\")"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 580,
+      "code_snippet": "logger.info(\"InsertMirrorFeature2 接口未暴露，正在回退至 InsertMirrorFeature...\")"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 585,
+      "code_snippet": "primary_api=\"InsertMirrorFeature2\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 586,
+      "code_snippet": "fallback_api=\"InsertMirrorFeature\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 587,
+      "code_snippet": "reason=\"InsertMirrorFeature2 not found on FeatureManager\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 591,
+      "code_snippet": "mirror1 = getattr(feat_mgr, \"InsertMirrorFeature\", None)"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 609,
+      "code_snippet": "logger.warning(f\"InsertMirrorFeature 回退失败: {e}\")"
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 612,
+      "code_snippet": "\"当前 SolidWorks 版本无法调用镜像特征接口 (InsertMirrorFeature2/1)，请检查镜像基准面与特征选择。\","
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 614,
+      "code_snippet": "feature=\"InsertMirrorFeature\","
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 622,
+      "code_snippet": "首选高精度 Extension.CreateMassProperty；"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 623,
+      "code_snippet": "不可用或处于轻量只读状态时，平滑回退至 Extension.GetMassProperties2 数组解析。"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 641,
+      "code_snippet": "if ext and hasattr(ext, \"CreateMassProperty\"):"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 642,
+      "code_snippet": "mp = get_com_member(ext, \"CreateMassProperty\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 654,
+      "code_snippet": "logger.debug(f\"CreateMassProperty 调用失败，回退旧版属性接口: {e}\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 660,
+      "code_snippet": "if ext and hasattr(ext, \"GetMassProperties2\"):"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 664,
+      "code_snippet": "props = ext.GetMassProperties2(*try_args)"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 678,
+      "code_snippet": "logger.debug(f\"GetMassProperties2 回退失败: {e}\")"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 704,
+      "code_snippet": "首选 AddMate5 (15 参数现代接口)；缺失时平滑回退至 AddMate3 (14 参数) / CreateMate。"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 704,
+      "code_snippet": "首选 AddMate5 (15 参数现代接口)；缺失时平滑回退至 AddMate3 (14 参数) / CreateMate。"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "CreateMate",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 704,
+      "code_snippet": "首选 AddMate5 (15 参数现代接口)；缺失时平滑回退至 AddMate3 (14 参数) / CreateMate。"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 706,
+      "code_snippet": "add_mate5 = getattr(asm_doc, \"AddMate5\", None)"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 717,
+      "code_snippet": "logger.info(f\"AddMate5 接口缺失 ({e})，正在回退至 AddMate3...\")"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 717,
+      "code_snippet": "logger.info(f\"AddMate5 接口缺失 ({e})，正在回退至 AddMate3...\")"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 722,
+      "code_snippet": "primary_api=\"AddMate5\","
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 723,
+      "code_snippet": "fallback_api=\"AddMate3\","
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 728,
+      "code_snippet": "logger.info(\"AddMate5 接口未暴露，正在回退至 AddMate3...\")"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 728,
+      "code_snippet": "logger.info(\"AddMate5 接口未暴露，正在回退至 AddMate3...\")"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 733,
+      "code_snippet": "primary_api=\"AddMate5\","
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 734,
+      "code_snippet": "fallback_api=\"AddMate3\","
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 735,
+      "code_snippet": "reason=\"AddMate5 not found on AssemblyDoc\","
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 739,
+      "code_snippet": "add_mate3 = getattr(asm_doc, \"AddMate3\", None)"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 754,
+      "code_snippet": "logger.warning(f\"AddMate3 回退失败: {e}\")"
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate5",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 757,
+      "code_snippet": "\"当前 SolidWorks 版本无法调用装配体配合接口 (AddMate5/3)，请确认装配基准面与选择集状态。\","
+    },
+    {
+      "category": "AssemblyMate",
+      "api_name": "AddMate",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 759,
+      "code_snippet": "feature=\"AddMate\","
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 775,
+      "code_snippet": "首选 CreateDrawViewFromModelView3；缺失时回退至 CreateDrawViewFromModelView2。"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 775,
+      "code_snippet": "首选 CreateDrawViewFromModelView3；缺失时回退至 CreateDrawViewFromModelView2。"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 777,
+      "code_snippet": "create3 = getattr(draw_doc, \"CreateDrawViewFromModelView3\", None)"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 784,
+      "code_snippet": "logger.info(f\"CreateDrawViewFromModelView3 接口缺失 ({e})，正在回退至 CreateDrawViewFromModelView2...\")"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 784,
+      "code_snippet": "logger.info(f\"CreateDrawViewFromModelView3 接口缺失 ({e})，正在回退至 CreateDrawViewFromModelView2...\")"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 789,
+      "code_snippet": "primary_api=\"CreateDrawViewFromModelView3\","
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 790,
+      "code_snippet": "fallback_api=\"CreateDrawViewFromModelView2\","
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 795,
+      "code_snippet": "logger.info(\"CreateDrawViewFromModelView3 接口未暴露，正在回退至 CreateDrawViewFromModelView2...\")"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 795,
+      "code_snippet": "logger.info(\"CreateDrawViewFromModelView3 接口未暴露，正在回退至 CreateDrawViewFromModelView2...\")"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 800,
+      "code_snippet": "primary_api=\"CreateDrawViewFromModelView3\","
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 801,
+      "code_snippet": "fallback_api=\"CreateDrawViewFromModelView2\","
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 802,
+      "code_snippet": "reason=\"CreateDrawViewFromModelView3 not found on DrawingDoc\","
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 806,
+      "code_snippet": "create2 = getattr(draw_doc, \"CreateDrawViewFromModelView2\", None)"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 816,
+      "code_snippet": "logger.warning(f\"CreateDrawViewFromModelView2 回退失败: {e}\")"
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawViewFromModelView3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 819,
+      "code_snippet": "\"当前 SolidWorks 版本无法调用工程图视图创建接口 (CreateDrawViewFromModelView3/2)，请确认模型路径与视图名称。\","
+    },
+    {
+      "category": "DrawingView",
+      "api_name": "CreateDrawView",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_compat.py",
+      "line": 821,
+      "code_snippet": "feature=\"CreateDrawView\","
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_connect.py",
+      "line": 2171,
+      "code_snippet": "print(\"提示: LoadFile4 导入外来 CAD 文件时不支持 OpenDoc6 silent 选项，已忽略该参数\")"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_connect.py",
+      "line": 2223,
+      "code_snippet": "model = sw.OpenDoc6(file_path, doc_type, options, \"\", errors, warnings)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_connect.py",
+      "line": 2239,
+      "code_snippet": "model = dynamic_sw.OpenDoc6(file_path, doc_type, options, \"\", errors, warnings)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "SaveAs3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_connect.py",
+      "line": 2348,
+      "code_snippet": "save_code = get_com_member(model, \"SaveAs3\", target_path, 0, 1)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "SaveAs3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_connect.py",
+      "line": 2364,
+      "code_snippet": "print(f\"保存失败, SaveAs3 错误码: {save_code}\")"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_connect.py",
+      "line": 2522,
+      "code_snippet": "get_com_member(sw, \"CloseDoc\", title_to_close)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_delivery.py",
+      "line": 811,
+      "code_snippet": "\"\"\"@brief 从 comtypes OpenDoc6 返回值中提取 IModelDoc2 指针。\"\"\""
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_delivery.py",
+      "line": 823,
+      "code_snippet": "raise RuntimeError(f\"comtypes OpenDoc6 未返回 ModelDoc2: {value!r}\")"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_delivery.py",
+      "line": 835,
+      "code_snippet": "\"\"\"@brief 在 OpenDoc6 返回空时，校验并返回当前活动文档。\"\"\""
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "OpenDoc6",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_delivery.py",
+      "line": 995,
+      "code_snippet": "open_result = sw.OpenDoc6(str(source_path), document_type, 1 | 16 | 64 | 512 | (2 if opened_here else 0), \"\")"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_delivery.py",
+      "line": 1048,
+      "code_snippet": "sw.CloseDoc(str(document.GetTitle()))"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "SaveAs",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_export.py",
+      "line": 82,
+      "code_snippet": "success = model.Extension.SaveAs(output_path, 0, 1, pdf_data, errors, warnings)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_export.py",
+      "line": 351,
+      "code_snippet": "sw.CloseDoc(doc_title)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "SaveAs",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_export.py",
+      "line": 390,
+      "code_snippet": "success = model.Extension.SaveAs("
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 74,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateCenterRectangle",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 75,
+      "code_snippet": "swModel.SketchManager.CreateCenterRectangle 0#, 0#, 0#, 0.025, 0.025, 0#"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 76,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 77,
+      "code_snippet": "swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, F"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 96,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateCircleByRadius",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 97,
+      "code_snippet": "swModel.SketchManager.CreateCircleByRadius 0#, 0#, 0#, 0.025"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 98,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 99,
+      "code_snippet": "swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, F"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 118,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 120,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 121,
+      "code_snippet": "swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.01, 0#, False, False, False, False, 0#, 0#, False, F"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 140,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateCenterRectangle",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 141,
+      "code_snippet": "swModel.SketchManager.CreateCenterRectangle 0#, 0#, 0#, 0.025, 0.015, 0#"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateCircleByRadius",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 142,
+      "code_snippet": "swModel.SketchManager.CreateCircleByRadius 0#, 0#, 0#, 0.006"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 143,
+      "code_snippet": "swModel.SketchManager.InsertSketch True"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 79,
+      "code_snippet": "质量属性通过 ``IModelDocExtension.CreateMassProperty`` 获取，这是官方"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 115,
+      "code_snippet": "mass_property = get_com_member(extension, \"CreateMassProperty\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 132,
+      "code_snippet": "result[\"warnings\"].append(\"已通过旧版接口 GetMassProperties2 成功提取质量属性。\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 134,
+      "code_snippet": "result[\"errors\"].append(\"CreateMassProperty 返回空对象且回退接口未获取到数据\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 36,
+      "code_snippet": "static object BodyRow(IBody2 b){var m=b.GetMassProperties(1) as double[];return new {name=b.Name,type=b.GetType(),color="
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateLine",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 48,
+      "code_snippet": "if(s.control_points_mm.Length==2){var a=s.control_points_mm[0];var b=s.control_points_mm[1];segment=(ISketchSegment)sk.C"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 64,
+      "code_snippet": "var v=b.bounds_mm;var sk=d.SketchManager;sk.InsertSketch(true);sk.AddToDB=true;"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateLine",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 65,
+      "code_snippet": "try{sk.CreateLine(v[0]/1000,v[1]/1000,0,v[3]/1000,v[1]/1000,0);sk.CreateLine(v[3]/1000,v[1]/1000,0,v[3]/1000,v[4]/1000,0"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateLine",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 65,
+      "code_snippet": "try{sk.CreateLine(v[0]/1000,v[1]/1000,0,v[3]/1000,v[1]/1000,0);sk.CreateLine(v[3]/1000,v[1]/1000,0,v[3]/1000,v[4]/1000,0"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateLine",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 65,
+      "code_snippet": "try{sk.CreateLine(v[0]/1000,v[1]/1000,0,v[3]/1000,v[1]/1000,0);sk.CreateLine(v[3]/1000,v[1]/1000,0,v[3]/1000,v[4]/1000,0"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateLine",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 65,
+      "code_snippet": "try{sk.CreateLine(v[0]/1000,v[1]/1000,0,v[3]/1000,v[1]/1000,0);sk.CreateLine(v[3]/1000,v[1]/1000,0,v[3]/1000,v[4]/1000,0"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 66,
+      "code_snippet": "sk.InsertSketch(true);var profile=(IFeature)d.FeatureByPositionReverse(0);profile.Name=b.name+\"_PROFILE\";d.ClearSelectio"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 67,
+      "code_snippet": "var f=d.FeatureManager.FeatureExtrusion3(true,false,false,0,0,(v[5]-v[2])/1000,0,false,false,false,false,0,0,false,false"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "SaveAs",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 93,
+      "code_snippet": "int warn=0;if(!d.Extension.SaveAs(r.output_path,0,1,null,ref error,ref warn)||error!=0||!Same(d.GetPathName(),r.output_p"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 427,
+      "code_snippet": "轮廓/区域更接近 FeatureExtrusion3 需要的预选对象；不可用时再回退草图"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 510,
+      "code_snippet": "model.SketchManager.InsertSketch(True)"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "InsertSketch",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 524,
+      "code_snippet": "model.SketchManager.InsertSketch(True)"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateLine",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 575,
+      "code_snippet": "return model.SketchManager.CreateLine(x1, y1, 0, x2, y2, 0)"
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateCenterRectangle",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 580,
+      "code_snippet": "return model.SketchManager.CreateCenterRectangle("
+    },
+    {
+      "category": "SketchCreation",
+      "api_name": "CreateCircleByRadius",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 592,
+      "code_snippet": "return model.SketchManager.CreateCircleByRadius(cx, cy, 0, radius)"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 768,
+      "code_snippet": "return model.FeatureManager.FeatureExtrusion3("
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 808,
+      "code_snippet": "feat = model.FeatureManager.FeatureCut4("
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 818,
+      "code_snippet": "feat = model.FeatureManager.FeatureCut4("
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 849,
+      "code_snippet": "return model.FeatureManager.FeatureExtrusion3("
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 990,
+      "code_snippet": "return model.FeatureManager.InsertMirrorFeature2(False, False, False, False, 0)"
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "SaveAs",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_review.py",
+      "line": 1076,
+      "code_snippet": "\"重新检查保存/导出路径和 SolidWorks SaveAs 错误码。\","
+    },
+    {
+      "category": "FileSaveOpen",
+      "api_name": "CloseDoc",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_session.py",
+      "line": 382,
+      "code_snippet": "self.sw.CloseDoc(title)"
+    }
+  ],
+  "summary_by_api": {
+    "CloseDoc": 8,
+    "InsertSketch": 14,
+    "OpenDoc6": 8,
+    "AddMate5": 16,
+    "FeatureExtrusion3": 18,
+    "FeatureExtrusion2": 14,
+    "FeatureCut4": 16,
+    "FeatureCut3": 11,
+    "InsertMirrorFeature2": 15,
+    "InsertMirrorFeature": 12,
+    "CreateMassProperty": 12,
+    "GetMassProperties2": 9,
+    "AddMate3": 8,
+    "CreateMate": 2,
+    "CreateDrawViewFromModelView3": 13,
+    "CreateDrawViewFromModelView2": 8,
+    "FeatureExtrusion": 1,
+    "FeatureCut": 1,
+    "AddMate": 1,
+    "CreateDrawView": 1,
+    "SaveAs3": 2,
+    "SaveAs": 4,
+    "CreateCenterRectangle": 3,
+    "CreateCircleByRadius": 3,
+    "GetMassProperties": 1,
+    "CreateLine": 6
+  },
+  "bypass_candidates": [
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 77,
+      "code_snippet": "swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, F"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 99,
+      "code_snippet": "swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.05, 0#, False, False, False, False, 0#, 0#, False, F"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_macro_guard.py",
+      "line": 121,
+      "code_snippet": "swModel.FeatureManager.FeatureExtrusion2 True, False, True, 0, 0, 0.01, 0#, False, False, False, False, 0#, 0#, False, F"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 79,
+      "code_snippet": "质量属性通过 ``IModelDocExtension.CreateMassProperty`` 获取，这是官方"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 115,
+      "code_snippet": "mass_property = get_com_member(extension, \"CreateMassProperty\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 132,
+      "code_snippet": "result[\"warnings\"].append(\"已通过旧版接口 GetMassProperties2 成功提取质量属性。\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "CreateMassProperty",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_measure.py",
+      "line": 134,
+      "code_snippet": "result[\"errors\"].append(\"CreateMassProperty 返回空对象且回退接口未获取到数据\")"
+    },
+    {
+      "category": "MassProperty",
+      "api_name": "GetMassProperties",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 36,
+      "code_snippet": "static object BodyRow(IBody2 b){var m=b.GetMassProperties(1) as double[];return new {name=b.Name,type=b.GetType(),color="
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_native_wire.cs",
+      "line": 67,
+      "code_snippet": "var f=d.FeatureManager.FeatureExtrusion3(true,false,false,0,0,(v[5]-v[2])/1000,0,false,false,false,false,0,0,false,false"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 427,
+      "code_snippet": "轮廓/区域更接近 FeatureExtrusion3 需要的预选对象；不可用时再回退草图"
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 768,
+      "code_snippet": "return model.FeatureManager.FeatureExtrusion3("
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 808,
+      "code_snippet": "feat = model.FeatureManager.FeatureCut4("
+    },
+    {
+      "category": "FeatureCut",
+      "api_name": "FeatureCut4",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 818,
+      "code_snippet": "feat = model.FeatureManager.FeatureCut4("
+    },
+    {
+      "category": "FeatureExtrusion",
+      "api_name": "FeatureExtrusion3",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 849,
+      "code_snippet": "return model.FeatureManager.FeatureExtrusion3("
+    },
+    {
+      "category": "InsertMirrorFeature",
+      "api_name": "InsertMirrorFeature2",
+      "file": "vendor/solidworks-automation-skill/scripts/sw_part.py",
+      "line": 990,
+      "code_snippet": "return model.FeatureManager.InsertMirrorFeature2(False, False, False, False, 0)"
+    }
+  ]
+}

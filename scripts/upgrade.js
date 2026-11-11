@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync } from
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { getDshDesktopProfileDir } from './dsh_adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,6 +63,14 @@ async function main() {
       copyFileSync(src, path.join(backupDir, name));
       backedUpCount++;
     }
+  }
+
+  // 备份 DSH Profile 配置文件
+  const dshProfileDir = getDshDesktopProfileDir();
+  const dshPatchFile = path.join(dshProfileDir, 'cordis.patch.yml');
+  if (existsSync(dshPatchFile)) {
+    copyFileSync(dshPatchFile, path.join(backupDir, 'cordis.patch.yml'));
+    backedUpCount++;
   }
 
   // 写入备份元数据

@@ -9,9 +9,14 @@ from pathlib import Path
 try:
     from scripts.sw_preflight import import_com_dependencies
     from scripts.sw_connect import create_empty_dispatch_variant, get_com_member
+    from scripts.sw_compat import safe_create_drawing_view
 except ImportError:
     from sw_preflight import import_com_dependencies
     from sw_connect import create_empty_dispatch_variant, get_com_member
+    try:
+        from sw_compat import safe_create_drawing_view
+    except ImportError:
+        safe_create_drawing_view = None
 
 pythoncom, _win32com, VARIANT = import_com_dependencies()
 
@@ -742,7 +747,10 @@ def create_adaptive_standard_views(drawing_model, part_path, layout) -> dict:
     numerator, denominator = layout.get("scale_ratio") or _scale_ratio(layout["scale"])
     for item in layout.get("views", []):
         center = item["center"]
-        view = drawing_model.CreateDrawViewFromModelView3(part_path, item["name"], center[0], center[1], 0)
+        if safe_create_drawing_view is not None:
+            view = safe_create_drawing_view(drawing_model, str(part_path), str(item["name"]), center[0], center[1], 0)
+        else:
+            view = drawing_model.CreateDrawViewFromModelView3(part_path, item["name"], center[0], center[1], 0)
         if view is None:
             if not created:
                 projection = str(layout.get("projection", "third_angle")).lower()

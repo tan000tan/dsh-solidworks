@@ -1,0 +1,90 @@
+﻿On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   NOTICE
+	modified:   bin/dsh-solidworks.js
+	modified:   docs/USER_GUIDE.md
+	modified:   docs/verification.md
+	modified:   dsh-plugin.json
+	modified:   lib/discover.js
+	modified:   lib/index.js
+	modified:   lib/policy.js
+	modified:   scripts/doctor.js
+	modified:   scripts/generate_mcp_config.js
+	modified:   scripts/setup.js
+	modified:   tests/failure_injection_test.py
+	modified:   tests/ir_solidworks_end_to_end_test.py
+	modified:   tests/mcp.test.js
+	modified:   tests/mcp_failure_cleanup_e2e_test.py
+	modified:   tests/mcp_mid_operation_failure_test.py
+	modified:   tests/package.test.js
+	modified:   tests/probe-server.mjs
+	modified:   vendor/solidworks-automation-skill/mcp-server/server.py
+	modified:   vendor/solidworks-automation-skill/scripts/cad_task_context.py
+	modified:   vendor/solidworks-automation-skill/scripts/dimension_manager.py
+	modified:   vendor/solidworks-automation-skill/scripts/feature_graph_ir.py
+	modified:   vendor/solidworks-automation-skill/scripts/sw_connect.py
+	modified:   vendor/solidworks-automation-skill/scripts/sw_native_wire.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	audit/
+	docs/CAD_GRAPH_EXECUTOR_ARCHITECTURE.md
+	docs/audit_night_03/
+	docs/drawing_research/
+	docs/extreme_engineering/
+	docs/night_engineering_04/
+	docs/night_engineering_05/
+	docs/night_engineering_07/
+	docs/overnight/
+	docs/roadmap/
+	docs/self_review_engine/
+	docs/stage4_core_cad/
+	docs/stage5_advanced_ai_cad/
+	docs/system_audit_01/
+	dsh-mcp-config.json
+	dsh-solidworks-v0.2.0-git-release-report.md
+	scripts/generate_review_package_data.py
+	scripts/run_all_python_tests.py
+	tests/cad_graph_executor_test.py
+	tests/cad_task_planner_test.py
+	tests/dimension_dependency_graph_test.py
+	tests/dimension_system_test.py
+	tests/engine_reliability_test.py
+	tests/inspector_adversarial_attack_test.py
+	tests/model_quality_inspector_test.py
+	tests/real_cad/
+	tests/rem_compat_test.py
+	tests/rem_stress_test.py
+	tests/rem_user_test.py
+	tests/remediation_cad_quality_inspector_test.py
+	tests/security_regression_test.py
+	tests/stage5_advanced_aicad_integration_test.py
+	tests/stage5_assembly_planner_test.py
+	tests/stage5_auto_iteration_test.py
+	tests/stage5_cad_context_test.py
+	tests/stage5_feature_tree_optimizer_test.py
+	tests/stage5_multi_scheme_planner_test.py
+	tests/stage5_quality_inspector_test.py
+	tests/task_state_machine_test.py
+	tests/unified_dimension_migration_test.py
+	vendor/solidworks-automation-skill/scripts/cad_graph_executor.py
+	vendor/solidworks-automation-skill/scripts/cad_task_planner.py
+	vendor/solidworks-automation-skill/scripts/design_intent.py
+	vendor/solidworks-automation-skill/scripts/dimension_dependency_graph.py
+	vendor/solidworks-automation-skill/scripts/dimension_ir.py
+	vendor/solidworks-automation-skill/scripts/dimension_modifier.py
+	vendor/solidworks-automation-skill/scripts/dimension_reader.py
+	vendor/solidworks-automation-skill/scripts/dimension_resolver.py
+	vendor/solidworks-automation-skill/scripts/dimension_validator.py
+	vendor/solidworks-automation-skill/scripts/model_quality_inspector.py
+	vendor/solidworks-automation-skill/scripts/model_rebuilder.py
+	鎶€鏈璁?
+	娴嬭瘯浠ｇ爜/
+	椤圭洰澶囦唤/
+	椤圭洰鏂囨。/
+	椤圭洰鑴氭湰/
+	楠屾敹鎶ュ憡/
+
+no changes added to commit (use "git add" and/or "git commit -a")

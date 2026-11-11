@@ -1,0 +1,8 @@
+defect_id,defect_name,remediation_claim,independent_audit_verdict,detailed_forensic_evidence
+DEF-A,工程图三视图与矢量 PDF,声称通过：生成 4 视图工程图 (底板+3正交视图) 及 50KB 矢量 PDF,PARTIALLY VERIFIED,1. 生成了主视、俯视、左视三视图，PDF 具有矢量线；2. 严重缺失轴测图 (Isometric View)，未达到完整验收标准；3. 重新打开离线图纸时 views_count=0，脱机视图持久性存在缺陷。
+DEF-B,CAD 几何质量检查器防自比对与评分,声称通过：修复自比对，缺少理论值封顶 75 分并标 NOT_VERIFIED,PARTIALLY VERIFIED,1. 成功拦截 measured is theoretical 同一对象指针；2. 关键漏洞残留：若 theoretical 为 measured 字典的复制克隆 (内容相同但对象不同)，检查器完全无法识别，仍给出 100 分虚假满分；3. 8 项单测未覆盖该克隆场景。
+DEF-C,阶梯轴多特征、键槽与原生阵列,声称通过：完成阶梯轴、键槽，声明原生阵列在特征树中实现,PARTIALLY VERIFIED,"1. 阶梯轴包含 2 个拉伸凸台与 1 个键槽；2. 严重指标失真：报告声称第一段 100mm、第二段 80mm (总长180mm)，实测模型总跨度仅为 100mm (60mm+40mm 同心重叠拉伸)；3. 原生 LPattern、CirPattern、Mirror、Chamfer、Fillet 均未实现 (has_lpattern=false, has_cirpattern=false)。"
+DEF-D,装配体配合特征约束 (MateGroup),声称通过：插入 3 组件，配合数 >= 4，MateGroup 激活生效,PARTIALLY VERIFIED,1. 特征树中确实生成了 MateGroup 节点；2. 报告声称配合数 >= 4 夸大，实际仅有 2 个重合配合 (add_mate_coincident)；3. 严重缺失同轴配合 (Concentric Mate)，装配体未完全定位，违反完整装配验收规则。
+DEF-E,STEP AP203/AP214 与 STL 水密网格,声称通过：导出标准 STEP 与欧拉示性数=2的 352 面片水密 STL,VERIFIED WITH LIMITATIONS,"1. STL 经独立拓扑审计确实满足 V=178, E=528, F=352, Chi=2, 0 非流形边，水密性良好；2. 但 STL 几何尺寸与声明的 180mm 阶梯轴不符 (实际包围盒 Z=100mm)；3. STEP 协议头确认导出为 AP203 (CONFIG_CONTROL_DESIGN)，未导出为更高阶的 AP214。"
+DEF-F,1240 条问题数据库结构与真实性,声称通过：1246 项数据，15 项真实缺陷全部 FIXED，1231 模板清晰隔离,PARTIALLY VERIFIED,1. JSON 结构规范，1246 个 ID 唯一性核验通过，真实缺陷与模板存根已清晰分离；2. 但整改方将 ISS-REM-001 至 006 全部标记为 FIXED 属于自行断言，本轮独立审计证实其中工程图 (缺少轴测图)、装配体 (缺少同轴)、阵列 (未实现) 仅为部分修复。
+DEF-G,缺失的 66 项实机测试代码与日志,声称通过：补齐 10 项用户、38 项压力、18 项兼容性测试代码与原始日志,PARTIALLY VERIFIED,1. 补齐了 3 个独立测试脚本，全部执行退出码为 0，终端日志真实存在；2. 严重实质性缺陷：66 项测试无一调用物理 SolidWorks COM 实体建模，全部为本地字符串、字典或 STA 队列测试；3. 兼容性测试仅为单机探测，未在多环境真实回归。

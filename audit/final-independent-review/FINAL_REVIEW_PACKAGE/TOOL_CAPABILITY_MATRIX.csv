@@ -1,0 +1,13 @@
+﻿Tool_Name,Category,Risk_Tier,Native_SolidWorks,API_Accessible,Plugin_Implemented,MCP_Exposed,DSH_Discoverable,DSH_Callable,Real_SW_Verified,Independent_Verified,Status
+solidworks_health_check,系统探针,READ,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_create_part,文档操作,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_sketch_circle,草图基元,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_sketch_rectangle,草图基元,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_extrude_boss,实体特征,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_extrude_cut,实体特征,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_update_dimension,参数化,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_measure_mass,几何属性,READ,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_add_component,装配体,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_create_drawing,工程图,STANDARD,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_export_file,文件导出,FULL,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS
+solidworks_save_document,持久化,FULL,YES,YES,YES,YES,YES,YES,YES,YES,ACTIVE / PASS

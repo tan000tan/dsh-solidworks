@@ -1,0 +1,52 @@
+{
+  "version": "0.3.0",
+  "releaseCandidate": "v0.3.0-final-rc",
+  "verdict": "PARTIALLY VERIFIED (部分版本实机验证，其他版本完成接口级与模拟验证)",
+  "files": [
+    {
+      "file": "01_最终验收与产品化交付主报告.md",
+      "sha256": "471c7bf4d63d22634f12c0249e46dd43802f2a8fdb6fbd8a1328e5ab0cbc56ee",
+      "bytes": 9236
+    },
+    {
+      "file": "02_普通用户安装部署与配置指南.md",
+      "sha256": "601365a1bd98df7cd85030cc1e7a95e714ffc69c51df09d40cbee3f77223ccb1",
+      "bytes": 2972
+    },
+    {
+      "file": "03_平滑升级与配置回滚指南.md",
+      "sha256": "1cd5519612e1e2a7503de3e52c56c94f3003da9053e893de1892759d3de899ed",
+      "bytes": 2482
+    },
+    {
+      "file": "04_安全卸载与残留清理指南.md",
+      "sha256": "6a7dc120719d164d7c8fa48df5c7703c91046226643d6889b937a57c5f0aaf14",
+      "bytes": 2044
+    },
+    {
+      "file": "05_系统健康诊断与排障指南.md",
+      "sha256": "2bddb91aaa5e8542e2147d0c5fa43ad6feafba5381c0b419c97224773d7c5b9d",
+      "bytes": 3835
+    },
+    {
+      "file": "06_SolidWorks多版本兼容矩阵与验收说明.md",
+      "sha256": "6c743ca1bcd808db1f74b50bfc585f5fc128a2ccfee021b4f6717794f38805bf",
+      "bytes": 4955
+    },
+    {
+      "file": "dsh-solidworks-v0.3.0-windows-installer.zip",
+      "sha256": "68ee95802a5322758a51878391f3f955b86ed06a720af67d1ffe1d21abf27ea0",
+      "bytes": 8013239
+    },
+    {
+      "file": "v0.3.0-e2e-cad-and-diagnostics-evidence.zip",
+      "sha256": "58716fde9176f9c26474e8ba8375e0258b7c29b86340573ae812a02c8c59a0f2",
+      "bytes": 9317
+    },
+    {
+      "file": "dsh-solidworks-0.3.0.tgz",
+      "sha256": "85dad498432daeb063f806c41e64aab1364dee01d0af494d4dc485b06e6962bc",
+      "bytes": 7652536
+    }
+  ]
+}

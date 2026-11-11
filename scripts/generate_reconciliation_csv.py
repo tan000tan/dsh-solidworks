@@ -2,7 +2,7 @@
 import os
 import csv
 
-BASE_DIR = r"D:\Agent工作区\DeepSeek Harness工作区\dsh-solidworks-plugin"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUDIT_DIR = os.path.join(BASE_DIR, "audit_round2_final")
 
 # 1. FINAL_TEST_RECONCILIATION.csv

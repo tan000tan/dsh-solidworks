@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-11-11T08:38:35.458Z",
+  "status": "HEALTHY",
+  "passCount": 12,
+  "warnCount": 0,
+  "failCount": 0,
+  "checks": [
+    {
+      "name": "OS_PLATFORM_ARCH",
+      "level": "PASS",
+      "summary": "Windows 与 Node.js v24.21.0 环境合规",
+      "details": "系统: Windows 10.0.26200 (x64), Node: v24.21.0",
+      "howToFix": null
+    },
+    {
+      "name": "PYTHON_RUNTIME",
+      "level": "PASS",
+      "summary": "Python 3.13.16 (独立虚拟环境 .venv)",
+      "details": "路径: D:\\SWCAD-MCP\\Python313\\python.exe",
+      "howToFix": null
+    },
+    {
+      "name": "COM_DEPENDENCIES",
+      "level": "PASS",
+      "summary": "Windows COM 与 MCP 核心依赖已全部就绪",
+      "details": "win32com, pythoncom, comtypes, pydantic, mcp 校验通过",
+      "howToFix": null
+    },
+    {
+      "name": "OPTIONAL_EXTENSIONS",
+      "level": "PASS",
+      "summary": "核心不受影响；按需扩展包未安装 (ezdxf, numpy, PIL, openpyxl, docx, pptx)",
+      "details": "提示：如需使用 DFM 制造报表或 DXF 轮廓解析，可运行 \"npm run setup -- --optional\"",
+      "howToFix": null
+    },
+    {
+      "name": "SOLIDWORKS_REGISTRY",
+      "level": "PASS",
+      "summary": "已检测到 SOLIDWORKS 2026 SP04.1",
+      "details": "程序路径: D:\\Solidwork\\SOLIDWORKS\\SLDWORKS.exe (COM 已注册: true)",
+      "howToFix": null
+    },
+    {
+      "name": "SOLIDWORKS_VERSION_TIER",
+      "level": "PASS",
+      "summary": "版本兼容支持：SolidWorks 2020-2026 矩阵 (当前识别: SW 2026 SP4)",
+      "details": "验证级别: PHYSICAL_VERIFIED (本机当前运行版本（已完成全量 CAD 几何物理闭环实机验证）)",
+      "howToFix": null
+    },
+    {
+      "name": "STA_DESKTOP_PERM",
+      "level": "PASS",
+      "summary": "Windows Default 桌面访问与 STA 工作线程权限正常",
+      "details": "跨线程 STA 消息队列调度与安全重入锁校验通过",
+      "howToFix": null
+    },
+    {
+      "name": "LIVE_COM_ECHO",
+      "level": "PASS",
+      "summary": "SolidWorks 正在运行，COM 实时心跳响应正常",
+      "details": "版本修订号: 34.4.1, 当前活动文档数: 0",
+      "howToFix": null
+    },
+    {
+      "name": "DSH_CLIENT_INTEGRATION",
+      "level": "PASS",
+      "summary": "DeepSeek Harness 客户端已成功挂载本插件",
+      "details": "配置文件: C:\\Users\\***\\.dsh\\profiles\\desktop\\cordis.patch.yml",
+      "howToFix": null
+    },
+    {
+      "name": "MCP_CONFIG_VALIDITY",
+      "level": "PASS",
+      "summary": "MCP 客户端配置文件格式合规",
+      "details": "文件: D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\dsh-mcp-config.json",
+      "howToFix": null
+    },
+    {
+      "name": "MCP_TOOLSET_INTEGRITY",
+      "level": "PASS",
+      "summary": "73 项工具完整性校验通过 (2 个宿主策略工具 + 71 个核心 CAD 工具)",
+      "details": "命名空间: solidworks-cad, 声明工具数: 73",
+      "howToFix": null
+    },
+    {
+      "name": "SANDBOX_ROOTS_SAFETY",
+      "level": "PASS",
+      "summary": "工作区读写沙箱安全边界校验通过",
+      "details": "物理沙箱已就绪且可读写: D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin\\测试代码\\sandbox_benchmark",
+      "howToFix": null
+    }
+  ]
+}

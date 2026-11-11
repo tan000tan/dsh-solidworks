@@ -1,0 +1,54 @@
+# dsh-solidworks v1.0 全量关键资产不可篡改 SHA-256 指纹清单
+# 生成时间: 2026/11/09 周一
+# 基线 Commit: 7d70bc090d5cef146ac3946bb062667ae30a4cc9
+# --------------------------------------------------------------------------------
+# SHA256 校验哈希                                                   大小(字节)   相对路径
+# --------------------------------------------------------------------------------
+4797cf7e1517402b4d131c4c0491e70b24be1d0c13926b1ec3b0e89437d6b22e        2393  package.json
+f6de75f5d2b697e1cb71de59a51da086dd6a78a6a0a30a816d90af7f02ccf3f7         722  cordis.patch.yml
+995aba0e9636f26386c88c5408f9270771ec027c87e05b9162a6660509830ebb        5958  dsh-plugin.json
+e0eedba615d5cd1b986afb6c5b3a4b1ae33713e7e9dc74d19daec5e3221f9d2e       35184  LICENSE
+2fbadc0078761ab3d1878828f9fb570de24034e9b8314430a0ed3a1eb3428045        3073  NOTICE
+96ed390a68c49bc6278d1b9d92c59ee9cfbdb29d316ff3829980a02f207c7e12        5937  PROVENANCE.md
+2ad29a4a1d2c6937e9d9fb9cd4156a27259277d6ba1bcec88bdfb517f949d6f3        5332  README.md
+2824cf2eaf844bba4a4cd093ecbaa7c9067d5025303f518ad83ad2a88184f9cc        3574  README.zh.md
+b06acd3cf265622bd8e26cd838ba5163cfb1634382f6f656671787bf99824a4b        5665  CHANGELOG.md
+68a5984d5a0adcfb6bdd89c82e20b4578beccd5165114e0c42cb81fdde517a0a         165  requirements.txt
+4ef80f0afa0f8796c489f9f5cdf96338fa1a5895411d00d2bbb4f25547565de1         774  requirements-optional.txt
+d2822d1327bc7e62aaf589a707958f70ad829b624df15601e21c3854b0570647       14515  bin/dsh-solidworks.js
+b75b31af923b82dd26ead7b125ba9169a368cc57d7c03bc2e319aedc28a14480       14805  lib/index.js
+f3d2dae143ec45bf0d553db5e09326fd6b724404e04a4dd4addab3cbfc28caf9       19512  lib/policy.js
+01ecce844e9429fc555ded4f1792c6e950deae20b066a8a94821cbf4a78e94ca        7555  lib/mcp.js
+819864cb69b5e622d4a107acadd7e3b18481e2efea2a4d4fe5b052b0cf975bd2        9012  lib/discover.js
+70db98f2808f676043a19ccd6979e4e4d6a56ee8d58e4d9788a227527a04c911        3037  lib/schema.js
+0627c3f66c8fae5298c9a64e9454eda4cdb2ccf088b9d61d4453f3f0f6794922        9933  mcp-server-solidworks-main/adapters/dsh/server.py
+50875b216c5f3f479db807bce67196f8f0d55563dfedb85a06018092955554e3      141698  mcp-server-solidworks-main/adapters/claude/server.py
+31b2166467a786f563a5bb6e67712a720c7d95c7b83bea53e04e72c2993e235f      190895  vendor/solidworks-automation-skill/mcp-server/server.py
+20b447b3b5100394c7c3bf11f030a09e321cf42304e8983fe034c1cff31f98b1       15691  vendor/solidworks-automation-skill/scripts/sw_export.py
+e26b37c7da50a296cf862a7dae7d318b83fb1953bca1ac5d3cd4972003707ae3       52278  vendor/solidworks-automation-skill/scripts/sw_connect.py
+eaa6317988ced8cee13c9111f400478cb4e62216de6dbcdf8e551af75cd26c7e       26369  vendor/solidworks-automation-skill/scripts/sw_assembly.py
+643ff699d0f55b36f3ddc684522f4f7c975d5948094b7a023ec037512f672b48        1029  vendor/solidworks-automation-skill/scripts/sw_drawing.py
+e693421030b2200afcaf22e3c89a6726bc1b88c2deb810877101762e8fb9fdab       33370  vendor/solidworks-automation-skill/scripts/sw_part.py
+f855673ee3c130d6d5d1ef9f64d9b44877178dd018f956e9078caebd635f2a15        5142  vendor/solidworks-automation-skill/scripts/sw_pattern.py
+9bffb9ce0da192fe55e9a249f384f0e39f0eeba0fdf2f65be67f0e162142dc10       38956  vendor/solidworks-automation-skill/scripts/cad_task_context.py
+55d134ff8315ce079047b9a8ab20e2ede67616405f1709a08e5d3be76b824ed9       30558  tests/real_cad/run_v10_rework_e2e.py
+384514d134019b7a2106c19520753813447e87bb93af603ba96da8be7e37c2d7       17249  tests/policy.test.js
+afaf74bdb48371282c5ac7100b4fe015a94b32e3a7c653a086124d1efad6d71f       12430  tests/package.test.js
+fac4c03438d0127acb2df7af2b8856c8c7040ce141576685a05cba187d4913fa        7092  tests/mcp.test.js
+36a70f04d8ec50d23bbb50f06e13a747ed3873bc89275d0ac2c368373e274a03       93700  audit/v1.0-final-release/cad_e2e_sandbox/v10_stepped_shaft.SLDPRT
+c698eea80149164c3dc0c79c928cdf8f45d3ce054584dc29e7fc966e6be7ba66      123184  audit/v1.0-final-release/cad_e2e_sandbox/v10_stepped_shaft.STL
+4a950857acbe0c092f0a6fe87017de43cedc2700ddeefef7987899ddbfcdb99e       99852  audit/v1.0-final-release/cad_e2e_sandbox/v10_base.SLDPRT
+bf24b9a8096d737a03249e3eed99fad254fc8ee6d12911ef27fe1e3667b25904      101549  audit/v1.0-final-release/cad_e2e_sandbox/v10_gear.SLDPRT
+19fbb51a117aeaf58aed09de64a5147f852dc790ec73d024ce1db06a3c0e2bcf       98180  audit/v1.0-final-release/cad_e2e_sandbox/v10_assembly.SLDASM
+d466b2d01e2101fe3265eaa9d48c699ece3bdb33e06cc15122f97cbc1553a477      132888  audit/v1.0-final-release/cad_e2e_sandbox/v10_assembly.step
+e0fa4c209702305fb4d00bfccd07ded9d3b262d98288f4d63af15c6e567d1294      122251  audit/v1.0-final-release/cad_e2e_sandbox/v10_drawing.SLDDRW
+b54698609a9b856d127997cc75b12b42786e2e516d429dcd4032e9a863cc1492       54522  audit/v1.0-final-release/cad_e2e_sandbox/v10_drawing.pdf
+cfe72942b9dccc2396b288a203453d709091943c09708af52aa33fa4dc1b1c15       14635  audit/v1.0-final-release/cad_e2e_sandbox/v10_rework_e2e_summary.json
+4b7a70600c46c76c7c45857ccddaed8579a4834a4b55e9d0478b59ec415295d4          45  audit/v1.0-round2-closure-20261109/GIT_HEAD.txt
+8ad06d53071f095ce951cf08b35230a4c9ef391b5b74adbe1546273d8a62ab95      342797  audit/v1.0-round2-closure-20261109/FULL_WORKING_DIFF.patch
+dc50fd84b994b1e4dec336e71b9d7044a657bed4aff6a39b2a7ee101b52398ec        8659  audit/v1.0-round2-closure-20261109/PID_LIFECYCLE_AUDIT.json
+14521f6e4c6037f4a747b10ac4de7121b00c18f52e4cad17770f14880fcbf5c8         956  audit/v1.0-round2-closure-20261109/RESTORE_VERIFICATION_REPORT.txt
+4fa75def4166001229ab6cdaae5373f18196942abac4d2d57110f8a8bf13d699       19338  audit/v1.0-round2-closure-20261109/HISTORICAL_REQUIREMENTS_FULL_AUDIT.md
+881a89c5c55c42988de177171d3a0cc967fb3bae725dd112a34d4991bb9d3f3d       13914  audit/v1.0-round2-closure-20261109/ALL_70_TESTS_EXECUTION_MATRIX.md
+2829da90c529d776482e7160cdc5a939b3ec8ff91924ba787367da57f1dabf17        9533  audit/v1.0-round2-closure-20261109/logs/e2e_solidworks_raw_round2.log
+12dd5073a2cec8862b361b31dd3303a7808e8636b9e6066d49408acbccae6fb5     1353150  dsh-solidworks-0.2.0.tgz

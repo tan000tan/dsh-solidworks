@@ -33,8 +33,8 @@ function walk(dir, out = []) {
 
 test('package.json declares the identity and the bundle patch the host needs', () => {
   assert.equal(pkg.name, 'dsh-solidworks');
-  assert.equal(pkg.version, '0.2.0');
-  assert.equal(manifest.version, '0.2.0');
+  assert.equal(pkg.version, '0.3.1');
+  assert.equal(manifest.version, '0.3.1');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');

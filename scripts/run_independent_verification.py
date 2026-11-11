@@ -13,10 +13,10 @@ import csv
 import re
 from pathlib import Path
 
-BASE_DIR = r"D:\Agent工作区\DeepSeek Harness工作区\dsh-solidworks-plugin"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUDIT_DIR = os.path.join(BASE_DIR, "audit_round2_final")
 LOGS_DIR = os.path.join(AUDIT_DIR, "RAW_TEST_LOGS")
-PYTHON_EXE = r"D:\SWCAD-MCP\Python313\python.exe"
+PYTHON_EXE = r"<SWCAD_MCP_ROOT>\Python313\python.exe"
 
 def log(msg):
     clean_msg = str(msg).encode("ascii", errors="backslashreplace").decode("ascii")

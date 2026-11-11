@@ -10,9 +10,14 @@ import os
 try:
     from .sw_preflight import import_com_dependencies
     from .sw_connect import open_document, safe_get_com_member
+    from .sw_compat import safe_add_mate
 except ImportError:
     from sw_preflight import import_com_dependencies
     from sw_connect import open_document, safe_get_com_member
+    try:
+        from sw_compat import safe_add_mate
+    except ImportError:
+        safe_add_mate = None
 
 pythoncom, _win32com, VARIANT = import_com_dependencies()
 
@@ -377,23 +382,43 @@ def add_mate5_checked(
     angle_upper = angle if angle_upper is None else angle_upper
     angle_lower = angle if angle_lower is None else angle_lower
     error_status = VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
-    mate = asm_model.AddMate5(
-        int(mate_type),
-        int(align),
-        bool(flip),
-        float(distance),
-        float(distance_upper),
-        float(distance_lower),
-        float(gear_num),
-        float(gear_den),
-        float(angle),
-        float(angle_upper),
-        float(angle_lower),
-        bool(for_positioning_only),
-        bool(lock_rotation),
-        int(width_mate_option),
-        error_status,
-    )
+    if safe_add_mate is not None:
+        mate = safe_add_mate(
+            asm_model,
+            int(mate_type),
+            int(align),
+            bool(flip),
+            float(distance),
+            float(distance_upper),
+            float(distance_lower),
+            float(gear_num),
+            float(gear_den),
+            float(angle),
+            float(angle_upper),
+            float(angle_lower),
+            bool(for_positioning_only),
+            bool(lock_rotation),
+            int(width_mate_option),
+            error_status,
+        )
+    else:
+        mate = asm_model.AddMate5(
+            int(mate_type),
+            int(align),
+            bool(flip),
+            float(distance),
+            float(distance_upper),
+            float(distance_lower),
+            float(gear_num),
+            float(gear_den),
+            float(angle),
+            float(angle_upper),
+            float(angle_lower),
+            bool(for_positioning_only),
+            bool(lock_rotation),
+            int(width_mate_option),
+            error_status,
+        )
     # swAddMateError_e 中 1=swAddMateError_NoError；0=Unknown 在部分版本也会伴随非空 Mate。
     if mate is None or int(error_status.value) not in (
         SW_ADD_MATE_ERROR_UNKNOWN,

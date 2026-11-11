@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-11-06T12:05:59",
+  "solidworks_revision": "34.4.1",
+  "parts": {
+    "mst_shaft": {
+      "file": "mst_shaft.SLDPRT",
+      "volume_mm3": 47958.709468,
+      "surface_area_mm2": 7494.517893,
+      "features": [
+        "ShaftBaseExtrude",
+        "KeywayCut"
+      ]
+    },
+    "mst_base": {
+      "file": "mst_base.SLDPRT",
+      "volume_mm3": 761716.814693,
+      "surface_area_mm2": 94684.955592,
+      "features": [
+        "BasePlateExtrude",
+        "MountHolesCut"
+      ]
+    },
+    "mst_gear": {
+      "file": "mst_gear.SLDPRT",
+      "volume_mm3": 43275.438803,
+      "features": [
+        "GearBlankExtrude",
+        "CenterBoreAndHolesCut"
+      ]
+    }
+  },
+  "assemblies": {
+    "mst_assembly": {
+      "file": "mst_assembly.SLDASM",
+      "step_export": "mst_assembly.step",
+      "components_count": 3,
+      "is_grounded_base": true
+    }
+  },
+  "drawings": {
+    "mst_drawing": {
+      "file": "mst_drawing.SLDDRW",
+      "pdf_export": "mst_drawing.pdf",
+      "status": "PASS"
+    }
+  },
+  "ecos": {
+    "ECO-01": {
+      "parameter": "D1@草图1 (Shaft Main Diameter)",
+      "old_volume_mm3": 47958.709468,
+      "new_volume_mm3": 62634.535972,
+      "monotonic_increase": true,
+      "status": "PASS"
+    }
+  },
+  "verifications": {
+    "quality_inspector": {
+      "model_name": "mst_shaft",
+      "overall_quality_score": 100.0,
+      "is_acceptable": true,
+      "geometry_score": 100.0,
+      "topology_score": 100.0,
+      "stability_score": 100.0,
+      "manufacturing_score": 100.0,
+      "recommendations": [
+        "[几何尺寸与局部微观坐标 优化项] 缺少理论解析体积，仅执行基本非零体积核验"
+      ]
+    }
+  }
+}
