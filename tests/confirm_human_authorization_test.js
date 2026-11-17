@@ -1,8 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { apply } from '../lib/index.js';
+import { Policy } from '../lib/policy.js';
 
-test('AI self-authorization defense: solidworks_confirm requires cryptographic ticket and fails closed', async () => {
+const pythonExe = process.env.DSH_SOLIDWORKS_PYTHON || null;
+const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-sw-confirm-auth-'));
+
+test('BUG-0002: solidworks_confirm always refuses AI self-authorization and disk approval store is eliminated', async () => {
   const registeredTools = new Map();
   const mockCtx = {
     tools: {
@@ -13,82 +20,97 @@ test('AI self-authorization defense: solidworks_confirm requires cryptographic t
     },
     agent: {
       session: {
-        header: { id: 'test-session-123', cwd: 'D:\\sandbox' },
+        header: { id: 'test-session-123', cwd: SANDBOX },
       },
     },
   };
 
-  await apply(mockCtx, { mode: 'full' });
-
-  const confirmTool = registeredTools.get('solidworks_confirm');
-  assert.ok(confirmTool, 'solidworks_confirm must be registered');
-
   const testTool = 'solidworks_save_document';
-  const testArgs = { filepath: 'D:\\sandbox\\part1.sldprt' };
+  const testArgs = { path: path.join(SANDBOX, 'part1.sldprt') };
+  const stop = await apply(mockCtx, { mode: 'full', allowedRoots: [SANDBOX] });
+  try {
+    const confirmTool = registeredTools.get('solidworks_confirm');
+    assert.ok(confirmTool, 'solidworks_confirm must be registered as fail-closed stub');
 
-  // Case 1: AI calls without challengeId or ticket -> REFUSED
-  const res1 = await confirmTool.execute({
-    tool: testTool,
-    args: testArgs,
+    for (const payload of [
+      { tool: testTool, args: testArgs },
+      { tool: testTool, args: testArgs, confirmedByHuman: true },
+      { challengeId: 'chal_fake', ticket: '0'.repeat(64), tool: testTool, args: testArgs, reason: 'self-approve' },
+    ]) {
+      const res = await confirmTool.execute(payload);
+      const data = JSON.parse(res.text);
+      assert.equal(data.status, 'refused');
+      assert.equal(data.code, 'SELF_APPROVAL_PROHIBITED');
+    }
+  } finally {
+    await stop?.();
+  }
+
+  // No approval secrets or challenge files should ever exist on disk
+  assert.equal(fs.existsSync(path.join(SANDBOX, '.dsh-approval-secret')), false);
+  assert.equal(fs.existsSync(path.join(SANDBOX, 'approval-challenges.json')), false);
+
+  // Policy itself keeps single-use binding & never accepts fabricated self-signed tickets
+  const policy = new Policy({ mode: 'full', allowedRoots: [SANDBOX] });
+  assert.equal(typeof policy.signChallenge, 'undefined');
+  const ch = policy.createChallenge(testTool, testArgs, { sessionId: 's1', sessionCwd: SANDBOX, callId: 'c1' });
+  const badOutcome = policy.consumeChallengeAndGrant(ch.challengeId, testTool, testArgs, {
+    sessionId: 's1', sessionCwd: SANDBOX, callId: 'c1', outcome: 'rejected',
   });
-  const data1 = JSON.parse(res1.text);
-  assert.equal(data1.status, 'refused');
-  assert.equal(data1.code, 'CHALLENGE_INVALID');
+  assert.equal(badOutcome.ok, false);
 
-  // Case 2: AI attempts legacy bypass with confirmedByHuman: true -> REFUSED (fails closed)
-  const res2 = await confirmTool.execute({
-    tool: testTool,
-    args: testArgs,
-    confirmedByHuman: true,
+  const goodOutcome = policy.consumeChallengeAndGrant(ch.challengeId, testTool, testArgs, {
+    sessionId: 's1', sessionCwd: SANDBOX, callId: 'c1', outcome: 'allowed-once',
   });
-  const data2 = JSON.parse(res2.text);
-  assert.equal(data2.status, 'refused');
+  assert.equal(goodOutcome.ok, true);
 
-  // Case 3: AI creates a challenge via policy, then tries to fabricate a ticket -> REFUSED
-  const challenge = mockCtx.solidworks.policy.createChallenge(testTool, testArgs, {
-    sessionId: 'test-session-123',
+  // Replay fails closed
+  const replay = policy.consumeChallengeAndGrant(ch.challengeId, testTool, testArgs, {
+    sessionId: 's1', sessionCwd: SANDBOX, callId: 'c1', outcome: 'allowed-once',
   });
-  assert.ok(challenge.challengeId, 'challenge must have challengeId');
+  assert.equal(replay.ok, false);
+  assert.equal(replay.code, 'CHALLENGE_NOT_FOUND');
 
-  const resFabricated = await confirmTool.execute({
-    challengeId: challenge.challengeId,
-    ticket: 'deadbeefcafebabe1234567890abcdefdeadbeefcafebabe1234567890abcdef',
-    tool: testTool,
-    args: testArgs,
-  });
-  const dataFabricated = JSON.parse(resFabricated.text);
-  assert.equal(dataFabricated.status, 'refused');
-  assert.equal(dataFabricated.code, 'TICKET_INVALID');
-
-  // Case 4: Host/human signs the challenge via trusted local method -> ticket is valid -> GRANTED
-  const validTicket = mockCtx.solidworks.signApproval(challenge.challengeId, {
-    sessionId: 'test-session-123',
-  });
-  assert.ok(validTicket, 'host must generate valid HMAC ticket');
-
-  const resValid = await confirmTool.execute({
-    challengeId: challenge.challengeId,
-    ticket: validTicket,
-    tool: testTool,
-    args: testArgs,
-    reason: '用户在界面确认保存零件',
-  });
-  const dataValid = JSON.parse(resValid.text);
-  assert.equal(dataValid.status, 'granted');
-  assert.equal(dataValid.tool, testTool);
-  assert.ok(dataValid.digest, 'must return cryptographic digest');
-
-  // Case 5: Replay attack (reusing the same ticket and challenge) -> REFUSED (single-use)
-  const resReplay = await confirmTool.execute({
-    challengeId: challenge.challengeId,
-    ticket: validTicket,
-    tool: testTool,
-    args: testArgs,
-  });
-  const dataReplay = JSON.parse(resReplay.text);
-  assert.equal(dataReplay.status, 'refused');
-  assert.equal(dataReplay.code, 'CHALLENGE_NOT_FOUND');
-
-  // Clean exit
-  process.exit(0);
+  fs.rmSync(SANDBOX, { recursive: true, force: true });
 });
+
+if (pythonExe) {
+  test('BUG-0002: interactive host ctx.approval gates HIGH tools strictly fail-closed', async () => {
+    const serverScript = path.resolve(import.meta.dirname, 'stub-server.py');
+    let nextOutcome = 'rejected';
+    const registered = new Map();
+    const ctx = {
+      tools: { register: (d) => { registered.set(d.name, d); return () => {}; } },
+      get: (k) => (k === 'approval' ? { request: async () => nextOutcome } : undefined),
+    };
+    const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-sw-host-auth-'));
+    const stop = await apply(ctx, {
+      mode: 'full',
+      pythonPath: pythonExe,
+      serverScript,
+      serverCwd: import.meta.dirname,
+      allowedRoots: [sandbox],
+      toolTimeoutMs: 15000,
+      startTimeoutMs: 15000,
+    });
+    try {
+      const exp = registered.get('stub_export');
+      assert.ok(exp);
+      nextOutcome = 'rejected';
+      const r1 = JSON.parse((await exp.execute({ output_path: path.join(sandbox, 'a.step') }, {})).text);
+      assert.equal(r1.code, 'APPROVAL_REJECTED');
+
+      nextOutcome = 'allowed-once';
+      const r2 = await exp.execute({ output_path: path.join(sandbox, 'a.step') }, { callId: 'call-1' });
+      assert.ok(String(r2.text).includes('unknown tool'));
+
+      // Replay with no host approval -> rejected again (single-use)
+      nextOutcome = 'cancelled';
+      const r3 = JSON.parse((await exp.execute({ output_path: path.join(sandbox, 'a.step') }, { callId: 'call-2' })).text);
+      assert.equal(r3.code, 'APPROVAL_CANCELLED');
+    } finally {
+      await stop?.();
+      fs.rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+}

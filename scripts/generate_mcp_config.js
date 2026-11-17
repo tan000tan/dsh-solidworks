@@ -3,13 +3,16 @@
  * scripts/generate_mcp_config.js
  *
  * 自动化生成适用于本机的标准 MCP (Model Context Protocol) 接入配置。
- * 遵循安全越权红线：仅在终端生成高亮格式展示供用户复制，绝不擅自越权篡改用户配置文件。
+ *
+ * 行为（v0.3.1 Group D D-03 合并态；后续将在安全闭环中按 RT-SEC-02 核查）：
+ *   1. 打印可直接复制的 JSON 配置段；
+ *   2. 写入本插件目录下的 dsh-mcp-config.json，不触碰宿主 profile。
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import os from 'node:os';
+import { resolveSandboxDir } from './dsh_adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,22 +48,20 @@ function main() {
   const venvPython = getVenvPythonPath();
   const serverPy = path.join(ROOT_DIR, 'vendor', 'solidworks-automation-skill', 'mcp-server', 'server.py');
   const sandboxDir = process.env.DSH_ALLOWED_ROOTS
-    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return path.join(process.cwd(), 'cad_sandbox'); } })()
-    : (existsSync(path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark'))
-        ? path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark')
-        : path.join(process.cwd(), 'cad_sandbox'));
+    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return resolveSandboxDir(ROOT_DIR); } })()
+    : resolveSandboxDir(ROOT_DIR);
 
   const hasVenv = Boolean(venvPython);
   const pythonCmd = venvPython || process.env.DSH_SOLIDWORKS_PYTHON || 'python';
 
   const mcpConfig = {
     mcpServers: {
-      solidworks: {
+      'solidworks-cad': {
         command: pythonCmd,
         args: [serverPy],
         env: {
-          PYTHONUNBUFFERED: "1",
-          PYTHONIOENCODING: "utf-8",
+          PYTHONUNBUFFERED: '1',
+          PYTHONIOENCODING: 'utf-8',
           DSH_ALLOWED_ROOTS: JSON.stringify([sandboxDir]),
         },
       },
@@ -80,6 +81,25 @@ function main() {
     console.log('\x1b[32m%s\x1b[0m', '✔ 已成功绑定独立虚拟环境: ' + venvPython);
   }
 
+  const writeDirect = process.argv.includes('--write-direct-config');
+  const outIdx = process.argv.indexOf('--out');
+  const explicitOut = outIdx >= 0 && process.argv[outIdx + 1] ? path.resolve(process.argv[outIdx + 1]) : null;
+  const targetPath = explicitOut || path.join(ROOT_DIR, 'dsh-mcp-config.json');
+
+  if (writeDirect || explicitOut) {
+    try {
+      writeFileSync(targetPath, jsonStr + '\n', 'utf8');
+      console.log('\x1b[33m%s\x1b[0m', `⚠ 已按显式请求写入直连配置文件: ${targetPath}`);
+      console.log('\x1b[33m%s\x1b[0m', '  安全提醒: 直连 Python MCP 通道将绕过 DSH 插件的 JS 策略审批与审计链路，仅限受信任本地客户端使用。');
+    } catch (err) {
+      console.log('\x1b[33m%s\x1b[0m', `⚠ 无法写入 ${targetPath}: ${err.message}`);
+      console.log('\x1b[33m%s\x1b[0m', '  （目录只读时属正常现象；请直接复制下面的 JSON 手动粘贴。）');
+    }
+  } else {
+    console.log('\x1b[32m%s\x1b[0m', '✔ 安全默认: 未在插件根目录生成 dsh-mcp-config.json（避免形成绕过 JS 策略与审批的直连旁路）。');
+    console.log('  如需为独立外部 MCP 客户端生成配置，请显式传入: npm run mcp-config -- --write-direct-config');
+  }
+
   console.log('请复制以下 JSON 配置代码段并粘贴到您的 MCP 客户端配置中');
   console.log('(如 DeepSeek Harness、Claude Desktop 或 Cursor MCP 设置)：\n');
 
@@ -88,9 +108,12 @@ function main() {
   console.log('\x1b[36m--------------------------------------------------------------\x1b[0m\n');
 
   console.log('【安全与目录提示】');
-  console.log(`• 默认安全写操作沙箱目录已绑定为:`);
+  console.log('• 默认安全写操作沙箱目录已绑定为:');
   console.log(`  ${sandboxDir}`);
-  console.log(`• 若需允许其他工作目录，可在 DSH_ALLOWED_ROOTS 环境变量 JSON 数组中追加。\n`);
+  console.log('• 若需允许其他工作目录，可在 DSH_ALLOWED_ROOTS 环境变量 JSON 数组中追加。');
+  console.log('• DSH 桌面端插件请用应用内的插件面板安装/启用，本文件仅供独立 MCP 客户端使用。\n');
+
+  return 0;
 }
 
-main();
+process.exit(main());

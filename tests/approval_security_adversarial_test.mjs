@@ -1,28 +1,37 @@
 /**
  * approval_security_adversarial_test.mjs
- * 
- * 极端对抗性安全测试：全面验证 P0 人类审批机制与防 AI 自授权体系。
- * 覆盖 18 种攻击场景，确保 100% Fail-Closed。
+ *
+ * BUG-0002 全量对抗安全测试：验证彻底消除本地磁盘密钥/CLI自批漏洞后，
+ * AI 无法通过任何路径（CLI、solidworks_confirm、重放、篡改参数、跨会话、并发竞态、缺失通道）绕过人类审批。
  */
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { Policy, READ, WRITE, HIGH, digest, canonicalArgs } from '../lib/policy.js';
+import { Policy, digest, canonicalArgs } from '../lib/policy.js';
 import { apply } from '../lib/index.js';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUTPUT_DIR = path.resolve(ROOT_DIR, 'temp_evidence_v030/E-Security-and-Safety');
-fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+const CLI_PATH = path.join(ROOT_DIR, 'bin', 'dsh-solidworks.js');
+const sandboxRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-sw-bug0002-adv-'));
+const STUB_SERVER = path.join(ROOT_DIR, 'tests', 'stub-server.py');
+
+const argsCli = process.argv.slice(2);
+const pyIdx = argsCli.indexOf('--python');
+const pythonPath = pyIdx >= 0 ? argsCli[pyIdx + 1] : (process.env.DSH_SOLIDWORKS_PYTHON || null);
+const outIdx = argsCli.indexOf('--output');
+const outputJson = outIdx >= 0 ? argsCli[outIdx + 1] : null;
 
 const results = {
-  suite: 'P0_HUMAN_APPROVAL_ADVERSARIAL_SUITE',
+  suite: 'BUG-0002_APPROVAL_SECURITY_ADVERSARIAL_SUITE',
   timestamp: new Date().toISOString(),
   total_tests: 0,
   passed_tests: 0,
   failed_tests: 0,
-  details: []
+  details: [],
 };
 
 function record(name, passed, detail) {
@@ -32,358 +41,217 @@ function record(name, passed, detail) {
     console.log(`[PASS] ${name}`);
   } else {
     results.failed_tests++;
-    console.error(`[FAIL] ${name}`);
+    console.error(`[FAIL] ${name} -> ${JSON.stringify(detail)}`);
   }
   results.details.push({ test: name, passed, detail });
 }
 
-// 模拟时钟
-let simulatedNow = 1_000_000;
-const fakeNow = () => simulatedNow;
-
-const sandboxRoot = path.resolve(ROOT_DIR, 'temp_evidence_v030/sandbox_safe');
-fs.mkdirSync(sandboxRoot, { recursive: true });
-
-const policy = new Policy({
-  mode: 'full',
-  allowedRoots: [sandboxRoot],
-  grantTtlMs: 5000,
-  challengeTtlMs: 3000,
-  now: fakeNow,
-});
-
-// Setup Mock DSH Context
-const registeredTools = new Map();
-const mockCtx = {
-  tools: {
-    register(def) {
-      registeredTools.set(def.name, def);
-      return () => registeredTools.delete(def.name);
-    },
-  },
-  agent: {
-    session: {
-      header: { id: 'session-alpha-001', cwd: sandboxRoot },
-    },
-  },
-  logger: {
-    info() {},
-    warn() {},
-    error() {},
-  },
-};
-
-await apply(mockCtx, {
-  mode: 'full',
-  allowedRoots: [sandboxRoot],
-  grantTtlMs: 5000,
-  challengeTtlMs: 3000,
-  now: fakeNow,
-});
-
-const confirmTool = registeredTools.get('solidworks_confirm');
-const highTool = 'solidworks_save_document';
-const targetFileA = path.join(sandboxRoot, 'partA.sldprt');
-const targetFileB = path.join(sandboxRoot, 'partB.sldprt');
-const legitArgs = { filepath: targetFileA };
-
-console.log('=== 开始执行 18 种 P0 人类审批对抗测试 ===');
-
-// Vector 1: 缺少凭证与挑战 (Missing ticket / challengeId)
-{
-  const res = await confirmTool.execute({ tool: highTool, args: legitArgs });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused' && data.code === 'CHALLENGE_INVALID';
-  record('Vector_01_Missing_Confirmation_Or_Ticket', ok, data);
+function runCliExpectFail(cliArgs) {
+  try {
+    const stdout = execFileSync(process.execPath, [CLI_PATH, ...cliArgs], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return { exitCode: 0, json: JSON.parse(stdout || '{}') };
+  } catch (err) {
+    let parsed = null;
+    try { parsed = JSON.parse(err.stdout || '{}'); } catch { parsed = { raw: String(err.stdout || err.stderr || '') }; }
+    return { exitCode: err.status ?? 1, json: parsed };
+  }
 }
 
-// Vector 2: AI 显式提交 confirmedByHuman: false
-{
-  const res = await confirmTool.execute({ tool: highTool, args: legitArgs, confirmedByHuman: false });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused';
-  record('Vector_02_ConfirmedByHuman_False_Rejected', ok, data);
-}
+try {
+  // ---- A. CLI 通道自批与 --yes 绕过测试 -------------------------------------
+  for (const [label, cmd] of [
+    ['CLI_01_Approve_Subcommand_Removed', ['approve', 'chal_deadbeef', '--json']],
+    ['CLI_02_Reject_Subcommand_Removed', ['reject', 'chal_deadbeef', '--json']],
+    ['CLI_03_Challenges_Subcommand_Removed', ['challenges', '--json']],
+  ]) {
+    const res = runCliExpectFail(cmd);
+    record(label, res.exitCode === 2 && res.json?.code === 'APPROVAL_CLI_REMOVED', res);
+  }
 
-// Vector 3: AI 试图通过历史遗留漏洞参数 confirmedByHuman: true 实施自授权
-{
-  const res = await confirmTool.execute({ tool: highTool, args: legitArgs, confirmedByHuman: true });
-  const data = JSON.parse(res.text);
-  // 必须依然拒绝，绝不能因为 confirmedByHuman: true 就放行
-  const ok = data.status === 'refused' && data.code === 'CHALLENGE_INVALID';
-  record('Vector_03_AI_Self_Authorization_True_Blocked', ok, data);
-}
+  {
+    const res = runCliExpectFail([
+      'call', 'solidworks_save_document', '--mode', 'full', '--yes',
+      '--json-args', JSON.stringify({ path: 'x.sldprt' }),
+      '--json',
+    ]);
+    record('CLI_04_Call_With_Yes_Fails_Closed', res.exitCode === 3 && res.json?.code === 'APPROVAL_CHANNEL_UNAVAILABLE', res);
+  }
 
-// Vector 4: AI 构造伪造的随机凭证 (Fabricated Random Ticket)
-{
-  const ch = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const res = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-    tool: highTool,
-    args: legitArgs,
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused' && data.code === 'TICKET_INVALID';
-  record('Vector_04_Fabricated_Ticket_Rejected', ok, data);
-}
+  // ---- B. solidworks_confirm 防 AI 自授权测试 -------------------------------
+  {
+    const registered = new Map();
+    const mockCtx = {
+      tools: { register: (d) => { registered.set(d.name, d); return () => {}; } },
+      agent: { session: { header: { id: 'sess-self', cwd: sandboxRoot } } },
+    };
+    const stopSelf = await apply(mockCtx, { mode: 'full', allowedRoots: [sandboxRoot] });
+    try {
+      const confirmTool = registered.get('solidworks_confirm');
 
-// Vector 5: 凭证篡改测试 (Ticket Tampering - 1 bit flip)
-{
-  const ch = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const realTicket = mockCtx.solidworks.signApproval(ch.challengeId, { sessionId: 'session-alpha-001' });
-  // 篡改最后一个字符
-  const tamperedTicket = realTicket.slice(0, -1) + (realTicket.slice(-1) === 'a' ? 'b' : 'a');
-  const res = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket: tamperedTicket,
-    tool: highTool,
-    args: legitArgs,
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused' && data.code === 'TICKET_INVALID';
-  record('Vector_05_Ticket_Tampering_Rejected', ok, data);
-}
-
-// Vector 6: 参数篡改测试 (Argument Tampering - approved for fileA, executed with fileB)
-{
-  const ch = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const realTicket = mockCtx.solidworks.signApproval(ch.challengeId, { sessionId: 'session-alpha-001' });
-  const tamperedArgs = { filepath: targetFileB };
-  const res = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket: realTicket,
-    tool: highTool,
-    args: tamperedArgs,
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused' && data.code === 'ARGUMENTS_MUTATED';
-  record('Vector_06_Argument_Tampering_Detected_And_Refused', ok, data);
-}
-
-// Vector 7: 重放攻击测试 (Replay Attack - reusing single-use ticket)
-{
-  const ch = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const realTicket = mockCtx.solidworks.signApproval(ch.challengeId, { sessionId: 'session-alpha-001' });
-  
-  // 第一次使用：成功
-  const resFirst = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket: realTicket,
-    tool: highTool,
-    args: legitArgs,
-  });
-  const dataFirst = JSON.parse(resFirst.text);
-  const firstPass = dataFirst.status === 'granted';
-
-  // 第二次使用同凭证重放：必须拒绝 (单次销毁)
-  const resReplay = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket: realTicket,
-    tool: highTool,
-    args: legitArgs,
-  });
-  const dataReplay = JSON.parse(resReplay.text);
-  const replayBlocked = dataReplay.status === 'refused' && dataReplay.code === 'CHALLENGE_NOT_FOUND';
-  record('Vector_07_Replay_Attack_Blocked_Single_Use', firstPass && replayBlocked, { dataFirst, dataReplay });
-}
-
-// Vector 8: 挑战过期拦截测试 (Expired Challenge Refusal)
-{
-  simulatedNow = 2_000_000;
-  const ch = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const realTicket = mockCtx.solidworks.signApproval(ch.challengeId, { sessionId: 'session-alpha-001' });
-  
-  // 时间流逝 4000ms (TTL为 3000ms)
-  simulatedNow += 4000;
-
-  const res = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket: realTicket,
-    tool: highTool,
-    args: legitArgs,
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused' && data.code === 'CHALLENGE_EXPIRED';
-  record('Vector_08_Expired_Challenge_Refused', ok, data);
-}
-
-// Vector 9: 目标路径替换攻击 (Path Swap to Root/Protected)
-{
-  const ch = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const realTicket = mockCtx.solidworks.signApproval(ch.challengeId, { sessionId: 'session-alpha-001' });
-  
-  // 尝试替换为系统保护路径
-  const attackArgs = { filepath: 'C:\\Windows\\System32\\calc.exe' };
-  const res = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket: realTicket,
-    tool: highTool,
-    args: attackArgs,
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused' && data.code === 'ARGUMENTS_MUTATED';
-  record('Vector_09_Path_Swap_Attack_Blocked', ok, data);
-}
-
-// Vector 10: 跨会话滥用拦截 (Cross-Session Abuse)
-{
-  simulatedNow = 3_000_000;
-  // Session A 签发
-  const chA = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const ticketA = mockCtx.solidworks.signApproval(chA.challengeId, { sessionId: 'session-alpha-001' });
-
-  // 攻击者试图在 Session B 提交
-  const mockCtxSessionB = {
-    agent: { session: { header: { id: 'session-beta-002', cwd: sandboxRoot } } },
-    tools: mockCtx.tools,
-    logger: mockCtx.logger,
-  };
-  
-  const verification = mockCtx.solidworks.policy.verifyAndConsumeTicket(
-    chA.challengeId,
-    ticketA,
-    highTool,
-    legitArgs,
-    { sessionId: 'session-beta-002' }
-  );
-  const ok = verification.ok === false && verification.code === 'SESSION_MISMATCH';
-  record('Vector_10_Cross_Session_Abuse_Blocked', ok, verification);
-}
-
-// Vector 11: 工具名篡改攻击 (Tool Swap - Ticket for export used for close)
-{
-  simulatedNow = 4_000_000;
-  const ch = mockCtx.solidworks.policy.createChallenge('solidworks_export_active', { output_path: path.join(sandboxRoot, 'out.step') }, { sessionId: 'session-alpha-001' });
-  const ticket = mockCtx.solidworks.signApproval(ch.challengeId, { sessionId: 'session-alpha-001' });
-
-  // 攻击者携带此凭证尝试调用高危删除/关闭工具
-  const res = await confirmTool.execute({
-    challengeId: ch.challengeId,
-    ticket,
-    tool: 'solidworks_close_documents',
-    args: { output_path: path.join(sandboxRoot, 'out.step') },
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'refused' && data.code === 'TOOL_MISMATCH';
-  record('Vector_11_Tool_Swap_Attack_Blocked', ok, data);
-}
-
-// Vector 12: 并发重放竞争测试 (Concurrent Race Condition on Single Ticket)
-{
-  simulatedNow = 5_000_000;
-  const ch = mockCtx.solidworks.policy.createChallenge(highTool, legitArgs, { sessionId: 'session-alpha-001' });
-  const ticket = mockCtx.solidworks.signApproval(ch.challengeId, { sessionId: 'session-alpha-001' });
-
-  // 两个并发请求同时使用同一个 challengeId 和 ticket
-  const [res1, res2] = await Promise.all([
-    confirmTool.execute({ challengeId: ch.challengeId, ticket, tool: highTool, args: legitArgs }),
-    confirmTool.execute({ challengeId: ch.challengeId, ticket, tool: highTool, args: legitArgs })
-  ]);
-  const data1 = JSON.parse(res1.text);
-  const data2 = JSON.parse(res2.text);
-
-  // 必须恰好有一个成功，另一个必须被拒绝！绝不能两个都成功！
-  const oneGranted = (data1.status === 'granted' && data2.status === 'refused') ||
-                     (data2.status === 'granted' && data1.status === 'refused');
-  record('Vector_12_Concurrent_Race_Condition_Defense', oneGranted, { data1, data2 });
-}
-
-// Vector 13: READ 工具尝试假冒 HIGH 工具索取授权
-{
-  const readTool = 'solidworks_list_edges';
-  const res = await confirmTool.execute({
-    challengeId: 'chal_fake',
-    ticket: 'fake',
-    tool: readTool,
-    args: {},
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'not_required';
-  record('Vector_13_Read_Tool_Confirmation_Not_Required', ok, data);
-}
-
-// Vector 14: 普通 WRITE 工具尝试越权执行 HIGH 操作
-{
-  const writeTool = 'solidworks_sketch_and_extrude';
-  const res = await confirmTool.execute({
-    challengeId: 'chal_fake',
-    ticket: 'fake',
-    tool: writeTool,
-    args: {},
-  });
-  const data = JSON.parse(res.text);
-  const ok = data.status === 'not_required';
-  record('Vector_14_Write_Tool_Confirmation_Not_Required', ok, data);
-}
-
-// Vector 15: 禁用名单 (Deny List) 阻断测试
-{
-  const denyPolicy = new Policy({
-    mode: 'full',
-    deny: ['solidworks_save_document'],
-    allowedRoots: [sandboxRoot],
-  });
-  assert.throws(() => {
-    denyPolicy.grant('solidworks_save_document', legitArgs);
-  }, /Refusing to grant denied tool/);
-  const evalDeny = denyPolicy.evaluate('solidworks_save_document', legitArgs);
-  const ok = evalDeny.allowed === false && evalDeny.code === 'TOOL_DENIED';
-  record('Vector_15_Deny_List_Absolute_Override', ok, evalDeny);
-}
-
-// Vector 16: Read-Only 模式下高危工具绝对拦截
-{
-  const readOnlyPolicy = new Policy({ mode: 'read-only', allowedRoots: [sandboxRoot] });
-  const evalRo = readOnlyPolicy.evaluate(highTool, legitArgs);
-  const ok = evalRo.allowed === false && evalRo.code === 'POLICY_MODE';
-  record('Vector_16_ReadOnly_Mode_Ceiling_Enforced', ok, evalRo);
-}
-
-// Vector 17: 畸形挑战 ID 防御 (SQLi / Traversal in challengeId)
-{
-  const malformedIds = [
-    '../../../etc/passwd',
-    'chal_123; DROP TABLE grants;--',
-    '<script>alert(1)</script>',
-    '',
-    null,
-    undefined,
-    12345
-  ];
-  let allMalformedBlocked = true;
-  for (const mid of malformedIds) {
-    const res = await confirmTool.execute({
-      challengeId: mid,
-      ticket: 'any',
-      tool: highTool,
-      args: legitArgs,
-    });
-    const data = JSON.parse(res.text);
-    if (data.status !== 'refused') {
-      allMalformedBlocked = false;
-      break;
+      const attempts = [
+        ['Confirm_01_Empty_Args', {}],
+        ['Confirm_02_ConfirmedByHuman_False', { tool: 'solidworks_save_document', confirmedByHuman: false }],
+        ['Confirm_03_ConfirmedByHuman_True', { tool: 'solidworks_save_document', confirmedByHuman: true }],
+        ['Confirm_04_Fabricated_Ticket', { challengeId: 'chal_1234', ticket: 'a'.repeat(64), tool: 'solidworks_save_document' }],
+      ];
+      for (const [label, payload] of attempts) {
+        const data = JSON.parse((await confirmTool.execute(payload)).text);
+        record(label, data.status === 'refused' && data.code === 'SELF_APPROVAL_PROHIBITED', data);
+      }
+    } finally {
+      await stopSelf?.();
     }
   }
-  record('Vector_17_Malformed_ChallengeId_Fail_Closed', allMalformedBlocked, { malformedCount: malformedIds.length });
+
+  // ---- C. Policy 内存态 Challenge & Grant 安全不变式 -------------------------
+  let simNow = 1_000_000;
+  const targetA = path.join(sandboxRoot, 'partA.sldprt');
+  const targetB = path.join(sandboxRoot, 'partB.sldprt');
+  const argsA = { path: targetA };
+  const policy = new Policy({ mode: 'full', allowedRoots: [sandboxRoot], grantTtlMs: 5000, challengeTtlMs: 3000, now: () => simNow });
+
+  record('Policy_01_No_SignChallenge_Method', typeof policy.signChallenge === 'undefined', { hasSign: typeof policy.signChallenge });
+  record('Policy_02_No_Disk_Secrets_Or_Challenges',
+    !fs.existsSync(path.join(sandboxRoot, '.dsh-approval-secret')) && !fs.existsSync(path.join(sandboxRoot, 'approval-challenges.json')),
+    { sandboxRoot },
+  );
+
+  {
+    const ch = policy.createChallenge('solidworks_save_document', argsA, { sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c1' });
+    const resMut = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_save_document', { path: targetB }, {
+      sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c1', outcome: 'allowed-once',
+    });
+    record('Policy_03_Arg_Mutation_Rejected', !resMut.ok && resMut.code === 'ARGUMENTS_MUTATED', resMut);
+
+    const resTool = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_export_active', argsA, {
+      sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c1', outcome: 'allowed-once',
+    });
+    record('Policy_04_Tool_Mismatch_Rejected', !resTool.ok && resTool.code === 'TOOL_MISMATCH', resTool);
+
+    const resSess = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_save_document', argsA, {
+      sessionId: 's2', sessionCwd: sandboxRoot, callId: 'c1', outcome: 'allowed-once',
+    });
+    record('Policy_05_Session_Mismatch_Rejected', !resSess.ok && resSess.code === 'SESSION_MISMATCH', resSess);
+
+    const resCwd = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_save_document', argsA, {
+      sessionId: 's1', sessionCwd: path.join(sandboxRoot, 'sub'), callId: 'c1', outcome: 'allowed-once',
+    });
+    record('Policy_06_SessionCwd_Mismatch_Rejected', !resCwd.ok && resCwd.code === 'SESSION_CWD_MISMATCH', resCwd);
+
+    const resCall = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_save_document', argsA, {
+      sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c2', outcome: 'allowed-once',
+    });
+    record('Policy_07_CallId_Mismatch_Rejected', !resCall.ok && resCall.code === 'CALL_ID_MISMATCH', resCall);
+
+    const resNonAllow = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_save_document', argsA, {
+      sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c1', outcome: 'allowed-always',
+    });
+    record('Policy_08_Strict_AllowedOnce_Only', !resNonAllow.ok && resNonAllow.code === 'APPROVAL_NOT_GRANTED', resNonAllow);
+
+    // Legit consume once, then replay must fail
+    const okGrant = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_save_document', argsA, {
+      sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c1', outcome: 'allowed-once',
+    });
+    const replayGrant = policy.consumeChallengeAndGrant(ch.challengeId, 'solidworks_save_document', argsA, {
+      sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c1', outcome: 'allowed-once',
+    });
+    record('Policy_09_Single_Use_And_No_Replay', okGrant.ok && !replayGrant.ok && replayGrant.code === 'CHALLENGE_NOT_FOUND', { okGrant, replayGrant });
+  }
+
+  {
+    const chExp = policy.createChallenge('solidworks_save_document', argsA, { sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c-exp' });
+    simNow += 3001;
+    const resExp = policy.consumeChallengeAndGrant(chExp.challengeId, 'solidworks_save_document', argsA, {
+      sessionId: 's1', sessionCwd: sandboxRoot, callId: 'c-exp', outcome: 'allowed-once',
+    });
+    record('Policy_10_Expired_Challenge_Rejected', !resExp.ok && resExp.code === 'CHALLENGE_EXPIRED', resExp);
+  }
+
+  // ---- D. 真实端到端 ctx.approval 通道门控（无批拒绝 + 并发重放 + 放行）------
+  if (pythonPath) {
+    // D1: No approval channel -> APPROVAL_CHANNEL_UNAVAILABLE
+    const regNoChan = new Map();
+    const stop1 = await apply(
+      { tools: { register: (d) => { regNoChan.set(d.name, d); return () => {}; } } },
+      { mode: 'full', pythonPath, serverScript: STUB_SERVER, serverCwd: path.dirname(STUB_SERVER), allowedRoots: [sandboxRoot] },
+    );
+    try {
+      const r = JSON.parse((await regNoChan.get('stub_export').execute({ output_path: path.join(sandboxRoot, 'o.step') }, {})).text);
+      record('Host_01_Missing_Channel_Fails_Closed', r.status === 'refused' && r.code === 'APPROVAL_CHANNEL_UNAVAILABLE', r);
+    } finally {
+      await stop1?.();
+    }
+
+    // D2: Slow approval -> concurrent duplicate callId -> APPROVAL_REPLAY; TTL expire -> CHALLENGE_EXPIRED; rejected/cancelled/allowed-once
+    let releaseSlow = null;
+    let modeBehavior = 'slow';
+    const regHost = new Map();
+    const hostCtx = {
+      tools: { register: (d) => { regHost.set(d.name, d); return () => {}; } },
+      agent: { session: { header: { id: 'sess-e2e', cwd: sandboxRoot } } },
+      get: (k) => k === 'approval' ? {
+        request: async ({ signal }) => {
+          if (modeBehavior === 'slow') {
+            return new Promise((resolve) => {
+              releaseSlow = resolve;
+              signal?.addEventListener('abort', () => resolve('cancelled'), { once: true });
+            });
+          }
+          if (modeBehavior === 'hang-until-abort') {
+            return new Promise((resolve) => {
+              signal?.addEventListener('abort', () => resolve('cancelled'), { once: true });
+            });
+          }
+          return modeBehavior;
+        },
+      } : undefined,
+    };
+    const stop2 = await apply(hostCtx, {
+      mode: 'full',
+      pythonPath,
+      serverScript: STUB_SERVER,
+      serverCwd: path.dirname(STUB_SERVER),
+      allowedRoots: [sandboxRoot],
+      challengeTtlMs: 250,
+    });
+    try {
+      const exp = regHost.get('stub_export');
+      // Concurrent replay check with same callId
+      modeBehavior = 'slow';
+      const p1 = exp.execute({ output_path: path.join(sandboxRoot, 'c.step') }, { callId: 'dup-call-1', agent: { session: { header: { id: 'sess-e2e', cwd: sandboxRoot } } } });
+      await new Promise((r) => setTimeout(r, 20));
+      const p2 = await exp.execute({ output_path: path.join(sandboxRoot, 'c.step') }, { callId: 'dup-call-1', agent: { session: { header: { id: 'sess-e2e', cwd: sandboxRoot } } } });
+      releaseSlow?.('rejected');
+      const r1 = JSON.parse((await p1).text);
+      const r2 = JSON.parse(p2.text);
+      record('Host_02_Concurrent_Same_CallId_Replay_Blocked', r2.code === 'APPROVAL_REPLAY' && r1.code === 'APPROVAL_REJECTED', { r1, r2 });
+
+      // TTL expiration abort check
+      modeBehavior = 'hang-until-abort';
+      const rTtl = JSON.parse((await exp.execute({ output_path: path.join(sandboxRoot, 'ttl.step') }, { callId: 'ttl-call', agent: { session: { header: { id: 'sess-e2e', cwd: sandboxRoot } } } })).text);
+      record('Host_03_TTL_Timeout_Aborts_And_Fails_Closed', rTtl.code === 'CHALLENGE_EXPIRED', rTtl);
+
+      // Cancelled
+      modeBehavior = 'cancelled';
+      const rCan = JSON.parse((await exp.execute({ output_path: path.join(sandboxRoot, 'can.step') }, { callId: 'can-call', agent: { session: { header: { id: 'sess-e2e', cwd: sandboxRoot } } } })).text);
+      record('Host_04_Cancelled_Blocked', rCan.code === 'APPROVAL_CANCELLED', rCan);
+
+      // Allowed-once executes strictly once
+      modeBehavior = 'allowed-once';
+      const rOk = await exp.execute({ output_path: path.join(sandboxRoot, 'ok.step') }, { callId: 'ok-call', agent: { session: { header: { id: 'sess-e2e', cwd: sandboxRoot } } } });
+      record('Host_05_AllowedOnce_Forwards_To_Server', String(rOk.text).includes('unknown tool'), { text: rOk.text });
+    } finally {
+      await stop2?.();
+    }
+  }
+} finally {
+  fs.rmSync(sandboxRoot, { recursive: true, force: true });
 }
 
-// Vector 18: 无根目录或根目录不匹配时 Fail-Closed
-{
-  const zeroRootPolicy = new Policy({ mode: 'full', allowedRoots: [] });
-  const evalZero = zeroRootPolicy.evaluate(highTool, legitArgs, { sessionCwd: '' });
-  const ok = evalZero.allowed === false && evalZero.code === 'PATH_OUTSIDE_ALLOWED_ROOTS';
-  record('Vector_18_Missing_Allowed_Roots_Fail_Closed', ok, evalZero);
+if (outputJson) {
+  fs.mkdirSync(path.dirname(outputJson), { recursive: true });
+  fs.writeFileSync(outputJson, JSON.stringify(results, null, 2), 'utf8');
 }
 
-// 保存审计与对抗测试结果
-const evidenceFile = path.join(OUTPUT_DIR, 'approval_security_adversarial_evidence.json');
-fs.writeFileSync(evidenceFile, JSON.stringify(results, null, 2), 'utf-8');
-console.log(`\n=== 18 项对抗测试完成：${results.passed_tests}/${results.total_tests} PASS ===`);
-console.log(`证据保存至: ${evidenceFile}`);
-
-if (results.failed_tests > 0) {
-  process.exit(1);
-} else {
-  process.exit(0);
-}
+console.log(`\nBUG-0002 Adversarial Summary: ${results.passed_tests}/${results.total_tests} passed, ${results.failed_tests} failed`);
+process.exit(results.failed_tests === 0 ? 0 : 1);

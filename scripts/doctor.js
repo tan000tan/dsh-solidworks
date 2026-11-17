@@ -22,12 +22,12 @@
  * - diagnostic-report.md
  */
 
-import { existsSync, mkdirSync, accessSync, constants, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, accessSync, statSync, constants, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
-import { checkDshRegistration, getDshDesktopProfileDir } from './dsh_adapter.js';
+import { checkDshRegistration, getDshDesktopProfileDir, resolveSandboxDir } from './dsh_adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -429,6 +429,14 @@ except Exception as e:
     );
     if (staRes.code === 0 && staRes.stdout.includes('STA_WORKER_OK')) {
       record('STA_DESKTOP_PERM', 'PASS', 'Windows Default 桌面访问与 STA 工作线程权限正常', '跨线程 STA 消息队列调度与安全重入锁校验通过');
+    } else if (/ModuleNotFoundError|No module named '(win32com|comtypes|pythoncom)'/.test(staRes.stderr || staRes.stdout)) {
+      record(
+        'STA_DESKTOP_PERM',
+        'FAIL',
+        '无法校验 STA 桌面权限 (缺少 pywin32/comtypes)',
+        (staRes.stderr || staRes.stdout).split('\n').slice(0, 3).join('\n'),
+        '先运行 npm run setup 安装 pywin32 与 comtypes，再重跑 doctor；不要按"桌面会话权限"方向排查。'
+      );
     } else {
       record(
         'STA_DESKTOP_PERM',
@@ -443,21 +451,26 @@ except Exception as e:
   // ---------------------------------------------------------
   // 7. LIVE_COM_ECHO
   // ---------------------------------------------------------
+  if (process.argv.includes('--skip-com')) {
+    process.env.DSH_SKIP_LIVE_COM = '1';
+  }
   if (!py) {
     record('LIVE_COM_ECHO', 'FAIL', '跳过 (依赖 Python 解释器)');
   } else {
     const echoRes = await runPythonSnippet(
       py.cmd,
       `
-import sys, json
+import os, sys, json
 sys.path.insert(0, "vendor/solidworks-automation-skill/scripts")
 try:
     from sw_connect import solidworks_processes, connect_solidworks, get_com_member
     procs = solidworks_processes()
     if not procs:
         print("ECHO:STANDBY")
+    elif os.environ.get("DSH_SKIP_LIVE_COM") == "1":
+        print(f"ECHO:RUNNING:PASSIVE_CHECK|DOCS:0")
     else:
-        sw, model = connect_solidworks(wait_seconds=5, visible=False)
+        sw, model = connect_solidworks(wait_seconds=3, visible=False, start_if_not_running=False)
         rev = get_com_member(sw, "RevisionNumber")
         doc_count = 0
         try:
@@ -493,14 +506,22 @@ except Exception as e:
   // ---------------------------------------------------------
   const dshCheck = checkDshRegistration();
   if (dshCheck.registered) {
-    record('DSH_CLIENT_INTEGRATION', 'PASS', 'DeepSeek Harness 客户端已成功挂载本插件', `配置文件: ${dshCheck.patchFile}`);
+    record('DSH_CLIENT_INTEGRATION', 'PASS', 'DeepSeek Harness 客户端已成功挂载本插件', `形态: ${dshCheck.shape}, 配置文件: ${dshCheck.patchFile}`);
+  } else if (dshCheck.shape === 'legacy-override') {
+    record(
+      'DSH_CLIENT_INTEGRATION',
+      'FAIL',
+      'DSH 配置里只有"裸 id + config"条目，宿主不会加载本插件',
+      dshCheck.reason,
+      '运行 node scripts/setup.js（或重新执行 install.bat）：它会把条目改写成规范的 insert 列表项；也可直接在 DSH 插件面板里重新启用。'
+    );
   } else {
     record(
       'DSH_CLIENT_INTEGRATION',
       'WARN',
       'DSH 配置文件中未检测到 dsh-solidworks 注册项',
-      dshCheck.reason || '尚未自动或手动在 cordis.patch.yml 注册',
-      '请运行 npm run setup 或双击 install.bat 自动将本插件接入 DSH。'
+      dshCheck.reason || '尚未在 cordis.patch.yml 注册',
+      '若通过 DSH 插件面板安装，请在面板中启用本插件；命令行安装则运行 npm run setup。两者都需要重启 DSH 才生效。'
     );
   }
 
@@ -512,15 +533,15 @@ except Exception as e:
     try {
       const cfgObj = JSON.parse(readFileSync(mcpConfigFile, 'utf8'));
       if (cfgObj.mcpServers && cfgObj.mcpServers['solidworks-cad']) {
-        record('MCP_CONFIG_VALIDITY', 'PASS', 'MCP 客户端配置文件格式合规', `文件: ${mcpConfigFile}`);
+        record('MCP_CONFIG_VALIDITY', 'WARN', '检测到可选直连配置 dsh-mcp-config.json（独立客户端会绕过 JS 策略审批与审计）', `文件: ${mcpConfigFile}`, '如仅通过 DSH 宿主使用，建议移除该文件，仅保留插件宿主注册链路。');
       } else {
-        record('MCP_CONFIG_VALIDITY', 'WARN', 'MCP 配置文件存在但结构不完整', '缺少 solidworks-cad 服务定义', '运行 npm run mcp-config 重新生成。');
+        record('MCP_CONFIG_VALIDITY', 'WARN', 'MCP 配置文件存在但结构不完整', '缺少 solidworks-cad 服务定义', '删除该文件或运行 npm run mcp-config -- --write-direct-config。');
       }
     } catch (e) {
-      record('MCP_CONFIG_VALIDITY', 'WARN', 'MCP 配置文件 JSON 语法损坏', e.message, '运行 npm run mcp-config 重新生成。');
+      record('MCP_CONFIG_VALIDITY', 'WARN', 'MCP 配置文件 JSON 语法损坏', e.message, '删除该文件或运行 npm run mcp-config -- --write-direct-config。');
     }
   } else {
-    record('MCP_CONFIG_VALIDITY', 'WARN', '未生成 dsh-mcp-config.json', '尚无开箱即用的配置文件', '建议运行 npm run setup 或 npm run mcp-config 自动生成。');
+    record('MCP_CONFIG_VALIDITY', 'PASS', '未存在直连旁路配置 dsh-mcp-config.json，统一受 DSH 插件 JS 策略/审批/审计保护', '安全默认状态（如需独立客户端配置可显式运行 npm run mcp-config -- --write-direct-config）');
   }
 
   // ---------------------------------------------------------
@@ -547,8 +568,8 @@ except Exception as e:
   // 11. SANDBOX_ROOTS_SAFETY
   // ---------------------------------------------------------
   const defaultSandbox = process.env.DSH_ALLOWED_ROOTS
-    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return path.join(process.cwd(), 'cad_sandbox'); } })()
-    : path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark');
+    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return resolveSandboxDir(ROOT_DIR); } })()
+    : resolveSandboxDir(ROOT_DIR);
   let sandboxOk = false;
   let sandboxMsg = '';
   try {
@@ -575,6 +596,42 @@ except Exception as e:
   }
 
   // ---------------------------------------------------------
+  // 12. AUDIT_LOG_HEALTH (BUG-0022)
+  // ---------------------------------------------------------
+  const configuredAuditLog = process.env.DSH_AUDIT_LOG || path.join(ROOT_DIR, '.dsh-audit', 'audit.jsonl');
+  const auditDir = path.dirname(configuredAuditLog);
+  let auditOk = false;
+  let auditDetail = '';
+  try {
+    if (!existsSync(auditDir)) {
+      mkdirSync(auditDir, { recursive: true });
+    }
+    accessSync(auditDir, constants.R_OK | constants.W_OK);
+    if (existsSync(configuredAuditLog)) {
+      if (statSync(configuredAuditLog).isDirectory()) {
+        throw new Error('DSH_AUDIT_LOG points to a directory instead of a file');
+      }
+      accessSync(configuredAuditLog, constants.W_OK);
+    }
+    auditOk = true;
+    auditDetail = `审计日志目录可写: ${auditDir}`;
+  } catch (err) {
+    auditDetail = `审计日志路径不可写 (${configuredAuditLog}): ${err.message}`;
+  }
+
+  if (auditOk) {
+    record('AUDIT_LOG_HEALTH', 'PASS', '安全审计日志通道可写性校验通过', auditDetail);
+  } else {
+    record(
+      'AUDIT_LOG_HEALTH',
+      'FAIL',
+      '安全审计日志路径不可写',
+      auditDetail,
+      `请检查 DSH_AUDIT_LOG 或插件目录下的 .dsh-audit 目录权限。`
+    );
+  }
+
+  // ---------------------------------------------------------
   // 导出脱敏报告 (JSON & Markdown)
   // ---------------------------------------------------------
   const timestamp = new Date().toISOString();
@@ -587,10 +644,12 @@ except Exception as e:
     checks: report,
   };
 
-  const reportJsonPath = path.join(ROOT_DIR, 'diagnostic-report.json');
-  const reportMdPath = path.join(ROOT_DIR, 'diagnostic-report.md');
+  const outDir = process.env.DSH_DOCTOR_OUT_DIR ? path.resolve(process.env.DSH_DOCTOR_OUT_DIR) : ROOT_DIR;
+  const reportJsonPath = path.join(outDir, 'diagnostic-report.json');
+  const reportMdPath = path.join(outDir, 'diagnostic-report.md');
 
   try {
+    mkdirSync(outDir, { recursive: true });
     writeFileSync(reportJsonPath, JSON.stringify(summaryObj, null, 2), 'utf8');
 
     const mdLines = [

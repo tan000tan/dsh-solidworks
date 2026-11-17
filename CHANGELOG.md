@@ -5,14 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-11-17
+
+### CAD Remediation & False-Success Prevention
+- **`solidworks_shell` (`sw_part.py`, `server.py`)**:
+  - Fixed `AttributeError: <unknown>.InsertFeatureShell` by invoking `IModelDoc2.InsertFeatureShell(thickness, outward)` (verified against SolidWorks 2026 `sldworks.tlb`) instead of `FeatureManager.InsertFeatureShell`.
+  - Added strict positive finite thickness checks, `SelectByID2` face-selection failure guards (`SHELL_FACE_NOT_SELECTED`), and post-feature tree verification.
+- **Assembly Mate Commit Verification (`sw_assembly.py`, `server.py`)**:
+  - Added pre/post `MateGroup` feature-tree delta verification inside `add_mate5_checked` and `solidworks_add_coincident_mate` / `solidworks_add_distance_mate` / `solidworks_add_concentric_mate` to block `SUSPECT_FALSE_SUCCESS` (`MATE_NOT_COMMITTED`) when `AddMate5` returns a proxy without committing a mate feature.
+- **Documentation & Package Parity (`docs/verification.md`)**:
+  - Updated `docs/verification.md` `tests/host.test.js` historical wording (`21` tools / `tools: 71`) and bumped release candidate metadata to `0.3.2` (live SolidWorks 2026 COM/CAD re-execution remains explicitly gated by `L5-BLOCK-01` where Student Edition is expired).
+
 ## [0.3.1] - 2026-11-11
 
 ### Security Hardening (P0 Fixes)
-- **Zero-Trust Cryptographic Human Approval System (`lib/policy.js`, `lib/index.js`)**:
-  - Completely eliminated the vulnerable `confirmedByHuman: true` boolean check which previously allowed AI models to self-authorize high-risk operations.
-  - Implemented an HMAC-SHA256 Challenge-Response ticket architecture. High-risk operations without prior authorization trigger a tamper-proof challenge (`challengeId`, canonical arguments digest, target paths, expiresAt).
-  - Authorization tickets are strictly generated via unexposed private host secret keys (`#secretKey`), binding authorization directly to the exact tool, parameters digest, challenge ID, and session ID.
-  - Passed 18 rigorous adversarial attack tests (`tests/approval_security_adversarial_test.mjs`): ticket tampering, parameter mutations, replay attacks (single-use consumption), TTL expiration, cross-session abuse, tool swapping, race conditions, path traversal, and fail-closed security gating.
+- **Fail-Closed Interactive Host Approval (`lib/policy.js`, `lib/index.js`, `lib/validate.js`)**:
+  - Completely eliminated the vulnerable `confirmedByHuman: true` boolean check and disabled self-service `solidworks_confirm` (always fails closed with `SELF_APPROVAL_PROHIBITED`).
+  - High-risk operations (`mode: full`) generate bound challenges (`challengeId`, canonical arguments digest, target paths, session ID, `callId`, `expiresAt`) and strictly require host-native interactive user authorization (`ctx.approval`); when absent or denied, calls refuse closed (`APPROVAL_CHANNEL_UNAVAILABLE` / `APPROVAL_DENIED`).
+  - Merged strict JSON boolean/schema validation (`lib/validate.js`, `AUD-SEC-001`) and session/digest challenge-grant binding (`AUD-SEC-002`).
+  - Verified across adversarial and security regression suites (`tests/approval_security_adversarial_test.mjs`, `tests/r1_r5_security_matrix_test.mjs`, `tests/confirm_human_authorization_test.js`, `tests/phase5_security_approval_test.js`).
 
 ### Runtime Isolation & Productization (P1 Fixes)
 - **Dedicated Python Virtual Environment Isolation (`lib/discover.js`)**:
@@ -21,12 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Ensured host Python and DSH Primary Runtime site-packages remain 100% pristine and uncontaminated.
 - **CAD Toolset & Manifest Reconciliation**:
   - Unified exact tool accounting: 71 vendored CAD tools (19 READ, 26 WRITE, 26 HIGH) plus 2 DSH host meta/policy tools (`solidworks_status`, `solidworks_confirm`), totaling 73 declared tools in `dsh-plugin.json` and registered into the DSH host.
-- **Physical CAD Verification on SolidWorks 2026 SP4.1**:
-  - Validated 11 core CAD modeling, assembly, drawing view, and mass properties steps with 0.0000% volume error and 4D document count conservation (initial 0 -> final 0, residue 0).
-- **Diagnostics & Lifecycle Verification**:
-  - Full PASS on `node scripts/doctor.js` (12/12 checks, 0 blocking errors).
-  - Full PASS on `python -B tests/sw_compat_matrix_test.py` (19/19 checks across SolidWorks 2020-2026 compatibility paths).
-  - Full PASS on `node tests/package.test.js` (12/12 checks).
+### Diagnostics & Lifecycle Verification
+- Full PASS on `node scripts/doctor.js` (12/12 checks, 0 blocking errors).
+- Full PASS on `node scripts/run_test_all.mjs` (20/20 top-level suites, 201/201 assertions).
+- Full PASS on `python -B scripts/run_all_python_tests.py` (42/42 Python test suites, 0 skipped, 0 failed).
+- Final Closure & Real-Environment Hardening (`D-02` / `D-11` / `D-12` / `D-13` / `D-17` / `D-18` / `AUD-COM-001`):
+  - Added optional `@deepseek-ai/schemastery` native `Config` export in `lib/index.js` for DSH settings form integration (gracefully degrades offline).
+  - Added `COMDEP` optional `comtypes`/`win32com` probing in `lib/discover.js` and `environment.degraded` reporting in `lib/index.js`.
+  - Eliminated Head-of-Line Blocking in `server.py` (`use_lock=False` for 14 non-COM `cadstudio_*` tools and `solidworks_recover`; finite `SW_LOCK_WAIT_TIMEOUT_SECONDS` fast-fail for COM calls; paired `_com_initialized()` in `solidworks_recover`).
+- Note on physical CAD verification: historical live SolidWorks 2026 runs are recorded in `docs/verification.md` and `audit/real-test-integrated-closure/12-final-closure/`; when local SolidWorks Student Edition license expires (`L5-BLOCK-01`), live COM creation is blocked externally until re-activated, while all mock/offline/policy/DSH host regressions remain verified.
 
 ## [0.3.0] - 2026-11-10
 

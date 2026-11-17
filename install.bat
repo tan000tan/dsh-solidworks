@@ -25,8 +25,8 @@ if exist "C:\Program Files\nodejs\node.exe" (
     goto :FoundNode
 )
 
-if exist "D:\Node.js\node.exe" (
-    set "NODE_EXE=D:\Node.js\node.exe"
+if exist "%LOCALAPPDATA%\Programs\nodejs\node.exe" (
+    set "NODE_EXE=%LOCALAPPDATA%\Programs\nodejs\node.exe"
     goto :FoundNode
 )
 

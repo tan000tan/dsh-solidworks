@@ -2,6 +2,7 @@
 SolidWorks 零件建模工具
 提供草图绘制和特征创建的常用函数
 """
+import math
 import weakref
 from dataclasses import dataclass
 from contextlib import contextmanager
@@ -964,15 +965,71 @@ def circular_pattern(model, feature_name, axis_name, angle_rad, count, equal_spa
     return create_pattern(model, feature_name, axis_name, angle_rad, count, equal_spacing)
 
 
-def shell(model, thickness, faces_to_remove=None):
+def _snapshot_feature_names(model):
+    """安全获取当前特征树名称列表（供无对象返回值特征如 InsertFeatureShell 前后对比）。"""
+    names = []
+    try:
+        feat = get_com_member(model, "FirstFeature")
+        guard = 0
+        while feat is not None and guard < 2000:
+            guard += 1
+            n = get_com_member(feat, "Name")
+            if n is not None:
+                names.append(str(n))
+            feat = get_com_member(feat, "GetNextFeature")
+    except Exception:
+        return None
+    return names if names else None
+
+
+def shell(model, thickness, faces_to_remove=None, outward=False):
     """
-    抽壳
+    抽壳特征（依据 SolidWorks TLB IModelDoc2.InsertFeatureShell(Thickness, Outward) 修复）。
 
     参数:
-        thickness: 壁厚（米）
-        faces_to_remove: 需预先选择要移除的面
+        thickness: 壁厚（米，必须为有限正数）
+        faces_to_remove: 可选需移除的面名称（str 或 str 列表）；为 None 时使用当前已选面
+        outward: False=向内抽壳，True=向外抽壳
     """
-    return model.FeatureManager.InsertFeatureShell(thickness, False)
+    thickness_val = float(thickness)
+    if not math.isfinite(thickness_val) or thickness_val <= 0:
+        raise ValueError(f"抽壳壁厚必须为有限正数（单位米），当前为: {thickness!r}")
+
+    if faces_to_remove:
+        face_list = [faces_to_remove] if isinstance(faces_to_remove, str) else list(faces_to_remove)
+        model.ClearSelection2(True)
+        for idx, face_name in enumerate(face_list):
+            if not _select_by_id(model.Extension, str(face_name), "FACE", append=(idx > 0), mark=1):
+                model.ClearSelection2(True)
+                raise ValueError(f"无法选择抽壳移除面: {face_name!r}")
+
+    before_names = _snapshot_feature_names(model)
+
+    # 真实 SolidWorks 2026 sldworks.tlb: InsertFeatureShell 位于 IModelDoc2 上，而非 IFeatureManager。
+    insert_fn = getattr(model, "InsertFeatureShell", None)
+    if not callable(insert_fn):
+        fm = getattr(model, "FeatureManager", None)
+        insert_fn = getattr(fm, "InsertFeatureShell", None) if fm is not None else None
+    if not callable(insert_fn):
+        raise AttributeError("SolidWorks 模型及 FeatureManager 均未暴露 InsertFeatureShell 接口")
+
+    raw_res = insert_fn(thickness_val, bool(outward))
+    if raw_res is False or raw_res is None:
+        return None
+
+    # IModelDoc2.InsertFeatureShell 在真实 COM 中通常返回 bool (True)；尝试从特征树取回新建 Shell 特征对象。
+    if raw_res is True:
+        after_names = _snapshot_feature_names(model)
+        if before_names is not None and after_names is not None:
+            new_names = [n for n in after_names if n not in before_names]
+            if not new_names:
+                return None
+            feat_obj = get_com_member(model, "FeatureByName", new_names[-1])
+            if feat_obj is not None:
+                return feat_obj
+        return {"Name": "Shell", "created": True, "thickness_m": thickness_val}
+
+    return raw_res
 
 
 def mirror_feature(model, feature_name, mirror_plane_name):
@@ -984,30 +1041,43 @@ def mirror_feature(model, feature_name, mirror_plane_name):
         mirror_plane_name: 镜像基准面名称（支持中英文别名自动解析）
     """
     model.ClearSelection2(True)
+
+    # FIX BUG-002：InsertMirrorFeature2 的选择集契约是“被镜像特征 mark=1、镜像面 mark=2”。
+    # 旧实现先选基准面(mark=1) 再选特征(mark=2)，API 因前置条件不满足返回 None，
+    # safe_mirror_feature 又把 None 误判为“接口不存在”，最终报成“版本不支持”。
+    feat_selected = False
+    feat_obj = get_com_member(model, "FeatureByName", str(feature_name))
+    if feat_obj is not None:
+        try:
+            feat_selected = bool(get_com_member(feat_obj, "Select2", False, 1))
+        except Exception:
+            pass
+    if not feat_selected:
+        feat_selected = _select_by_id(model.Extension, feature_name, "BODYFEATURE", append=False, mark=1)
+
+    if not feat_selected:
+        raise ValueError(f"无法选择被镜像特征: {feature_name}")
+
     plane_selected = False
     for plane_candidate in _get_plane_name_candidates(mirror_plane_name):
-        if _select_by_id(model.Extension, plane_candidate, "PLANE", append=False, mark=1):
+        if _select_by_id(model.Extension, plane_candidate, "PLANE", append=True, mark=2):
             plane_selected = True
             break
     if not plane_selected:
         raise ValueError(f"无法选择镜像基准面: {mirror_plane_name}")
 
-    feat_selected = False
-    feat_obj = get_com_member(model, "FeatureByName", str(feature_name))
-    if feat_obj is not None:
+    if safe_mirror_feature is not None:
+        feat = safe_mirror_feature(model.FeatureManager)
+    else:
+        feat = model.FeatureManager.InsertMirrorFeature2(False, False, False, False, 0)
+    # BUG-B-01: SolidWorks 2026 晚期绑定下特征级 InsertMirrorFeature2(False, ...) 可能返回 None；
+    # 若特征级镜像返回 None，自动尝试 GeometryPattern=True 变体。
+    if feat is None and hasattr(model.FeatureManager, "InsertMirrorFeature2"):
         try:
-            feat_selected = bool(get_com_member(feat_obj, "Select2", True, 2))
+            feat = model.FeatureManager.InsertMirrorFeature2(False, True, False, False, 0)
         except Exception:
             pass
-    if not feat_selected:
-        feat_selected = _select_by_id(model.Extension, feature_name, "BODYFEATURE", append=True, mark=2)
-
-    if not feat_selected:
-        raise ValueError(f"无法选择被镜像特征: {feature_name}")
-
-    if safe_mirror_feature is not None:
-        return safe_mirror_feature(model.FeatureManager)
-    return model.FeatureManager.InsertMirrorFeature2(False, False, False, False, 0)
+    return feat
 
 
 def hole_wizard(model, hole_type, standard, fastener_type, size, depth, x, y, z):

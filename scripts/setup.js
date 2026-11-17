@@ -6,7 +6,7 @@
  * 纯 Node.js 实现，跨平台、防 Windows 执行策略拦截、幂等支持。
  *
  * 核心流程：
- * 1. 架构与平台校验 (Windows x64 / Node.js >= 18)；
+ * 1. 架构与平台校验 (Windows x64 / Node.js >= 22.12)；
  * 2. 智能探测系统中可用的 Python 3.10+ 解释器；
  * 3. 在项目根目录下自动创建独立虚拟环境 (.venv)；
  * 4. 幂等安装 requirements.txt 运行时依赖（支持镜像源加速与按需可选扩展）；
@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
-import { registerToDshProfile, getDshPrimaryRuntimePython, isDshDesktopInstalled } from './dsh_adapter.js';
+import { registerToDshProfile, getDshPrimaryRuntimePython, isDshDesktopInstalled, resolveSandboxDir } from './dsh_adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -207,34 +207,7 @@ except Exception:
   }
 }
 
-// 生成标准化 MCP 客户端配置文件
-function generateMcpConfig(pythonExecutable) {
-  const serverScript = path.join(ROOT_DIR, 'vendor', 'solidworks-automation-skill', 'mcp-server', 'server.py');
-  const sandboxDir = process.env.DSH_ALLOWED_ROOTS
-    ? (() => { try { return JSON.parse(process.env.DSH_ALLOWED_ROOTS)[0]; } catch { return path.join(process.cwd(), 'cad_sandbox'); } })()
-    : path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark');
-  const config = {
-    mcpServers: {
-      "solidworks-cad": {
-        command: pythonExecutable,
-        args: [serverScript],
-        env: {
-          DSH_ALLOWED_ROOTS: JSON.stringify([sandboxDir]),
-          PYTHONUNBUFFERED: "1",
-          PYTHONDONTWRITEBYTECODE: "1"
-        }
-      }
-    }
-  };
-
-  const targetPath = path.join(ROOT_DIR, 'dsh-mcp-config.json');
-  try {
-    writeFileSync(targetPath, JSON.stringify(config, null, 2), 'utf8');
-    return targetPath;
-  } catch {
-    return null;
-  }
-}
+// MCP 宿主接入由 registerToDshProfile 处理；dsh-mcp-config.json 不再在 setup 阶段静默落盘。
 
 async function main() {
   console.log('\n======================================================');
@@ -456,14 +429,10 @@ async function main() {
     console.log('[*] 非 Windows 平台，跳过 pywin32 COM 注册。');
   }
 
-  // Step 5: 生成 MCP 标准配置
-  console.log('\n[5/6] 生成标准 MCP 客户端接入配置...');
-  const cfgPath = generateMcpConfig(activePython);
-  if (cfgPath) {
-    console.log(`[✔] 专属 MCP 配置文件已更新: ${cfgPath}`);
-  } else {
-    console.warn(`[!] 无法自动写入 MCP 配置文件`);
-  }
+  // Step 5: 输出安全边界与独立 MCP 配置提示（RT-SEC-02：禁止静默写入绕过 JS 策略的 dsh-mcp-config.json）
+  console.log('\n[5/6] 校验安全接入方式与宿主策略链路...');
+  console.log('[✔] 安全默认: 不在插件根目录静默写入 dsh-mcp-config.json，确保 DSH 宿主始终经由 JS Policy 审批与审计链路调用。');
+  console.log('    （若确需为独立第三方 MCP 客户端生成配置，可按需运行: npm run mcp-config -- --write-direct-config）');
 
   // Step 6: 自动接入 DeepSeek Harness (DSH) 客户端
   console.log('\n[6/6] 自动接入 DeepSeek Harness (DSH) 宿主环境...');
@@ -475,15 +444,19 @@ async function main() {
       pluginRoot: ROOT_DIR,
     });
     if (regRes.ok) {
-      console.log(`[✔] 已成功接入 DSH 桌面配置文件: ${regRes.patchFile}`);
+      console.log(`[✔] 已写入 DSH 桌面配置文件: ${regRes.patchFile}`);
+      console.log(`    条目形态: ${regRes.action ?? 'unchanged'}`);
       if (regRes.backupPath) {
         console.log(`    (已自动备份原始配置至: ${path.basename(regRes.backupPath)})`);
       }
+      console.log('    注意: 桌面端 profile 由 DSH 应用自身管理，改完必须完全退出并重启 DSH 才会生效；');
+      console.log('          若插件尚未被市场安装到该 profile 的 node_modules，光有配置条目也不会加载。');
     } else {
       console.warn(`[!] DSH 自动接入提示: ${regRes.reason}`);
     }
   } else {
-    console.log('    (未检测到本机的 DSH 桌面配置文件，跳过自动挂载)');
+    console.log('    (未检测到本机的 DSH 桌面 profile，跳过自动挂载)');
+    console.log('    如果你用的是 DSH 桌面端，请先在应用内安装本插件，再回到这里运行 setup。');
   }
 
   console.log('\n======================================================');
@@ -492,7 +465,12 @@ async function main() {
 
   if (process.argv.includes('--verify')) {
     console.log('\n[*] 正在触发安装后自动化健康诊断 (Doctor)...');
-    await runCommand('node', [path.join(__dirname, 'doctor.js')], { stdio: 'inherit' });
+    // 用当前解释器而不是裸 'node'：install.bat 可能是在 PATH 里没有 node 的机器上
+    // 用 DSH 自带运行时装起来的，裸 'node' 会 spawn 失败并静默跳过诊断。
+    const doctorRes = await runCommand(process.execPath, [path.join(__dirname, 'doctor.js')], { stdio: 'inherit' });
+    if (doctorRes.code !== 0) {
+      console.warn(`[!] 健康诊断未全绿 (exit=${doctorRes.code})，请按上方建议项修复后重跑 npm run doctor。`);
+    }
   } else {
     console.log('\n【下一步快捷操作】');
     console.log('  1. 运行系统全项健康诊断:');

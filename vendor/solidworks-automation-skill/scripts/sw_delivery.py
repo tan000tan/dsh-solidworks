@@ -16,12 +16,12 @@ import pywintypes
 from win32com.client import gencache
 
 try:
-    from .sw_connect import get_com_member, get_sw_version, _LaunchGuard, SolidWorksConnectionError, close_owned_solidworks
+    from .sw_connect import get_com_member, get_sw_version, _LaunchGuard, SolidWorksConnectionError, close_owned_solidworks, is_launch_allowed
     from .sw_process import solidworks_processes
     from .sw_document_data import read_custom_property
     from .sw_preflight import import_com_dependencies
 except ImportError:
-    from sw_connect import get_com_member, get_sw_version, _LaunchGuard, SolidWorksConnectionError, close_owned_solidworks
+    from sw_connect import get_com_member, get_sw_version, _LaunchGuard, SolidWorksConnectionError, close_owned_solidworks, is_launch_allowed
     from sw_process import solidworks_processes
     from sw_document_data import read_custom_property
     from sw_preflight import import_com_dependencies
@@ -113,10 +113,13 @@ def export_assembly_bom_csv(
     overwrite: bool = False,
 ) -> dict[str, Any]:
     """导出 UTF-8 BOM CSV，并返回文件大小与 SHA-256 证据。"""
-    target = Path(os.path.expandvars(str(output_path))).expanduser().resolve()
+    try:
+        from .path_security import safe_ensure_parent_dir, require_allowed_path
+    except ImportError:
+        from path_security import safe_ensure_parent_dir, require_allowed_path
+    target = Path(safe_ensure_parent_dir(str(output_path), label="output_path"))
     if target.exists() and not overwrite:
         raise FileExistsError(f"BOM 文件已存在，未允许覆盖: {target}")
-    target.parent.mkdir(parents=True, exist_ok=True)
     before = _file_signature(target)
     rows = collect_assembly_bom(model, include_excluded=include_excluded)
     headers = [
@@ -1060,10 +1063,18 @@ def _comtypes_documents(sw):
         try:
             observer = win32com_client.GetActiveObject("SldWorks.Application")
         except Exception:
+            if not is_launch_allowed():
+                raise SolidWorksConnectionError(
+                    "SW_LAUNCH_PROHIBITED",
+                    "pack_and_go",
+                    "无法附着到运行中的 SolidWorks，且当前策略禁止自动 Dispatch 启动 SolidWorks",
+                )
             observer = win32com_client.Dispatch("SldWorks.Application.34")
         if int(get_com_member(observer, "GetProcessID")) != int(get_com_member(sw, "GetProcessID")):
             raise ValueError("清单观察器不是当前回退实例")
         return list(get_com_member(observer, "GetDocuments") or [])
+    except SolidWorksConnectionError:
+        raise
     except Exception as error:
         raise SolidWorksConnectionError("SW_DOCUMENT_STATE_UNAVAILABLE", "pack_and_go", f"回退无法回读文档清单: {type(error).__name__}: {error}") from error
 
@@ -1102,11 +1113,16 @@ def pack_and_go(
     """
     if fallback_policy not in {"stage_dependencies", "blocked"}:
         raise ValueError("fallback_policy 必须是 stage_dependencies 或 blocked")
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    target = Path(require_allowed_path(str(output_dir), label="output_dir"))
     source_path = str(get_com_member(model, "GetPathName") or "")
     if not source_path or not Path(source_path).is_file():
         raise ValueError("当前文档必须先保存到磁盘，才能执行 Pack and Go")
-    target = Path(os.path.expandvars(str(output_dir))).expanduser().resolve()
     target.mkdir(parents=True, exist_ok=True)
+    require_allowed_path(str(target), label="output_dir")
     existing_files = {str(path): _file_signature(path) for path in target.rglob("*") if path.is_file()}
     if existing_files and not overwrite:
         raise FileExistsError(f"Pack and Go 目标目录非空，未允许覆盖: {target}")

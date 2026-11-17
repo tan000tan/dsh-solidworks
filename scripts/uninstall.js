@@ -50,6 +50,14 @@ const SAFE_CLEANUP_TARGETS = [
     path: path.join(ROOT_DIR, '测试代码', 'sandbox_benchmark', 'shadow_backups'),
     desc: '测试沙箱影子备份临时快照目录',
   },
+  {
+    path: path.join(ROOT_DIR, 'diagnostic-report.json'),
+    desc: 'doctor 生成的结构化诊断报告',
+  },
+  {
+    path: path.join(ROOT_DIR, 'diagnostic-report.md'),
+    desc: 'doctor 生成的 Markdown 诊断摘要',
+  },
 ];
 
 console.log('[1/2] 扫描安全可清理资源...');
@@ -66,21 +74,23 @@ for (const target of SAFE_CLEANUP_TARGETS) {
 }
 
 if (itemsFound === 0) {
-  console.log('\n[✔] 未发现本插件的临时运行时或生成配置，工作区处于纯净状态。');
-  process.exit(0);
+  // 常见情形：插件由 DSH 插件面板安装、从未跑过 setup —— 没有 .venv 可删，
+  // 但 profile 里的配置条目仍然要解挂；所以这里不能直接 exit。
+  console.log('\n[✔] 未发现可清理的临时运行时或生成配置。');
+} else {
+  // 安全承诺提示
+  console.log('\n[2/2] 执行安全清理...');
+  console.log('【安全保证】');
+  console.log('  ✔ 用户模型资产 (*.SLDPRT, *.SLDASM) 将被 100% 完整保留；');
+  console.log('  ✔ 配置备份目录 (config-backups/) 将被 100% 完整保留；');
+  console.log('  ✔ 不触碰任何系统注册表与全局环境变量。\n');
 }
-
-// 安全承诺提示
-console.log('\n[2/2] 执行安全清理...');
-console.log('【安全保证】');
-console.log('  ✔ 用户模型资产 (*.SLDPRT, *.SLDASM) 将被 100% 完整保留；');
-console.log('  ✔ 配置备份目录 (config-backups/) 将被 100% 完整保留；');
-console.log('  ✔ 不触碰任何系统注册表与全局环境变量。\n');
 
 if (!isForce && !isDryRun) {
   console.log('提示: 若要执行真正清理，请使用参数:');
   console.log('      node scripts/uninstall.js --yes');
   console.log('      或演练查看: node scripts/uninstall.js --dry-run\n');
+  printPluginRemovalNotice();
   process.exit(0);
 }
 
@@ -116,4 +126,15 @@ if (isDryRun) {
   console.log('  🎉 插件临时运行环境已安全清理！');
   console.log('  如需重新使用，可随时运行: npm run setup 快速重新就绪。');
 }
-console.log('======================================================\n');
+console.log('======================================================');
+printPluginRemovalNotice();
+
+function printPluginRemovalNotice() {
+  console.log('\n【还需手动做一步：移除插件本体】');
+  console.log('  本脚本运行在插件目录内部，无法删除自己所在的文件夹。');
+  console.log(`  插件目录: ${ROOT_DIR}`);
+  console.log('  · 通过 DSH 插件面板安装的：在面板里"卸载 dsh-solidworks"，应用会自行删除该目录；');
+  console.log('  · 手工解压安装的：确认 DSH 已完全退出后，直接删除上面这个文件夹即可；');
+  console.log('  · 你的 CAD 模型（.SLDPRT/.SLDASM/.SLDDRW 与默认沙箱目录）不会被删除。');
+  console.log('');
+}

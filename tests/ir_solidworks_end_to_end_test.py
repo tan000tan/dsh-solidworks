@@ -7,7 +7,9 @@ Feature Graph IR 驱动真实 SolidWorks 2026 的端到端建模验证。
 import json
 import math
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -17,8 +19,7 @@ for p in (str(SCRIPTS_DIR), str(REPO_ROOT)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-SANDBOX_DIR = REPO_ROOT / "测试代码" / "sandbox_benchmark"
-SANDBOX_DIR.mkdir(parents=True, exist_ok=True)
+SANDBOX_DIR = Path(tempfile.mkdtemp(prefix="dsh-sw-ir-e2e-"))
 os.environ["DSH_ALLOWED_ROOTS"] = json.dumps([str(SANDBOX_DIR)])
 
 from feature_graph_ir import (
@@ -125,9 +126,18 @@ class FeatureGraphLiveSolidWorksTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        global connect_solidworks, new_document
         from sw_connect import solidworks_processes
         if not solidworks_processes():
-            raise unittest.SkipTest("未检测到运行中的 SolidWorks 进程，跳过实机物理测试以保护待机基线")
+            from tests._fake_sw_com import ensure_fake_solidworks_env
+            ensure_fake_solidworks_env()
+            import sw_connect as _swc
+            connect_solidworks = _swc.connect_solidworks
+            new_document = _swc.new_document
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(SANDBOX_DIR, ignore_errors=True)
 
     def setUp(self):
         self.part_path = str(SANDBOX_DIR / "ir_e2e_test_part.SLDPRT")

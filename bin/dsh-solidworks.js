@@ -12,7 +12,7 @@
  *
  *   dsh-solidworks call solidworks_mass_properties
  *   dsh-solidworks call solidworks_create_basic_part --json-args '{"depth_mm":50}' --mode standard
- *   dsh-solidworks call solidworks_export_active --json-args '{"output_path":"D:\\out\\x.step","export_format":"step"}' --mode full --yes
+ *   dsh-solidworks call solidworks_export_active --json-args '{"output_path":"part.step","export_format":"step"}' --mode full
  *
  * It goes through Policy.evaluate exactly like the plugin does, so a refusal
  * here is the same refusal DSH would report.
@@ -37,7 +37,30 @@ const pkg = JSON.parse(readFileSync(path.join(PLUGIN_ROOT, 'package.json'), 'utf
 const VERSION = pkg.version;
 
 const argv = process.argv.slice(2);
-const command = argv.find(arg => !arg.startsWith('-')) ?? 'doctor';
+
+/** Flags that consume the following token as their value (C-CLI-01). */
+const VALUE_FLAGS = new Set(['--mode', '--server', '--python', '--json-args', '--root', '--allow']);
+
+/**
+ * The command is the first token that is neither a flag nor a flag's value.
+ * Taking "the first token that does not start with -" made `--mode full
+ * list-tools` resolve to the command "full" and fail with "unknown command",
+ * even though it is a documented invocation order.
+ */
+function findCommandIndex(tokens) {
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    if (token.startsWith('-')) {
+      if (VALUE_FLAGS.has(token)) i += 1;
+      continue;
+    }
+    return i;
+  }
+  return -1;
+}
+
+const commandIndex = findCommandIndex(argv);
+const command = commandIndex >= 0 ? argv[commandIndex] : 'doctor';
 const flags = new Set(argv.filter(arg => arg.startsWith('-')));
 const json = flags.has('--json');
 const modeArg = valueOf('--mode');
@@ -46,7 +69,9 @@ const pythonArg = valueOf('--python');
 
 function valueOf(flag) {
   const index = argv.indexOf(flag);
-  return index >= 0 ? argv[index + 1] : undefined;
+  if (index < 0) return undefined;
+  const next = argv[index + 1];
+  return next === undefined || next.startsWith('-') ? undefined : next;
 }
 
 function out(payload, human) {
@@ -56,7 +81,9 @@ function out(payload, human) {
 
 async function runScript(scriptName) {
   const scriptPath = path.join(PLUGIN_ROOT, 'scripts', scriptName);
-  const forwarded = argv.filter(a => a !== command);
+  // Forward everything except the command token itself, by position: filtering by
+  // value would also delete a *flag value* that happens to equal the command.
+  const forwarded = argv.filter((_, index) => index !== commandIndex);
   const child = spawn(process.execPath, [scriptPath, ...forwarded], {
     cwd: PLUGIN_ROOT,
     stdio: 'inherit',
@@ -81,6 +108,17 @@ async function main() {
     case 'list-tools': return listTools();
     case 'selftest': return selftest();
     case 'call': return callTool();
+    case 'challenges':
+    case 'approve':
+    case 'reject':
+      out({
+        ok: false,
+        status: 'refused',
+        code: 'APPROVAL_CLI_REMOVED',
+        command,
+        message: `CLI command "${command}" was removed (BUG-0002). Human approval for high-risk operations is enforced interactively via DSH Host UI (ctx.approval) and cannot be executed from a shell.`,
+      }, `Refused: "${command}" CLI approval bypass was removed. High-risk operations must be approved interactively in the DSH Host UI.`);
+      return 2;
     case 'version': out({ name: 'dsh-solidworks', version: VERSION, pluginRoot: PLUGIN_ROOT }); return 0;
     default:
       console.error(`unknown command: ${command}\nusage: dsh-solidworks [setup|doctor|mcp-config|list-tools|selftest|call <tool>|version|upgrade|uninstall] [--json] [--mode read-only|standard|full]`);
@@ -187,7 +225,7 @@ async function selftest() {
 }
 
 async function callTool() {
-  const toolName = argv[argv.indexOf('call') + 1];
+  const toolName = commandIndex >= 0 ? argv[commandIndex + 1] : undefined;
   if (!toolName || toolName.startsWith('-')) {
     console.error(`usage: dsh-solidworks call <tool> [--json-args '{"k":v}'] [--mode read-only|standard|full] [--root <dir>] [--allow <tool>] [--yes]`);
     return 2;
@@ -228,13 +266,13 @@ async function callTool() {
     return 3;
   }
 
-  let decision = policy.evaluate(toolName, args, { sessionCwd: process.cwd() });
-  if (!decision.allowed && decision.code === 'CONFIRMATION_REQUIRED' && flags.has('--yes')) {
-    policy.grant(toolName, args);
-    decision = policy.evaluate(toolName, args, { sessionCwd: process.cwd() });
-  }
+  const decision = policy.evaluate(toolName, args, { sessionCwd: process.cwd() });
   if (!decision.allowed) {
-    out({ ok: false, status: 'refused', code: decision.code, tool: toolName, risk: decision.risk, reason: decision.reason, message: decision.message ?? decision.reason, args, roots: policy.allowedRoots ?? null }, decision.reason ?? decision.message);
+    const code = decision.code === 'CONFIRMATION_REQUIRED' ? 'APPROVAL_CHANNEL_UNAVAILABLE' : decision.code;
+    const msg = decision.code === 'CONFIRMATION_REQUIRED'
+      ? `${toolName} is high-risk and requires interactive DSH Host UI human approval (ctx.approval). CLI "--yes" bypass is disabled (failing closed).`
+      : (decision.message ?? decision.reason);
+    out({ ok: false, status: 'refused', code, tool: toolName, risk: decision.risk, reason: msg, message: msg, args, roots: policy.allowedRoots ?? null }, msg);
     return 3;
   }
 

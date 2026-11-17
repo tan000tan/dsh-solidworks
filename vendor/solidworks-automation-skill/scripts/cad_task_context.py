@@ -697,7 +697,8 @@ class DocumentLifecycleManager:
                 except Exception:
                     pass
 
-        doc_entry.closed = True
+        # FIX BUG-017：旧实现在尝试 CloseDoc 之后无条件写 closed=True，
+        # 使“尝试关闭”被当成“已关闭”。改为由 verify 结果赋值（见函数末尾）。
         doc_entry.model_com_ref = None
 
         # 若有磁盘临时文件，释放句柄并删除
@@ -722,6 +723,7 @@ class DocumentLifecycleManager:
 
         # 验证清理结果
         verified = DocumentLifecycleManager.verify_document_closed(sw_app, candidates_to_close, norm_target_path)
+        doc_entry.closed = bool(verified)   # FIX BUG-017：以验证结果为准
         doc_entry.cleaned = verified
         return verified
 

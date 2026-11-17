@@ -58,7 +58,11 @@ def _load_request(value: str | Path | dict[str, Any]) -> dict[str, Any]:
     """@brief 从字典或受限 JSON 文件读取 FEA 请求。"""
     if isinstance(value, dict):
         return dict(value)
-    path = Path(value).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    path = Path(require_allowed_path(value, label="input_path"))
     if path.suffix.lower() != ".json" or not path.is_file():
         raise ValueError("FEA 请求必须是存在的 JSON 文件。")
     if path.stat().st_size > _MAX_INPUT_BYTES:
@@ -590,10 +594,13 @@ def build_calculix_input(value: str | Path | dict[str, Any], output_path: str | 
     request = validate_analysis(value)
     if request["analysisType"] not in {"static_linear", "static_nonlinear"}:
         return _blocked("generate_input", "fea_calculix_analysis_unsupported", "CalculiX 输入生成当前仅开放 static_linear/static_nonlinear。")
-    target = _versioned_target(Path(output_path).expanduser().resolve())
+    try:
+        from .path_security import safe_ensure_parent_dir
+    except ImportError:
+        from path_security import safe_ensure_parent_dir
+    target = _versioned_target(Path(safe_ensure_parent_dir(output_path, label="output_path")))
     if target.suffix.lower() != ".inp":
         raise ValueError("CalculiX 输入文件扩展名必须是 .inp。")
-    target.parent.mkdir(parents=True, exist_ok=True)
     lines = ["** CAD Studio generated; structured whitelist only", "*HEADING", request["analysisId"], "*NODE"]
     for node in request["mesh"]["nodes"]:
         lines.append(f"{node['id']},{float(node['x']):.12g},{float(node['y']):.12g},{float(node['z']):.12g}")
@@ -707,8 +714,11 @@ def run_analysis(value: str | Path | dict[str, Any], output_dir: str | Path, *, 
         return _blocked("preflight", "fea_solver_missing", preflight["message"], preflight=preflight)
     if preflight["solver"] != "calculix":
         return _blocked("generate_input", "fea_elmer_adapter_not_implemented", "已发现 ElmerSolver，但安全输入适配器尚未实现。", preflight=preflight)
-    out_dir = Path(output_dir).expanduser().resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        from .path_security import safe_ensure_dir
+    except ImportError:
+        from path_security import safe_ensure_dir
+    out_dir = safe_ensure_dir(output_dir, label="output_dir")
     job_dir = _versioned_target(out_dir / request["analysisId"])
     job_dir.mkdir(parents=False, exist_ok=False)
     deck = build_calculix_input(request, job_dir / f"{request['analysisId']}.inp")

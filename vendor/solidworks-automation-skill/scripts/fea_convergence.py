@@ -44,7 +44,11 @@ def _load_request(value: str | Path | dict[str, Any]) -> dict[str, Any]:
     """@brief 从字典或不超过 128 MiB 的 JSON 文件读取收敛请求。"""
     if isinstance(value, dict):
         return dict(value)
-    path = Path(value).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    path = Path(require_allowed_path(value, label="input_path"))
     if path.suffix.lower() != ".json" or not path.is_file():
         raise ValueError("网格收敛请求必须是存在的 JSON 文件。")
     if path.stat().st_size > 128 * 1024 * 1024:
@@ -147,7 +151,12 @@ def run_convergence_study(
             "retryable": False, "error_code": "fea_convergence_invalid_request",
             "message": str(exc), "generatedAt": _now_iso(),
         }
-    root = _versioned_directory(Path(output_dir).expanduser().resolve() / request["studyId"])
+    try:
+        from .path_security import safe_ensure_dir
+    except ImportError:
+        from path_security import safe_ensure_dir
+    safe_out = safe_ensure_dir(output_dir, label="output_dir")
+    root = _versioned_directory(safe_out / request["studyId"])
     root.mkdir(parents=True, exist_ok=False)
     case_results = []
     artifacts = []

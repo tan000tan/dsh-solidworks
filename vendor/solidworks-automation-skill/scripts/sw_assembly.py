@@ -33,6 +33,7 @@ SW_COMPONENT_SUPPRESSED = 0
 SW_COMPONENT_LIGHTWEIGHT = 1
 SW_COMPONENT_FULLY_RESOLVED = 2
 SW_COMPONENT_RESOLVED = 3
+# swBodyType_e.swSolidBody == 0 (swAllBodies == -1, swSheetBody == 1; BUG-B-03)
 SW_SOLID_BODY = 0
 PLANE_NAME_ALIASES = {
     "Front Plane": ["Front Plane", "前视基准面"],
@@ -146,7 +147,11 @@ def add_component(asm_model, part_path, x=0, y=0, z=0, config_name="", sw=None):
     返回:
         IComponent2 对象
     """
-    component_path = os.path.abspath(os.path.expandvars(os.path.expanduser(str(part_path))))
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    component_path = require_allowed_path(str(part_path), label="part_path")
     if not os.path.exists(component_path):
         raise FileNotFoundError(f"组件文件不存在: {component_path}")
 
@@ -381,6 +386,15 @@ def add_mate5_checked(
     distance_lower = distance if distance_lower is None else distance_lower
     angle_upper = angle if angle_upper is None else angle_upper
     angle_lower = angle if angle_lower is None else angle_lower
+    before_mates = []
+    has_feature_tree = False
+    try:
+        if hasattr(asm_model, "FirstFeature"):
+            before_mates = collect_mate_feature_summary(asm_model)
+            has_feature_tree = True
+    except Exception:
+        has_feature_tree = False
+
     error_status = VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
     if safe_add_mate is not None:
         mate = safe_add_mate(
@@ -427,6 +441,18 @@ def add_mate5_checked(
         raise RuntimeError(
             f"AddMate5 失败: type={mate_type}, error_status={error_status.value}"
         )
+    if has_feature_tree:
+        try:
+            after_mates = collect_mate_feature_summary(asm_model)
+            if len(before_mates) > 0 and len(after_mates) <= len(before_mates):
+                raise RuntimeError(
+                    f"AddMate5 疑似假成功: 返回非空对象但 MateGroup 特征数量未增长 "
+                    f"(before={len(before_mates)}, after={len(after_mates)}, error_status={error_status.value})"
+                )
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
     if name:
         try:
             mate.Name = name

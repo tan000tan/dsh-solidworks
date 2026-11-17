@@ -23,7 +23,7 @@ test('discover succeeds with valid active python interpreter', async () => {
   const res = await discover({
     pluginRoot: process.cwd(),
     config: {},
-    env: { DSH_SOLIDWORKS_PYTHON: 'D:\\SWCAD-MCP\\Python313\\python.exe' }
+    env: process.env,
   });
   assert.equal(res.ok, true);
   assert.ok(res.python.command.toLowerCase().includes('python'));

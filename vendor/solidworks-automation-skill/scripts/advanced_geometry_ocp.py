@@ -133,7 +133,11 @@ def _load_request(value: str | Path | dict[str, Any]) -> dict[str, Any]:
     """@brief 从字典或最大 1 MiB JSON 文件读取请求。"""
     if isinstance(value, dict):
         return dict(value)
-    path = Path(value).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    path = Path(require_allowed_path(value, label="input_path"))
     if path.suffix.lower() != ".json" or not path.is_file():
         raise ValueError("OCP Loft 请求必须是存在的 JSON 文件。")
     if path.stat().st_size > 1024 * 1024:
@@ -479,8 +483,11 @@ def execute_ocp_loft(value: str | Path | dict[str, Any], output_dir: str | Path)
         _verify_section_envelope(request, original)
     except Exception as exc:
         return _failed("review", "ocp_loft_section_envelope_failed", str(exc), geometryEvidence={"original": original})
-    out_dir = Path(output_dir).expanduser().resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        from .path_security import safe_ensure_dir
+    except ImportError:
+        from path_security import safe_ensure_dir
+    out_dir = safe_ensure_dir(output_dir, label="output_dir")
     stem = _versioned_stem(out_dir, request["modelId"], request["outputs"])
     artifacts: list[dict[str, Any]] = []
     reopened: dict[str, Any] = {}

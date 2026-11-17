@@ -51,7 +51,11 @@ def _load_request(value: str | Path | dict[str, Any]) -> dict[str, Any]:
     """@brief 读取不超过 4 MiB 的 JSON object。"""
     if isinstance(value, dict):
         return dict(value)
-    path = Path(value).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    path = Path(require_allowed_path(value, label="input_path"))
     if path.suffix.lower() != ".json" or not path.is_file():
         raise ValueError("高级曲面请求必须是存在的 JSON 文件。")
     if path.stat().st_size > 4 * 1024 * 1024:
@@ -106,7 +110,11 @@ def _trusted_artifact(value: Any, field: str) -> dict[str, Any]:
         raise ValueError(f"{field} 必须包含 path、sha256 和 producedThisRun。")
     if value.get("producedThisRun") is not True:
         raise ValueError(f"{field}.producedThisRun 必须为 true。")
-    path = Path(str(value.get("path") or "")).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    path = Path(require_allowed_path(str(value.get("path") or ""), label=f"{field}.path"))
     if path.suffix.lower() not in {".step", ".stp", ".brep"} or not path.is_file():
         raise ValueError(f"{field}.path 必须是存在的 STEP/BREP 文件。")
     if path.stat().st_size <= 0 or path.stat().st_size > 256 * 1024 * 1024:
@@ -474,8 +482,11 @@ def _thicken(request: dict[str, Any]):
 def _persist_result(request: dict[str, Any], shape, output_dir: str | Path, *, backend: str, extra: dict[str, Any]) -> dict[str, Any]:
     """@brief 写出版本化产物，重开 B-Rep，并附几何与连续性证据。"""
     original = _shape_evidence(shape)
-    out_dir = Path(output_dir).expanduser().resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        from .path_security import safe_ensure_dir
+    except ImportError:
+        from path_security import safe_ensure_dir
+    out_dir = safe_ensure_dir(output_dir, label="output_dir")
     stem = _versioned_stem(out_dir, request["modelId"], request["outputs"])
     suffixes = {"step": ".step", "brep": ".brep", "stl": ".stl"}
     artifacts, reopened = [], {}

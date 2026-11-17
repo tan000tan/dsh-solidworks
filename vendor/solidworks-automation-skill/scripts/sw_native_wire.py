@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 MAX_NATIVE_REQUEST_BYTES = 1024 * 1024
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra='forbid', allow_inf_nan=False)
+    model_config = ConfigDict(extra='forbid', allow_inf_nan=False, str_max_length=4096)
 
 class Sweep(Strict):
     name: str = Field(min_length=1, max_length=100, pattern=r'^[A-Za-z][A-Za-z0-9_]*$')

@@ -75,13 +75,17 @@ class TestPhase2Architecture(unittest.TestCase):
             self.assertIsNotNone(job, "Job Object 必须初始化成功")
 
     def test_05_safe_connection_without_touching_user_docs(self):
-        """测试 5：安全连接到当前实例，核实 STA Worker 隔离性与只读元数据。"""
+        """测试 5：安全连接到当前实例（离线环境下使用 [MOCK-COM] 仿真），核实 STA Worker 隔离性与只读元数据。"""
+        global connect_solidworks
         instances = sw_process.list_solidworks_instances()
         if not instances:
-            raise unittest.SkipTest("未运行 SolidWorks，跳过物理连接测试")
-        
+            from tests._fake_sw_com import ensure_fake_solidworks_env
+            ensure_fake_solidworks_env()
+            import sw_connect as _swc
+            connect_solidworks = _swc.connect_solidworks
+
         sw, _ = connect_solidworks(wait_seconds=3, visible=True)
-        self.assertIsNotNone(sw, "已有实例时必须成功连接")
+        self.assertIsNotNone(sw, "已有实例或仿真实例时必须成功连接")
         worker = get_sta_worker()
         self.assertIsNotNone(worker, "必须运行在专用 STA Worker 线程中")
 

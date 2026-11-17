@@ -9,7 +9,9 @@ tests/mcp_mid_operation_failure_test.py
 
 import json
 import os
+import shutil
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -22,8 +24,7 @@ for p in (str(SERVER_DIR), str(SCRIPTS_DIR), str(REPO_ROOT)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-SANDBOX_DIR = REPO_ROOT / "测试代码" / "sandbox_benchmark"
-SANDBOX_DIR.mkdir(parents=True, exist_ok=True)
+SANDBOX_DIR = Path(tempfile.mkdtemp(prefix="dsh-sw-mcp-midfail-"))
 os.environ["DSH_ALLOWED_ROOTS"] = json.dumps([str(SANDBOX_DIR)])
 
 from sw_connect import (
@@ -65,13 +66,22 @@ class TestMCPMidOperationFailure(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        global connect_solidworks, new_document
         from sw_connect import solidworks_processes
         if not solidworks_processes():
-            raise unittest.SkipTest("未检测到运行中的 SolidWorks 进程，跳过实机物理测试以保护待机基线")
+            from tests._fake_sw_com import ensure_fake_solidworks_env
+            ensure_fake_solidworks_env()
+            import sw_connect as _swc
+            connect_solidworks = _swc.connect_solidworks
+            new_document = _swc.new_document
         cls.sw, _ = connect_solidworks(wait_seconds=5, visible=True)
         if cls.sw is None:
             raise unittest.SkipTest("未连接到本地 SolidWorks COM 实例，跳过端到端测试")
         cls.worker = get_sta_worker()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(SANDBOX_DIR, ignore_errors=True)
 
     def test_01_mid_failure_after_document_creation(self):
         """测试 1：新建文档后中途故障（文档已真实创建并存在，后续建模失败触发彻底关闭销毁）。"""

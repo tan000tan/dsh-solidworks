@@ -8,9 +8,11 @@ from pathlib import Path
 try:
     from .sw_preflight import import_com_dependencies
     from .sw_connect import create_empty_dispatch_variant, get_com_member, open_document
+    from .path_security import require_allowed_path, safe_ensure_parent_dir
 except ImportError:
     from sw_preflight import import_com_dependencies
     from sw_connect import create_empty_dispatch_variant, get_com_member, open_document
+    from path_security import require_allowed_path, safe_ensure_parent_dir
 
 pythoncom, _win32com, VARIANT = import_com_dependencies()
 
@@ -18,10 +20,8 @@ SUPPORTED_BATCH_FORMATS = {".step", ".stp", ".stl", ".igs", ".iges", ".x_t", ".p
 
 
 def _ensure_parent_dir(file_path):
-    """确保输出文件的父目录存在。"""
-    parent = os.path.dirname(os.path.abspath(file_path))
-    if parent:
-        os.makedirs(parent, exist_ok=True)
+    """Fail-closed 校验 DSH_ALLOWED_ROOTS 后安全创建父目录（含 TOCTOU 二次校验）。"""
+    return safe_ensure_parent_dir(file_path, label="output_path")
 
 
 def export_to_step(model, output_path):
@@ -138,8 +138,7 @@ def export_flat_pattern_dxf(
     if not model_path:
         raise ValueError("导出展开 DXF 前必须先保存钣金零件")
 
-    output_path = os.path.abspath(os.path.expandvars(os.path.expanduser(output_path)))
-    _ensure_parent_dir(output_path)
+    output_path = safe_ensure_parent_dir(output_path, label="output_path")
     options = SW_SHEET_METAL_EXPORT_GEOMETRY
     if include_bend_lines:
         options |= SW_SHEET_METAL_EXPORT_BEND_LINES
@@ -271,17 +270,16 @@ def batch_export_formats(
     返回每个输出的文件大小和 ``produced_this_run`` 证据。原本已经在
     SolidWorks 中打开的文档不会被本函数关闭。
     """
-    source_paths = [str(Path(os.path.expandvars(str(path))).expanduser().resolve()) for path in file_paths]
+    source_paths = [require_allowed_path(str(path), label="file_paths[]") for path in file_paths]
     if not source_paths:
         raise ValueError("file_paths 不能为空")
     extensions = list(dict.fromkeys(_normalize_format(item) for item in formats))
     if not extensions:
         raise ValueError("formats 不能为空")
-    output_root = Path(os.path.expandvars(str(output_dir))).expanduser().resolve()
-    from scripts.sw_connect import validate_path_against_allowed_roots, is_document_owned
-    if not validate_path_against_allowed_roots(str(output_root)):
-        raise PermissionError(f"Access denied: output_root '{output_root}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+    output_root = Path(require_allowed_path(str(output_dir), label="output_dir"))
+    from scripts.sw_connect import is_document_owned
     output_root.mkdir(parents=True, exist_ok=True)
+    require_allowed_path(str(output_root), label="output_dir")
     claimed_outputs = set()
     documents = []
 
@@ -382,8 +380,7 @@ def _export_generic(model, output_path):
             pass
     """通用导出函数（STEP/STL/IGES/Parasolid/DXF）"""
     model.ClearSelection2(True)
-    output_path = os.path.abspath(os.path.expandvars(os.path.expanduser(output_path)))
-    _ensure_parent_dir(output_path)
+    output_path = safe_ensure_parent_dir(output_path, label="output_path")
     errors = VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
     warnings = VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
 

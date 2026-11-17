@@ -87,6 +87,12 @@ REQUIRED_TOOLS = {
     "solidworks_generate_drawing",
     "solidworks_review_drawing",
     "solidworks_inspect_drawing",
+    # Feature Graph IR & Unified Dimension Management (DEF-F-004: complete 71-tool protection)
+    "solidworks_compile_feature_graph",
+    "solidworks_execute_feature_graph",
+    "solidworks_identify_dimensions",
+    "solidworks_inspect_dimension_impact",
+    "solidworks_modify_dimension_safe",
 }
 
 

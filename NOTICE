@@ -11,9 +11,9 @@ with any redistribution of this package.
 Location : vendor/solidworks-automation-skill/
 License  : MIT (vendor/solidworks-automation-skill/LICENSE)
 Copyright: (c) 2026 SolidWorks Automation Skill Contributors
-Source   : https://github.com/tan000tan/solidworks-automation-skill @ d8b9547
-Files    : 192, byte-identical copies (verification in PROVENANCE.md):
-           mcp-server/ 8, scripts/ 90, apps/desktop/cad_workbench/ 23,
+Source   : https://github.com/tan000tan/solidworks-automation-skill @ d8b9547 (plus local DSH security patches)
+Files       : 193 (upstream snapshot + path_security.py & DSH security hardening):
+           mcp-server/ 8, scripts/ 91, apps/desktop/ 23,
            subskills/ 68, plus capabilities.yaml, manifest.json, LICENSE
 
 The MIT text is reproduced verbatim in vendor/solidworks-automation-skill/LICENSE.

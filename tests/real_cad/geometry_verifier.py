@@ -149,8 +149,11 @@ class GeometryVerifier:
             else:
                 report.checks["solid_body_count"] = True
         except Exception as exc:
+            report.passed = False
             report.checks["solid_body_count"] = False
-            report.warnings.append(f"读取实体数量异常: {exc}")
+            msg = f"读取实体数量异常: {exc}"
+            report.errors.append(msg)
+            report.warnings.append(msg)
 
         # 4. 验证包围盒 (使用 sw_measure.collect_bounding_box)
         try:
@@ -176,11 +179,18 @@ class GeometryVerifier:
                         report.passed = False
                 else:
                     report.checks["bounding_box_within_tolerance"] = True
+            elif expectation.expected_bbox_mm:
+                report.passed = False
+                report.checks["bounding_box_within_tolerance"] = False
+                report.errors.append("未能读取模型包围盒数据")
             else:
                 report.checks["bounding_box_within_tolerance"] = True
         except Exception as exc:
+            report.passed = False
             report.checks["bounding_box_within_tolerance"] = False
-            report.warnings.append(f"提取或比对包围盒异常: {exc}")
+            msg = f"提取或比对包围盒异常: {exc}"
+            report.errors.append(msg)
+            report.warnings.append(msg)
 
         # 5. 验证质量属性 (使用 sw_measure.collect_mass_properties)
         try:
@@ -222,8 +232,11 @@ class GeometryVerifier:
                 else:
                     report.checks["surface_area_within_tolerance"] = True
         except Exception as exc:
+            report.passed = False
             report.checks["mass_properties_valid"] = False
-            report.warnings.append(f"提取或比对质量属性异常: {exc}")
+            msg = f"提取或比对质量属性异常: {exc}"
+            report.errors.append(msg)
+            report.warnings.append(msg)
 
         # 6. Rebuild 模型有效性检查
         try:

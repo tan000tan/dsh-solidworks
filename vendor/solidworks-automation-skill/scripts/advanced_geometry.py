@@ -74,7 +74,11 @@ def _load_plan(value: str | Path | dict[str, Any]) -> dict[str, Any]:
     """@brief 从字典或最大 4 MiB JSON 文件读取中性计划。"""
     if isinstance(value, dict):
         return dict(value)
-    path = Path(value).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    path = Path(require_allowed_path(value, label="input_path"))
     if path.suffix.lower() != ".json" or not path.is_file():
         raise ValueError("复杂几何计划必须是存在的 JSON 文件。")
     if path.stat().st_size > 4 * 1024 * 1024:
@@ -226,11 +230,14 @@ def geometry_preflight(value: str | Path | dict[str, Any]) -> dict[str, Any]:
 
 def write_preflight_report(value: str | Path | dict[str, Any], output_path: str | Path) -> dict[str, Any]:
     """@brief 不覆盖旧报告地写出复杂几何前置证据。"""
-    report = geometry_preflight(value)
-    target = _versioned_target(Path(output_path).expanduser().resolve())
+    try:
+        from .path_security import safe_ensure_parent_dir
+    except ImportError:
+        from path_security import safe_ensure_parent_dir
+    target = _versioned_target(Path(safe_ensure_parent_dir(output_path, label="output_path")))
     if target.suffix.lower() != ".json":
         raise ValueError("复杂几何报告扩展名必须是 .json。")
-    target.parent.mkdir(parents=True, exist_ok=True)
+    report = geometry_preflight(value)
     report["reportPath"] = str(target)
     report["artifacts"] = [{"kind": "advanced_geometry_preflight", "path": str(target), "producedThisRun": True}]
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -9,6 +9,8 @@
 //      node tests/host.test.js --python 'D:\path\python.exe'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
+import os from 'node:os'
+import fs from 'node:fs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
@@ -152,7 +154,8 @@ let stubThrown = null
 try {
   await apply(stubCtx, {
     mode: 'read-only',
-    customTiers: { stub_wrapped: 'read', stub_plain: 'read' },
+    allow: ['stub_wrapped', 'stub_plain'],
+    customTiers: { stub_wrapped: 'write', stub_plain: 'write' },
     pythonPath,
     serverScript: join(here, 'stub-server.py'),
     serverCwd: here,
@@ -216,11 +219,144 @@ if (exporter) {
   try { payload = JSON.parse(refused?.text ?? '') } catch { /* leave null */ }
   console.log(`      outside-root call: ${String(refused?.text).slice(0, 140)}`)
   check(payload?.status === 'refused' && payload?.code === 'PATH_OUTSIDE_ALLOWED_ROOTS', 'a write outside allowedRoots is refused before it reaches the server')
-  // The same tool inside the roots still needs an explicit confirmation.
-  const inside = await exporter.execute({ output_path: join(root, 'tests', 'ok.step') }, {})
-  let insidePayload = null
-  try { insidePayload = JSON.parse(inside?.text ?? '') } catch { /* leave null */ }
-  check(insidePayload?.code === 'CONFIRMATION_REQUIRED', 'a write inside the roots still asks for confirmation')
+  // The same tool inside the roots without ctx.approval must fail closed (BUG-0002).
+  const insideNoChannel = await exporter.execute({ output_path: join(root, 'tests', 'ok.step') }, {})
+  let insideNoChanPayload = null
+  try { insideNoChanPayload = JSON.parse(insideNoChannel?.text ?? '') } catch { /* leave null */ }
+  check(insideNoChanPayload?.code === 'APPROVAL_CHANNEL_UNAVAILABLE', 'a write inside the roots fails closed when host approval channel is unavailable')
+}
+
+// With a trusted host interactive approval channel (ctx.approval), rejection vs allowed-once works cleanly.
+let nextOutcome = 'rejected'
+const approvalCtx = {
+  ...makeCtx(),
+  get: (key) => key === 'approval' ? { request: async () => nextOutcome } : undefined,
+}
+await apply(approvalCtx, {
+  mode: 'full',
+  pythonPath,
+  serverScript: join(here, 'stub-server.py'),
+  serverCwd: here,
+  allowedRoots: [join(root, 'tests')],
+  toolTimeoutMs: 20000,
+  startTimeoutMs: 30000,
+})
+const approvedExporter = approvalCtx.registered.get('stub_export')
+if (approvedExporter) {
+  nextOutcome = 'rejected'
+  const rejected = JSON.parse((await approvedExporter.execute({ output_path: join(root, 'tests', 'ok.step') }, {})).text)
+  check(rejected?.status === 'refused' && rejected?.code === 'APPROVAL_REJECTED', 'host rejection blocks execution')
+  nextOutcome = 'allowed-once'
+  const allowed = await approvedExporter.execute({ output_path: join(root, 'tests', 'ok.step') }, {})
+  check(String(allowed?.text ?? '').includes('unknown tool'), 'host allowed-once approves and forwards once to the server')
+}
+
+// --- Group C regressions: shared-client lifecycle, error boundary, badge ----
+
+// (C-LIFE-02) The MCP client is shared by every DSH session in the host. A call
+// from session B used to re-sync (restart) the client while session A still had
+// a call in flight — A's call then failed mid-flight with "MCP client closed"
+// and unknown side effects on the open document. The swap must be deferred
+// while any call is in flight.
+{
+  const slowCtx = makeCtx()
+  await apply(slowCtx, {
+    mode: 'read-only',
+    allow: ['stub_slow', 'stub_plain'],
+    customTiers: { stub_slow: 'write', stub_plain: 'write' },
+    pythonPath,
+    serverScript: join(here, 'stub-server.py'),
+    serverCwd: here,
+    toolTimeoutMs: 20000,
+    startTimeoutMs: 30000,
+  })
+  const slow = slowCtx.registered.get('stub_slow')
+  check(slow !== undefined, 'C-LIFE-02: the slow stub tool is published')
+  if (slow) {
+    const execA = { callId: 'ca', session: { header: { id: 'sa', cwd: root } }, agent: { session: { header: { id: 'sa', cwd: root } } } }
+    const execB = { callId: 'cb', session: { header: { id: 'sb', cwd: join(root, 'tests') } }, agent: { session: { header: { id: 'sb', cwd: join(root, 'tests') } } } }
+    const aPromise = slow.execute({ ms: 1200 }, execA)
+    await new Promise(r => setTimeout(r, 100)) // A is now in flight on the wire
+    const bResult = await slowCtx.registered.get('stub_plain').execute({ id: 'from-b' }, execB)
+    let bPayload = null
+    try { bPayload = JSON.parse(bResult?.text ?? '') } catch { /* leave null */ }
+    check(bPayload?.id === 'from-b', 'C-LIFE-02: session B is served while session A is in flight')
+    let aText = null
+    try { aText = String((await aPromise)?.text ?? '') } catch (error) { aText = `threw: ${error.message}` }
+    console.log(`      C-LIFE-02 session A result: ${aText.slice(0, 90)}`)
+    check(aText.includes('slept 1200'), 'C-LIFE-02: session A\'s in-flight call is not torn down by session B')
+  }
+}
+
+// (C-EXEC-01) Startup and the cross-session re-sync can fail (spawn error,
+// protocol mismatch, a server that cannot start twice). That failure used to
+// escape execute() as a raw exception; the host then saw an unhandled tool
+// error instead of the structured envelope this module promises.
+{
+  const dieTmp = fs.mkdtempSync(join(os.tmpdir(), 'dsh-host-die-'))
+  const mark = join(dieTmp, 'starts.txt')
+  fs.writeFileSync(mark, '')
+  const prevMark = process.env.GC_STUB_MARK
+  const prevDie = process.env.GC_STUB_DIE_ON_START
+  process.env.GC_STUB_MARK = mark
+  process.env.GC_STUB_DIE_ON_START = '1'
+  const dieCtx = makeCtx()
+  fs.mkdirSync(join(dieTmp, 'b'), { recursive: true })
+  await apply(dieCtx, {
+    mode: 'read-only',
+    allow: ['solidworks_mass_properties'],
+    customTiers: { solidworks_mass_properties: 'read' },
+    pythonPath,
+    serverScript: join(here, 'stub-die-on-restart.py'),
+    serverCwd: here,
+    allowedRoots: [dieTmp, join(dieTmp, 'b')],
+    toolTimeoutMs: 20000,
+    startTimeoutMs: 30000,
+  })
+  const echo = dieCtx.registered.get('solidworks_mass_properties')
+  check(echo !== undefined, 'C-EXEC-01: the echo tool is published against the die-on-restart stub')
+  if (echo) {
+    const execA = { callId: 'c1', session: { header: { id: 's1', cwd: dieTmp } }, agent: { session: { header: { id: 's1', cwd: dieTmp } } } }
+    const execB = { callId: 'c2', session: { header: { id: 's2', cwd: join(dieTmp, 'b') } }, agent: { session: { header: { id: 's2', cwd: join(dieTmp, 'b') } } } }
+    const first = String((await echo.execute({ v: 'a' }, execA))?.text ?? '')
+    check(first.includes('echo a'), 'C-EXEC-01: the first session is served by the first server start')
+    let threw = null
+    let envelope = null
+    try { envelope = await echo.execute({ v: 'b' }, execB) } catch (error) { threw = error }
+    check(threw === null, `C-EXEC-01: a failed re-sync never escapes execute()${threw ? `: ${threw.message}` : ''}`)
+    let payload = null
+    try { payload = JSON.parse(envelope?.text ?? '') } catch { /* leave null */ }
+    console.log(`      C-EXEC-01 second-session envelope: ${JSON.stringify(payload).slice(0, 140)}`)
+    check(payload?.status === 'unavailable', 'C-EXEC-01: the failure comes back as a structured unavailable envelope')
+    check(typeof payload?.code === 'string' && payload.code.length > 0, 'C-EXEC-01: the envelope carries a machine-readable code')
+  }
+  if (prevMark === undefined) delete process.env.GC_STUB_MARK; else process.env.GC_STUB_MARK = prevMark
+  if (prevDie === undefined) delete process.env.GC_STUB_DIE_ON_START; else process.env.GC_STUB_DIE_ON_START = prevDie
+  try { fs.rmSync(dieTmp, { recursive: true, force: true }) } catch { /* best effort */ }
+}
+
+// (C-TIER-01) `customTiers` can escalate a tool beyond its static-table tier.
+// The registration badge used to print the static table's tier, promising
+// "risk: read" for a call that actually triggers an approval prompt.
+{
+  const badgeCtx = makeCtx()
+  await apply(badgeCtx, {
+    mode: 'read-only',
+    allow: ['stub_plain'],
+    customTiers: { stub_plain: 'high' },
+    pythonPath,
+    serverScript: join(here, 'stub-server.py'),
+    serverCwd: here,
+    toolTimeoutMs: 20000,
+    startTimeoutMs: 30000,
+  })
+  const badgeTool = badgeCtx.registered.get('stub_plain')
+  check(badgeTool !== undefined, 'C-TIER-01: the escalated stub tool is published')
+  if (badgeTool) {
+    const description = String(badgeTool.description ?? '')
+    console.log(`      C-TIER-01 badge: ${description.slice(-40)}`)
+    check(description.includes('[risk: high]'), 'C-TIER-01: the badge advertises the tier that will actually be enforced')
+  }
 }
 
 console.log(failures.length === 0 ? '\nALL PASS' : `\n${failures.length} FAILURE(S)`)

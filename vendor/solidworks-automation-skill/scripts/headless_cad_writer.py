@@ -549,6 +549,12 @@ def write_rendered_dxf_format(path: Path, document: dict[str, Any]) -> None:
 def export_headless(document_path: Path, out_dir: Path, formats: list[str]) -> dict[str, Any]:
     """@brief 将 NeutralCadDocument 写成开放格式产物。"""
     try:
+        from .path_security import require_allowed_path, safe_ensure_dir
+    except ImportError:
+        from path_security import require_allowed_path, safe_ensure_dir
+    document_path = Path(require_allowed_path(document_path, label="input_path"))
+    out_dir = safe_ensure_dir(out_dir, label="output_dir")
+    try:
         document = _validate_document(json.loads(document_path.read_text(encoding="utf-8")))
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return {
@@ -563,7 +569,6 @@ def export_headless(document_path: Path, out_dir: Path, formats: list[str]) -> d
             "error_code": "invalid_neutral_document",
         }
     name = str(document.get("documentId") or document_path.stem).replace(" ", "_")
-    out_dir.mkdir(parents=True, exist_ok=True)
     triangles, limitations, mesh_blocked = _triangles(document)
     unsupported_2d = _unsupported_2d_features(document)
     artifacts: list[dict[str, Any]] = []
@@ -589,60 +594,87 @@ def export_headless(document_path: Path, out_dir: Path, formats: list[str]) -> d
         limitations.append("当前文档不能完整网格化，未写出 STL/OBJ，避免把部分几何当成完整交付。")
     if unsupported_2d and any(fmt in {"dxf", "svg", "pdf", "png"} for fmt in normalized_formats):
         limitations.append("当前二维后端无法完整表达特征: " + ", ".join(unsupported_2d))
-    for normalized in normalized_formats:
-        if normalized in occt_handled:
-            continue
-        target = _versioned_target(out_dir, name, normalized)
-        if normalized in {"cadstudio", "cadstudio.json", "json"}:
-            target = _versioned_target(out_dir, name, "cadstudio.json")
-            shutil.copyfile(document_path, target)
-        elif normalized == "stl":
-            if not triangles or mesh_blocked:
+    created_targets: list[Path] = []
+    try:
+        for normalized in normalized_formats:
+            if normalized in occt_handled:
+                continue
+            target = _versioned_target(out_dir, name, normalized)
+            if normalized in {"cadstudio", "cadstudio.json", "json"}:
+                target = _versioned_target(out_dir, name, "cadstudio.json")
+                shutil.copyfile(document_path, target)
+            elif normalized == "stl":
+                if not triangles or mesh_blocked:
+                    missing_formats.append(normalized)
+                    continue
+                write_ascii_stl(target, name, triangles)
+            elif normalized == "obj":
+                if not triangles or mesh_blocked:
+                    missing_formats.append(normalized)
+                    continue
+                write_obj(target, triangles)
+            elif normalized == "dxf":
+                if unsupported_2d:
+                    missing_formats.append(normalized)
+                    continue
+                try:
+                    write_dxf(target, document)
+                except ImportError:
+                    missing_formats.append(normalized)
+                    limitations.append("缺少 ezdxf，无法写出 DXF 格式文件。")
+                    continue
+            elif normalized == "svg":
+                if unsupported_2d:
+                    missing_formats.append(normalized)
+                    continue
+                try:
+                    write_rendered_dxf_format(target, document)
+                except ImportError:
+                    write_svg(target, document)
+                    limitations.append("缺少 matplotlib，SVG 使用简化轮廓回退，不包含完整尺寸文字。")
+            elif normalized == "pdf":
+                if unsupported_2d:
+                    missing_formats.append(normalized)
+                    continue
+                try:
+                    write_rendered_dxf_format(target, document)
+                except ImportError:
+                    write_pdf(target, document)
+                    limitations.append("缺少 matplotlib，PDF 使用简化轮廓回退，不包含完整尺寸文字。")
+            elif normalized == "png":
+                if unsupported_2d:
+                    missing_formats.append(normalized)
+                    continue
+                try:
+                    write_rendered_dxf_format(target, document)
+                except ImportError:
+                    write_png(target, document)
+                    limitations.append("缺少 matplotlib，PNG 使用简化轮廓回退，不包含完整尺寸文字。")
+            else:
+                limitations.append(f"无头后端暂不支持写入格式: {normalized}")
                 missing_formats.append(normalized)
                 continue
-            write_ascii_stl(target, name, triangles)
-        elif normalized == "obj":
-            if not triangles or mesh_blocked:
-                missing_formats.append(normalized)
-                continue
-            write_obj(target, triangles)
-        elif normalized == "dxf":
-            if unsupported_2d:
-                missing_formats.append(normalized)
-                continue
-            write_dxf(target, document)
-        elif normalized == "svg":
-            if unsupported_2d:
-                missing_formats.append(normalized)
-                continue
+            created_targets.append(target)
+            artifacts.append({"kind": "cadstudio" if normalized in {"cadstudio", "cadstudio.json", "json"} else normalized, "path": str(target), "exists": True, "producedThisRun": True, "sha256": sha256_file(target), "sourceBackend": "headless_open_format"})
+    except Exception as exc:
+        for created in created_targets:
             try:
-                write_rendered_dxf_format(target, document)
-            except ImportError:
-                write_svg(target, document)
-                limitations.append("缺少 matplotlib，SVG 使用简化轮廓回退，不包含完整尺寸文字。")
-        elif normalized == "pdf":
-            if unsupported_2d:
-                missing_formats.append(normalized)
-                continue
-            try:
-                write_rendered_dxf_format(target, document)
-            except ImportError:
-                write_pdf(target, document)
-                limitations.append("缺少 matplotlib，PDF 使用简化轮廓回退，不包含完整尺寸文字。")
-        elif normalized == "png":
-            if unsupported_2d:
-                missing_formats.append(normalized)
-                continue
-            try:
-                write_rendered_dxf_format(target, document)
-            except ImportError:
-                write_png(target, document)
-                limitations.append("缺少 matplotlib，PNG 使用简化轮廓回退，不包含完整尺寸文字。")
-        else:
-            limitations.append(f"无头后端暂不支持写入格式: {normalized}")
-            missing_formats.append(normalized)
-            continue
-        artifacts.append({"kind": "cadstudio" if normalized in {"cadstudio", "cadstudio.json", "json"} else normalized, "path": str(target), "exists": True, "producedThisRun": True, "sha256": sha256_file(target), "sourceBackend": "headless_open_format"})
+                if created.is_file():
+                    created.unlink()
+            except OSError:
+                pass
+        return {
+            "backend": "headless_open_format",
+            "status": "failed",
+            "stage": "save",
+            "artifacts": [],
+            "previewManifest": "",
+            "geometryEvidence": geometry_evidence,
+            "limitations": [*limitations, f"导出异常已回滚临时产物: {exc}"],
+            "missingFormats": sorted(set(normalized_formats)),
+            "retryable": False,
+            "error_code": "headless_export_atomic_rollback",
+        }
     preview_scene_path = ""
     dxf_artifact = next((item["path"] for item in artifacts if item["kind"] == "dxf"), "")
     if dxf_artifact:

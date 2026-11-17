@@ -18,63 +18,62 @@ import tempfile
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VENDOR_SCRIPTS = os.path.join(PROJECT_ROOT, "vendor", "solidworks-automation-skill", "scripts")
+MCP_SERVER_DIR = os.path.join(PROJECT_ROOT, "vendor", "solidworks-automation-skill", "mcp-server")
 STAGE5_SCRIPTS = os.path.join(PROJECT_ROOT, "docs", "stage5_advanced_ai_cad", "scripts")
-for p in [VENDOR_SCRIPTS, STAGE5_SCRIPTS]:
+for p in [MCP_SERVER_DIR, VENDOR_SCRIPTS, STAGE5_SCRIPTS]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
+from pydantic import ValidationError
+import path_security
+import server
 from sw_connect import (
     validate_path_against_allowed_roots,
     get_sta_worker,
     SolidWorksConnectionError,
-    _prog_id_for_version
+    _prog_id_for_version,
+    mm,
+    new_document,
 )
+from sw_pattern import _unit
 
 
 class TestStressAndAbuseScenarios(unittest.TestCase):
 
     # ---------------- Category A: 极限边界参数 (6 cases) ----------------
     def test_a01_extreme_large_dimension(self):
-        """A01: 极端超大尺寸输入 (如 10000 米)"""
-        d = 10000.0
-        self.assertTrue(math.isfinite(d))
+        """A01: 极端超大尺寸输入 (如 10000 mm 超出 SolidWorksCreateBasicPartInput 上限 5000 mm 被拦截)"""
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", width_mm=10000.0)
 
     def test_a02_extreme_small_dimension(self):
-        """A02: 极端微观小尺寸 (1e-6 米)"""
-        d = 1e-6
-        self.assertGreater(d, 0)
+        """A02: 极端微观正尺寸 (0.001 mm = 1e-6 m) 单位换算与模型校验通过"""
+        inp = server.SolidWorksCreateBasicPartInput(shape="box", width_mm=0.001, height_mm=0.001, depth_mm=0.001)
+        self.assertAlmostEqual(mm(inp.width_mm), 1e-6, places=12)
 
     def test_a03_zero_dimension_interception(self):
-        """A03: 零尺寸拉伸拦截"""
-        def validate_extrude(depth):
-            if depth <= 0:
-                raise ValueError("拉伸深度必须大于零")
-        with self.assertRaises(ValueError):
-            validate_extrude(0.0)
+        """A03: 零尺寸拉伸被真实 SolidWorksCreateBasicPartInput / SolidWorksExtrudeInput 拦截"""
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", depth_mm=0.0)
 
     def test_a04_negative_dimension_interception(self):
-        """A04: 负数尺寸拉伸拦截"""
-        def validate_extrude(depth):
-            if depth <= 0:
-                raise ValueError("拉伸深度必须大于零")
-        with self.assertRaises(ValueError):
-            validate_extrude(-5.0)
+        """A04: 负数尺寸拉伸被真实模型校验器拦截"""
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", depth_mm=-5.0)
 
     def test_a05_nan_float_injection(self):
-        """A05: NaN 浮点注入拦截"""
-        def check_finite(val):
-            if not math.isfinite(val):
-                raise ValueError("数值非有效有限数")
+        """A05: NaN 浮点注入被 BaseInput (allow_inf_nan=False) 与 _unit 拦截"""
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", width_mm=float("nan"))
         with self.assertRaises(ValueError):
-            check_finite(float("nan"))
+            _unit((float("nan"), 1.0, 0.0))
 
     def test_a06_infinity_float_injection(self):
-        """A06: 无穷大浮点注入拦截"""
-        def check_finite(val):
-            if not math.isfinite(val):
-                raise ValueError("数值非有效有限数")
+        """A06: 无穷大浮点注入被 BaseInput (allow_inf_nan=False) 与 _unit 拦截"""
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", width_mm=float("inf"))
         with self.assertRaises(ValueError):
-            check_finite(float("inf"))
+            _unit((float("inf"), 1.0, 0.0))
 
     # ---------------- Category B: 缺失与畸形输入 (6 cases) ----------------
     def test_b01_none_model_pointer_defense(self):
@@ -84,39 +83,34 @@ class TestStressAndAbuseScenarios(unittest.TestCase):
         self.assertEqual(res, "FALLBACK")
 
     def test_b02_empty_feature_name_injection(self):
-        """B02: 空特征名称拦截"""
-        def validate_feat_name(name):
-            if not name or not str(name).strip():
-                raise ValueError("特征名称不能为空")
-        with self.assertRaises(ValueError):
-            validate_feat_name("")
+        """B02: 空特征名称或空白基准面名称被真实 BaseInput (min_length=1, str_strip_whitespace=True) 拦截"""
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", plane_name="   ")
 
     def test_b03_unicode_special_chars_in_name(self):
-        """B03: 特殊 Unicode 字符作为文件名容错"""
-        name = "测试_Bracket_#01_Φ20_°C"
-        self.assertIsInstance(name, str)
+        """B03: 特殊 Unicode 字符文件名在沙箱根目录内外的真实路径边界校验"""
+        with tempfile.TemporaryDirectory() as tmp:
+            inside = os.path.join(tmp, "测试_Bracket_#01_Φ20_°C.SLDPRT")
+            outside = os.path.join(os.path.dirname(tmp), "测试_Outside_Φ20.SLDPRT")
+            self.assertTrue(validate_path_against_allowed_roots(inside, [tmp]))
+            self.assertFalse(validate_path_against_allowed_roots(outside, [tmp]))
 
     def test_b04_malformed_vector_dimensions(self):
-        """B04: 向量维度不足拦截 (2维代替3维)"""
-        def check_vec3(v):
-            if len(v) != 3:
-                raise ValueError("向量必须为3维")
+        """B04: 向量维度不足被真实 sw_pattern._unit 拦截 (2维代替3维)"""
         with self.assertRaises(ValueError):
-            check_vec3([1.0, 0.0])
+            _unit([1.0, 0.0])
 
     def test_b05_zero_length_direction_vector(self):
         """B05: 零模长方向向量拦截"""
-        from sw_pattern import _unit
         with self.assertRaises(ValueError):
             _unit((0.0, 0.0, 0.0))
 
     def test_b06_type_mismatch_boolean_as_number(self):
-        """B06: 传参类型错构拦截"""
-        def expect_number(n):
-            if type(n) is bool or not isinstance(n, (int, float)):
-                raise TypeError("期望数值非布尔")
-        with self.assertRaises(TypeError):
-            expect_number(True)
+        """B06: 畸形字符串作为数值或未知额外字段被真实 BaseInput (extra='forbid') 拦截"""
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", width_mm="not-a-float")
+        with self.assertRaises(ValidationError):
+            server.SolidWorksCreateBasicPartInput(shape="box", unexpected_extra_field=123)
 
     # ---------------- Category C: STA 单线程调度排队与超时防护 (5 cases) ----------------
     def test_c01_sta_worker_sequential_execution(self):
@@ -176,10 +170,9 @@ class TestStressAndAbuseScenarios(unittest.TestCase):
         self.assertFalse(validate_path_against_allowed_roots(unc, allowed))
 
     def test_d05_null_byte_injection_in_path(self):
-        """D05: Null Byte 路径截断防御"""
-        with self.assertRaises((ValueError, TypeError)):
-            with open("test\x00file.txt", "r") as f:
-                pass
+        """D05: Null Byte 路径截断被真实 path_security / validate_path_against_allowed_roots 拦截"""
+        self.assertTrue(path_security.has_forbidden_path_syntax("C:\\SafeWorkspace\\test\x00file.sldprt"))
+        self.assertFalse(validate_path_against_allowed_roots("C:\\SafeWorkspace\\test\x00file.sldprt", [r"C:\SafeWorkspace"]))
 
     def test_d06_long_path_boundary(self):
         """D06: 超长路径 (>260 字符) 规范化处理"""
@@ -259,9 +252,20 @@ class TestStressAndAbuseScenarios(unittest.TestCase):
 
     # ---------------- Category G: 文档配额与预算限制 (5 cases) ----------------
     def test_g01_document_budget_environment_variable(self):
-        """G01: 文档预算环境变量解析"""
-        b = int(os.environ.get("SW_MAX_DOCUMENTS", "8"))
-        self.assertGreaterEqual(b, 1)
+        """G01: 文档预算在 new_document 中真实阻断超额新建请求"""
+        class _DocStub:
+            def __init__(self, t):
+                self._t = t
+            def GetTitle(self):
+                return self._t
+        class _BudgetFakeSw:
+            def GetDocumentCount(self):
+                return 2
+            def GetDocuments(self):
+                return [_DocStub("Doc1.SLDPRT"), _DocStub("Doc2.SLDPRT")]
+        with self.assertRaises(SolidWorksConnectionError) as ctx:
+            new_document(_BudgetFakeSw(), "part", max_documents=2)
+        self.assertEqual(ctx.exception.code, "SW_DOCUMENT_BUDGET")
 
     def test_g02_budget_exceeded_error_code(self):
         """G02: 打开文档超限时触发 SW_DOCUMENT_BUDGET 错误"""

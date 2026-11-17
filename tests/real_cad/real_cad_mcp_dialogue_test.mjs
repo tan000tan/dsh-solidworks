@@ -36,7 +36,7 @@ async function runMcpDialogueSuite() {
   console.log('      dsh-solidworks 第八轮：FastMCP JSON-RPC 三轮对话实机验收');
   console.log('='.repeat(70));
 
-  const pythonExe = 'D:\\SWCAD-MCP\\Python313\\python.exe';
+  const pythonExe = process.env.DSH_SOLIDWORKS_PYTHON || 'python';
   const serverScript = path.join(REPO_ROOT, 'vendor/solidworks-automation-skill/mcp-server/server.py');
 
   const mcp = new McpClient({

@@ -97,6 +97,7 @@ def collect_mass_properties(model, density_kg_m3=None):
         "density_kg_m3": density_kg_m3,
         "material": None,
         "material_assigned": None,
+        "warnings": [],
         "errors": [],
     }
 
@@ -105,10 +106,10 @@ def collect_mass_properties(model, density_kg_m3=None):
     result["material_assigned"] = bool(material)
     if not material:
         # 这是工程提醒而非执行错误：质量数值本身算得出来，只是密度是默认值。
-        result["warnings"] = [
+        result["warnings"].append(
             "文档未分配材料，SolidWorks 按默认密度（1000 kg/m³）计算；"
             "质量结果不可直接用于工程判断，请分配材料或显式传入 density_kg_m3。"
-        ]
+        )
 
     try:
         extension = get_com_member(model, "Extension")

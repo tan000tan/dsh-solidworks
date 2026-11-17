@@ -29,10 +29,15 @@ test('Session-scoped grant allows multiple invocations during TTL', () => {
   assert.equal(res2.allowed, true);
   assert.equal(res2.granted, true);
 
-  // 4. Second invocation still allowed (session scope not consumed)
-  const res3 = p.evaluate(tool, { ...args, extra: 1 }, { sessionCwd: 'D:\\sandbox' });
+  // 4. Second invocation with identical args still allowed (session scope not consumed)
+  const res3 = p.evaluate(tool, { ...args }, { sessionCwd: 'D:\\sandbox' });
   assert.equal(res3.allowed, true);
   assert.equal(res3.granted, true);
+
+  // 5. AUD-SEC-002: Mutated args in same session must NOT reuse the session grant
+  const res4 = p.evaluate(tool, { ...args, extra: 1 }, { sessionCwd: 'D:\\sandbox' });
+  assert.equal(res4.allowed, false);
+  assert.equal(res4.code, 'CONFIRMATION_REQUIRED');
 });
 
 test('Single-use grant is consumed immediately upon first evaluation', () => {

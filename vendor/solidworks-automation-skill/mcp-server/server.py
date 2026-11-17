@@ -56,13 +56,18 @@ from enum import Enum
 
 from pathlib import Path
 
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional, Union, get_args, get_origin
 
 
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP, Image as _McpImage
+    import mcp.server.fastmcp.server as _fmcp_srv_mod
+except ModuleNotFoundError:
+    from mcp.server.mcpserver import MCPServer as FastMCP, Image as _McpImage
+    import mcp.server.mcpserver.server as _fmcp_srv_mod
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 
@@ -364,11 +369,34 @@ def _load_automation_modules() -> None:
 
     }
 
-    globals().update(exports)
+    existing_initial = globals().setdefault("_INITIAL_AUTOMATION_EXPORTS", {})
+    for _exp_name, _exp_val in exports.items():
+        if _exp_name not in globals() or (
+            _exp_name in existing_initial and globals().get(_exp_name) is existing_initial[_exp_name]
+        ):
+            globals()[_exp_name] = _exp_val
+        existing_initial.setdefault(_exp_name, _exp_val)
 
     pythoncom = importlib.import_module("pythoncom")
 
     _automation_loaded = True
+
+
+def _safe_mcp_path(raw_path: Any, label: str = "path") -> Path:
+    """Resolve and strictly enforce DSH_ALLOWED_ROOTS / DSH_DEFAULT_CWD without env or tilde expansion."""
+    if isinstance(raw_path, str) and len(raw_path) > 1024:
+        raise ValueError(f"{label} exceeds maximum path length (1024 chars)")
+    from scripts.path_security import require_allowed_path
+
+    return Path(require_allowed_path(raw_path, label=label))
+
+
+def _safe_validator_path(raw_path: Any, label: str = "path") -> Path:
+    """Fail-closed path resolution for Pydantic field_validators before any filesystem probe."""
+    try:
+        return _safe_mcp_path(raw_path, label=label)
+    except PermissionError as exc:
+        raise ValueError(str(exc)) from exc
 
 
 
@@ -391,6 +419,111 @@ mcp = FastMCP(
 )
 
 
+# Global fail-closed path boundary & MCP wire isError wrapper across ALL 71 @mcp.tool registrations (BUG-0016 / BUG-004 / BUG-B-02).
+_orig_mcp_tool = mcp.tool
+
+
+def _is_error_tool_payload(res: Any) -> bool:
+    if not isinstance(res, str):
+        return False
+    stripped = res.strip()
+    if stripped.lower().startswith("# error"):
+        return True
+    if stripped.startswith("{"):
+        try:
+            parsed = json.loads(stripped)
+        except Exception:
+            return False
+        if isinstance(parsed, dict):
+            status_val = str(parsed.get("status", "")).strip().lower()
+            if status_val in {"error", "failed", "fail", "blocked"}:
+                return True
+            if parsed.get("isError") is True or bool(parsed.get("error")):
+                return True
+    return False
+
+
+def _to_mcp_wire_result(res: Any) -> Any:
+    if _is_error_tool_payload(res):
+        from mcp.types import CallToolResult, TextContent
+
+        return CallToolResult(
+            content=[TextContent(type="text", text=str(res))],
+            isError=True,
+        )
+    return res
+
+
+def _guarded_mcp_tool(*t_args, **t_kwargs):
+    t_kwargs.setdefault("structured_output", False)
+    decorator = _orig_mcp_tool(*t_args, **t_kwargs)
+
+    def _wrap(fn):
+        import functools
+        import inspect
+        from scripts.path_security import validate_nested_tool_paths
+
+        def _extract_fmt(f_args, f_kwargs):
+            for candidate in list(f_kwargs.values()) + list(f_args):
+                if isinstance(candidate, ResponseFormat):
+                    return candidate
+                fmt = getattr(candidate, "response_format", None)
+                if isinstance(fmt, ResponseFormat):
+                    return fmt
+            return ResponseFormat.JSON
+
+        def _register_without_return_annotation(wrapper):
+            orig_fn_ann = dict(getattr(fn, "__annotations__", {}) or {})
+            stripped_ann = dict(orig_fn_ann)
+            stripped_ann.pop("return", None)
+            try:
+                fn.__annotations__ = stripped_ann
+                wrapper.__annotations__ = dict(stripped_ann)
+                decorator(wrapper)
+            finally:
+                fn.__annotations__ = orig_fn_ann
+
+        if inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def _async_direct(*f_args, **f_kwargs):
+                try:
+                    validate_nested_tool_paths(f_args)
+                    validate_nested_tool_paths(f_kwargs)
+                except PermissionError as exc:
+                    return _tool_error(exc, _extract_fmt(f_args, f_kwargs))
+                return await fn(*f_args, **f_kwargs)
+
+            @functools.wraps(fn)
+            async def _async_mcp_entry(*f_args, **f_kwargs):
+                res = await _async_direct(*f_args, **f_kwargs)
+                return _to_mcp_wire_result(res)
+
+            _register_without_return_annotation(_async_mcp_entry)
+            return _async_direct
+
+        @functools.wraps(fn)
+        def _sync_direct(*f_args, **f_kwargs):
+            try:
+                validate_nested_tool_paths(f_args)
+                validate_nested_tool_paths(f_kwargs)
+            except PermissionError as exc:
+                return _tool_error(exc, _extract_fmt(f_args, f_kwargs))
+            return fn(*f_args, **f_kwargs)
+
+        @functools.wraps(fn)
+        def _sync_mcp_entry(*f_args, **f_kwargs):
+            res = _sync_direct(*f_args, **f_kwargs)
+            return _to_mcp_wire_result(res)
+
+        _register_without_return_annotation(_sync_mcp_entry)
+        return _sync_direct
+
+    return _wrap
+
+
+mcp.tool = _guarded_mcp_tool
+
+
 
 _sw_lock = threading.RLock()
 
@@ -401,6 +534,12 @@ _sw_lock = threading.RLock()
 # 必须让出控制权给调用方，而不是让整个 server 永久挂起。
 
 DEFAULT_LOCK_TIMEOUT_SECONDS = 300.0
+
+try:
+    _env_lock_wait = float(os.environ.get("SW_LOCK_WAIT_TIMEOUT_SECONDS", "10.0"))
+except Exception:
+    _env_lock_wait = 10.0
+DEFAULT_LOCK_WAIT_TIMEOUT_SECONDS = max(1.0, min(300.0, _env_lock_wait))
 
 
 
@@ -564,7 +703,39 @@ class BaseInput(BaseModel):
 
 
 
-    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", str_max_length=4096, allow_inf_nan=False)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _enforce_strict_booleans(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for fname, finfo in cls.model_fields.items():
+            if fname not in data:
+                continue
+            ann = finfo.annotation
+            is_bool = ann is bool
+            is_opt_bool = (get_origin(ann) is Union and bool in get_args(ann))
+            if is_bool:
+                if not isinstance(data[fname], bool):
+                    raise ValueError(
+                        f"Field '{fname}' must be a strict JSON boolean (true/false), got {type(data[fname]).__name__}"
+                    )
+            elif is_opt_bool:
+                if data[fname] is not None and not isinstance(data[fname], bool):
+                    raise ValueError(
+                        f"Field '{fname}' must be a strict JSON boolean or null, got {type(data[fname]).__name__}"
+                    )
+        return data
+
+    @model_validator(mode="after")
+    def _enforce_path_field_max_length(self):
+        for fname in type(self).model_fields:
+            if any(tok in fname.lower() for tok in ("path", "dir", "folder", "file", "template", "model")):
+                val = getattr(self, fname, None)
+                if isinstance(val, str) and len(val) > 1024:
+                    raise ValueError(f"{fname} exceeds maximum path length (1024 chars)")
+        return self
 
 
 
@@ -592,7 +763,7 @@ class CadStudioBackendRouteInput(BaseInput):
 
 
 
-    operation_id: str = Field(..., min_length=1, max_length=160)
+    operation_id: str = Field(..., min_length=1, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
 
     available_backends: list[str] = Field(default_factory=list, max_length=50)
 
@@ -630,7 +801,7 @@ class CadStudioOpenFormatInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -680,7 +851,7 @@ class CadStudioDxfPreviewInput(BaseInput):
 
     def source_must_be_existing_dxf(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".dxf" or not path.is_file():
 
@@ -696,7 +867,7 @@ class CadStudioDxfPreviewInput(BaseInput):
 
     def output_must_be_new_scene_json(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if not path.name.lower().endswith(".scene.json"):
 
@@ -738,7 +909,7 @@ class CadStudioDfmReviewInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -754,7 +925,7 @@ class CadStudioDfmReviewInput(BaseInput):
 
     def output_path_must_be_json(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json":
 
@@ -784,7 +955,7 @@ class CadStudioDfmReviewInput(BaseInput):
 
     def profile_paths_must_exist(cls, values: list[str]) -> list[str]:
 
-        missing = [value for value in values if not Path(os.path.expandvars(value)).expanduser().is_file()]
+        missing = [value for value in values if not _safe_validator_path(value).is_file()]
 
         if missing:
 
@@ -804,7 +975,7 @@ class CadStudioDfmReviewInput(BaseInput):
 
             return value
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -836,7 +1007,7 @@ class CadStudioRoutingReviewInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -852,7 +1023,7 @@ class CadStudioRoutingReviewInput(BaseInput):
 
     def output_path_must_be_json(cls, value: str) -> str:
 
-        if Path(os.path.expandvars(value)).expanduser().suffix.lower() != ".json":
+        if _safe_validator_path(value).suffix.lower() != ".json":
 
             raise ValueError(f"Output must be a JSON report path: {value}")
 
@@ -924,7 +1095,7 @@ class CadStudioFeaPrepareInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -972,7 +1143,7 @@ class CadStudioFeaRunInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -1006,7 +1177,7 @@ class CadStudioFeaConvergenceInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -1038,7 +1209,7 @@ class CadStudioAdvancedGeometryInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -1054,7 +1225,7 @@ class CadStudioAdvancedGeometryInput(BaseInput):
 
     def output_path_must_be_json(cls, value: str) -> str:
 
-        if Path(os.path.expandvars(value)).expanduser().suffix.lower() != ".json":
+        if _safe_validator_path(value).suffix.lower() != ".json":
 
             raise ValueError(f"Output must be a JSON report path: {value}")
 
@@ -1084,7 +1255,7 @@ class CadStudioOcpLoftInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -1116,7 +1287,7 @@ class CadStudioOcpSurfaceInput(BaseInput):
 
     def input_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -1158,9 +1329,9 @@ class SolidWorksSketchOnPlaneInput(BaseInput):
 
     )
 
-    center_x_mm: float = Field(default=0.0, description="Profile center X on the sketch plane, mm.")
+    center_x_mm: float = Field(ge=-1000000.0, le=1000000.0, default=0.0, description="Profile center X on the sketch plane, mm.")
 
-    center_y_mm: float = Field(default=0.0, description="Profile center Y on the sketch plane, mm.")
+    center_y_mm: float = Field(ge=-1000000.0, le=1000000.0, default=0.0, description="Profile center Y on the sketch plane, mm.")
 
     radius_mm: Optional[float] = Field(default=None, gt=0.0, le=2500.0, description="Circle radius, mm.")
 
@@ -1556,6 +1727,8 @@ class SolidWorksRecoverInput(BaseInput):
 
     )
 
+    response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
+
 
 
 
@@ -1568,7 +1741,7 @@ class SolidWorksNewDocumentInput(BaseInput):
 
     doc_type: DocType = Field(default=DocType.PART, description="Document type to create.")
 
-    template_path: Optional[str] = Field(default=None, description="Optional explicit SolidWorks template path.")
+    template_path: Optional[str] = Field(default=None, max_length=1024, description="Optional explicit SolidWorks template path.")
 
     response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
 
@@ -1584,7 +1757,7 @@ class SolidWorksCreateBasicPartInput(BaseInput):
 
     shape: BasicPartShape = Field(default=BasicPartShape.CYLINDER, description="Part primitive to create.")
 
-    output_path: Optional[str] = Field(default=None, description="Optional absolute .SLDPRT Save As path.")
+    output_path: Optional[str] = Field(default=None, max_length=1024, description="Optional absolute .SLDPRT Save As path.")
 
     plane_name: str = Field(default="Front Plane", min_length=1, description="Sketch plane name, English or Chinese.")
 
@@ -1626,7 +1799,7 @@ class SolidWorksOpenDocumentInput(BaseInput):
 
     def path_must_exist(cls, value: str) -> str:
 
-        if not Path(os.path.expandvars(value)).expanduser().exists():
+        if not _safe_validator_path(value).exists():
 
             raise ValueError(f"File does not exist: {value}")
 
@@ -1654,7 +1827,13 @@ class SolidWorksCloseDocumentsInput(BaseInput):
 
     """Input for closing SolidWorks documents safely within sandbox boundaries."""
 
-
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        extra="forbid",
+        str_max_length=4096,
+        allow_inf_nan=False,
+        json_schema_extra={"anyOf": [{"required": ["document_path"]}, {"required": ["title"]}]},
+    )
 
     close_all: bool = Field(
 
@@ -1702,11 +1881,11 @@ class SolidWorksAddComponentInput(BaseInput):
 
     path: str = Field(..., min_length=1, description="Absolute path to .SLDPRT or .SLDASM component.")
 
-    x_mm: float = Field(default=0.0, description="Insertion X coordinate in mm.")
+    x_mm: float = Field(ge=-1000000.0, le=1000000.0, default=0.0, description="Insertion X coordinate in mm.")
 
-    y_mm: float = Field(default=0.0, description="Insertion Y coordinate in mm.")
+    y_mm: float = Field(ge=-1000000.0, le=1000000.0, default=0.0, description="Insertion Y coordinate in mm.")
 
-    z_mm: float = Field(default=0.0, description="Insertion Z coordinate in mm.")
+    z_mm: float = Field(ge=-1000000.0, le=1000000.0, default=0.0, description="Insertion Z coordinate in mm.")
 
     config_name: str = Field(default="", description="Optional component configuration name.")
 
@@ -1722,7 +1901,7 @@ class SolidWorksAddComponentInput(BaseInput):
 
     def component_path_must_exist(cls, value: str) -> str:
 
-        if not Path(os.path.expandvars(value)).expanduser().exists():
+        if not _safe_validator_path(value).exists():
 
             raise ValueError(f"File does not exist: {value}")
 
@@ -1960,7 +2139,7 @@ class SolidWorksBatchExportInput(BaseInput):
 
     def source_files_must_exist(cls, values: list[str]) -> list[str]:
 
-        missing = [value for value in values if not Path(os.path.expandvars(value)).expanduser().is_file()]
+        missing = [value for value in values if not _safe_validator_path(value).is_file()]
 
         if missing:
 
@@ -2064,7 +2243,7 @@ class SolidWorksGenerateDrawingInput(BaseInput):
 
     def drawing_spec_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -2116,7 +2295,7 @@ class SolidWorksReviewDrawingInput(BaseInput):
 
     def drawing_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".slddrw" or not path.is_file():
 
@@ -2132,7 +2311,7 @@ class SolidWorksReviewDrawingInput(BaseInput):
 
     def review_spec_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".json" or not path.is_file():
 
@@ -2152,7 +2331,7 @@ class SolidWorksReviewDrawingInput(BaseInput):
 
             return value
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".pdf" or not path.is_file():
 
@@ -2188,7 +2367,7 @@ class SolidWorksInspectDrawingInput(BaseInput):
 
     def inspect_drawing_path_must_exist(cls, value: str) -> str:
 
-        path = Path(os.path.expandvars(value)).expanduser()
+        path = _safe_validator_path(value)
 
         if path.suffix.lower() != ".slddrw" or not path.is_file():
 
@@ -2208,9 +2387,9 @@ class SolidWorksHoleFeatureInput(BaseInput):
 
     feature_kind: HoleFeatureKind = Field(..., description="Hole or slot kind.")
 
-    center_x_mm: float = Field(default=0.0, description="Hole center X on the sketch plane, mm.")
+    center_x_mm: float = Field(ge=-1000000.0, le=1000000.0, default=0.0, description="Hole center X on the sketch plane, mm.")
 
-    center_y_mm: float = Field(default=0.0, description="Hole center Y on the sketch plane, mm.")
+    center_y_mm: float = Field(ge=-1000000.0, le=1000000.0, default=0.0, description="Hole center Y on the sketch plane, mm.")
 
     diameter_mm: float = Field(default=5.0, gt=0.0, le=1000.0, description="Main hole diameter, mm.")
 
@@ -2408,7 +2587,7 @@ class SolidWorksRotaryMotorInput(BaseInput):
 
     rotor_radius_max_mm: Optional[float] = Field(default=None, ge=0.0, description="Maximum rotor cylinder radius in mm.")
 
-    rpm: float = Field(default=60.0, description="Constant motor speed in RPM.")
+    rpm: float = Field(ge=0.0, le=1000000.0, default=60.0, description="Constant motor speed in RPM.")
 
     study_name: str = Field(default="MCP_旋转马达算例", min_length=1, max_length=120, description="Motion Study name.")
 
@@ -2488,19 +2667,60 @@ class SolidWorksMotionValidationInput(BaseInput):
 
 
 
-def _coinitialize() -> None:
+def _coinitialize() -> bool:
 
-    """Initialize COM for the current MCP worker thread."""
+    """Initialize COM for the current MCP worker thread; returns True if initialized."""
 
     if pythoncom is not None:
 
         pythoncom.CoInitialize()
+        return True
+    return False
+
+
+from contextlib import contextmanager as _contextmanager
+
+
+@_contextmanager
+def _com_initialized():
+    """AUD-COM-001 / BUG-B-04: Pair CoInitialize with CoUninitialize on non-STA caller threads."""
+    did_init = False
+    try:
+        did_init = _coinitialize()
+        yield
+    finally:
+        if did_init and pythoncom is not None:
+            try:
+                pythoncom.CoUninitialize()
+            except Exception:
+                pass
+
+
+def _couninitialize() -> None:
+
+    """Pair COM initialization with CoUninitialize on thread/process teardown (BUG-B-04)."""
+
+    if pythoncom is not None:
+        try:
+            pythoncom.CoUninitialize()
+        except Exception:
+            pass
+    try:
+        from scripts.sw_connect import _GLOBAL_STA_WORKER
+        if _GLOBAL_STA_WORKER is not None:
+            _GLOBAL_STA_WORKER.stop()
+    except Exception:
+        pass
+
+
+import atexit as _atexit
+_atexit.register(_couninitialize)
 
 
 
 
 
-def _active_model_required(doc_path: Optional[str] = None, title: Optional[str] = None, must_be_owned: bool = True):
+def _active_model_required(doc_path: Optional[str] = None, title: Optional[str] = None, must_be_owned: bool = True, allow_launch: bool = False):
     _load_automation_modules()
 
     """Return the specified or active SolidWorks document with strict session ownership verification.
@@ -2519,7 +2739,7 @@ def _active_model_required(doc_path: Optional[str] = None, title: Optional[str] 
 
     """
 
-    sw, model = connect_solidworks(wait_seconds=1)
+    sw, model = connect_solidworks(wait_seconds=0.25 if not allow_launch else 1, allow_launch=allow_launch)
 
     target = None
 
@@ -2799,7 +3019,11 @@ def _tool_error(exc: Exception, response_format: ResponseFormat = ResponseFormat
 
 def _run_locked(operation, response_format: ResponseFormat, load_automation: bool = True,
 
-                timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS):
+                timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
+
+                operation_name: Optional[str] = None,
+
+                use_lock: bool = True):
 
     """
 
@@ -2837,11 +3061,14 @@ def _run_locked(operation, response_format: ResponseFormat, load_automation: boo
 
     is_on_worker_thread = worker is not None and threading.current_thread() == worker._thread
 
+    # D-11 修复：显式声明 use_lock=False 的非 COM/恢复工具不参与 _sw_lock 互斥，避免队头阻塞。
+    requires_lock = bool(use_lock) and (not is_on_worker_thread)
 
+    if requires_lock:
 
-    if not is_on_worker_thread:
+        wait_timeout = max(1.0, min(float(timeout_seconds), float(DEFAULT_LOCK_WAIT_TIMEOUT_SECONDS)))
 
-        if not _sw_lock.acquire(timeout=timeout_seconds):
+        if not _sw_lock.acquire(timeout=wait_timeout):
 
             payload = {
 
@@ -2851,9 +3078,9 @@ def _run_locked(operation, response_format: ResponseFormat, load_automation: boo
 
                 "message": (
 
-                    f"等待 SolidWorks 操作锁超过 {timeout_seconds:.0f} 秒仍未获得。"
+                    f"等待 SolidWorks 操作锁超过 {wait_timeout:.1f} 秒仍未获得。"
 
-                    f"上一个操作可能被模态对话框阻塞。"
+                    f"上一个 COM 操作可能被模态对话框或未激活弹窗阻塞。"
 
                 ),
 
@@ -2875,13 +3102,20 @@ def _run_locked(operation, response_format: ResponseFormat, load_automation: boo
 
     try:
 
-        if not is_on_worker_thread:
-
+        if requires_lock:
+            resolved_op_name = operation_name or getattr(operation, "__name__", None)
+            if not resolved_op_name or resolved_op_name in {"op", "<lambda>"}:
+                import inspect
+                caller = inspect.currentframe()
+                if caller is not None and caller.f_back is not None:
+                    caller_name = caller.f_back.f_code.co_name
+                    if caller_name and caller_name != "<module>":
+                        resolved_op_name = caller_name
             _lock_state["acquired_at"] = time.time()
 
             _lock_state["thread"] = threading.current_thread().name
 
-            _lock_state["operation"] = None
+            _lock_state["operation"] = resolved_op_name or "solidworks_operation"
 
 
 
@@ -2893,9 +3127,11 @@ def _run_locked(operation, response_format: ResponseFormat, load_automation: boo
 
         else:
 
-            with redirect_stdout(sys.stderr):
-
+            if sys.stdout is sys.stderr:
                 payload = operation()
+            else:
+                with redirect_stdout(sys.stderr):
+                    payload = operation()
 
         payload = normalize_tool_payload(payload)
 
@@ -2915,7 +3151,7 @@ def _run_locked(operation, response_format: ResponseFormat, load_automation: boo
 
     finally:
 
-        if not is_on_worker_thread:
+        if requires_lock:
 
             _lock_state["acquired_at"] = None
 
@@ -2967,7 +3203,7 @@ def cadstudio_resolve_backend(params: CadStudioBackendRouteInput) -> str:
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3005,15 +3241,15 @@ def cadstudio_write_open_format(params: CadStudioOpenFormatInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         return export_headless(input_path, output_dir, params.formats)
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3051,9 +3287,9 @@ def cadstudio_build_dxf_preview_scene(params: CadStudioDxfPreviewInput) -> str:
 
 
 
-        source = Path(os.path.expandvars(params.source_path)).expanduser().resolve()
+        source = _safe_mcp_path(params.source_path)
 
-        output = Path(os.path.expandvars(params.output_path)).expanduser().resolve()
+        output = _safe_mcp_path(params.output_path)
 
         scene = dxf_to_preview_scene(source, output)
 
@@ -3077,7 +3313,7 @@ def cadstudio_build_dxf_preview_scene(params: CadStudioDxfPreviewInput) -> str:
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3115,19 +3351,19 @@ def cadstudio_check_dfm(params: CadStudioDfmReviewInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_path = Path(os.path.expandvars(params.output_path)).expanduser().resolve()
+        output_path = _safe_mcp_path(params.output_path)
 
-        profile_paths = [Path(os.path.expandvars(value)).expanduser().resolve() for value in params.profile_paths]
+        profile_paths = [_safe_mcp_path(value) for value in params.profile_paths]
 
-        brep_evidence = Path(os.path.expandvars(params.brep_evidence_path)).expanduser().resolve() if params.brep_evidence_path else None
+        brep_evidence = _safe_mcp_path(params.brep_evidence_path) if params.brep_evidence_path else None
 
         return write_dfm_report(input_path, output_path, process=params.process, profiles=profile_paths, brep_evidence=brep_evidence)
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3165,15 +3401,15 @@ def cadstudio_check_routing(params: CadStudioRoutingReviewInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_path = Path(os.path.expandvars(params.output_path)).expanduser().resolve()
+        output_path = _safe_mcp_path(params.output_path)
 
         return review_routing_file(input_path, output_path)
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3215,7 +3451,7 @@ def cadstudio_routing_preflight(params: CadStudioRoutingPreflightInput = CadStud
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3261,7 +3497,7 @@ def solidworks_addin_host_status(
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3303,7 +3539,7 @@ def cadstudio_fea_preflight(params: CadStudioFeaPreflightInput = CadStudioFeaPre
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3341,9 +3577,9 @@ def cadstudio_prepare_fea(params: CadStudioFeaPrepareInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         request = validate_analysis(input_path)
 
@@ -3381,7 +3617,7 @@ def cadstudio_prepare_fea(params: CadStudioFeaPrepareInput) -> str:
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3419,15 +3655,15 @@ def cadstudio_run_fea(params: CadStudioFeaRunInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         return run_analysis(input_path, output_dir, timeout_seconds=params.timeout_seconds)
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3465,9 +3701,9 @@ def cadstudio_run_fea_convergence(params: CadStudioFeaConvergenceInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         return run_convergence_study(
 
@@ -3481,7 +3717,7 @@ def cadstudio_run_fea_convergence(params: CadStudioFeaConvergenceInput) -> str:
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3519,15 +3755,15 @@ def cadstudio_review_advanced_geometry(params: CadStudioAdvancedGeometryInput) -
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_path = Path(os.path.expandvars(params.output_path)).expanduser().resolve()
+        output_path = _safe_mcp_path(params.output_path)
 
         return write_preflight_report(input_path, output_path)
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3565,15 +3801,15 @@ def cadstudio_create_ocp_loft(params: CadStudioOcpLoftInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         return execute_ocp_loft(input_path, output_dir)
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3611,15 +3847,15 @@ def cadstudio_create_ocp_surface(params: CadStudioOcpSurfaceInput) -> str:
 
 
 
-        input_path = Path(os.path.expandvars(params.input_path)).expanduser().resolve()
+        input_path = _safe_mcp_path(params.input_path)
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         return execute_advanced_surface(input_path, output_dir)
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False)
 
 
 
@@ -3633,11 +3869,11 @@ def cadstudio_create_ocp_surface(params: CadStudioOcpSurfaceInput) -> str:
 
     annotations={
 
-        "readOnlyHint": True,
+        "readOnlyHint": False,
 
         "destructiveHint": False,
 
-        "idempotentHint": True,
+        "idempotentHint": False,
 
         "openWorldHint": False,
 
@@ -3737,6 +3973,9 @@ def solidworks_health_check(params: SolidWorksHealthCheckInput = SolidWorksHealt
 
         if params.start_solidworks and not missing:
 
+            if os.environ.get("DSH_POLICY_MODE", "").strip().lower() == "read-only" or os.environ.get("DSH_ALLOW_LAUNCH_SW", "0").strip().lower() not in {"1", "true", "yes"}:
+                raise PermissionError("POLICY_MODE: start_solidworks=True is prohibited (read-only mode or DSH_ALLOW_LAUNCH_SW!=1).")
+
             _load_automation_modules()
 
             sw, model = connect_solidworks(wait_seconds=1)
@@ -3771,7 +4010,7 @@ def solidworks_health_check(params: SolidWorksHealthCheckInput = SolidWorksHealt
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False)
+    return _run_locked(op, params.response_format, load_automation=bool(params.start_solidworks), use_lock=bool(params.start_solidworks))
 
 
 
@@ -4119,19 +4358,18 @@ def solidworks_recover(params: SolidWorksRecoverInput = SolidWorksRecoverInput()
 
                         _load_automation_modules()
 
-                        _coinitialize()
+                        with _com_initialized():
+                            sw, model = connect_solidworks(wait_seconds=1)
 
-                        sw, model = connect_solidworks(wait_seconds=1)
+                            com_detail = {
 
-                        com_detail = {
+                                "revision": get_com_member(sw, "RevisionNumber"),
 
-                            "revision": get_com_member(sw, "RevisionNumber"),
+                                "active_document": _model_summary(model) if model else None,
 
-                            "active_document": _model_summary(model) if model else None,
+                            }
 
-                        }
-
-                        com_status = "responsive"
+                            com_status = "responsive"
 
                     finally:
 
@@ -4187,7 +4425,7 @@ def solidworks_recover(params: SolidWorksRecoverInput = SolidWorksRecoverInput()
 
 
 
-    return _run_locked(op, params.response_format, load_automation=False,
+    return _run_locked(op, params.response_format, load_automation=False, use_lock=False,
 
                        timeout_seconds=params.probe_timeout_seconds)
 
@@ -4357,6 +4595,11 @@ def solidworks_new_document(params: SolidWorksNewDocumentInput) -> str:
 
     def op():
 
+        if params.template_path:
+            tmpl = _expand_path(params.template_path)
+            if not os.path.isfile(tmpl):
+                raise FileNotFoundError(f"Template not found before COM connect: {tmpl}")
+
         sw, _ = connect_solidworks(wait_seconds=1)
 
         model = new_document(sw, params.doc_type.value, template_path=params.template_path)
@@ -4402,6 +4645,12 @@ def solidworks_create_basic_part(params: SolidWorksCreateBasicPartInput) -> str:
 
 
     def op():
+
+        if getattr(params, "output_path", None):
+            _load_automation_modules()
+            norm_save = _expand_path(params.output_path)
+            if not validate_path_against_allowed_roots(norm_save):
+                raise PermissionError(f"Access denied: output_path '{params.output_path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
 
         sw, _ = connect_solidworks(wait_seconds=1)
 
@@ -4467,6 +4716,11 @@ def solidworks_create_basic_part(params: SolidWorksCreateBasicPartInput) -> str:
 
                 appearance_ok = set_document_appearance(model, params.color)
 
+            # FIX BUG-015：重建必须在保存之前。
+            # 旧顺序 save→ForceRebuild3 会把文档重新标记为已修改（GetSaveFlag=True），
+            # close 随后以“包含未保存的修改”拒绝关闭，最终耗尽文档预算。
+            rebuild_ok = bool(model.ForceRebuild3(False))
+
             save_ok = None
 
             if params.output_path:
@@ -4474,8 +4728,6 @@ def solidworks_create_basic_part(params: SolidWorksCreateBasicPartInput) -> str:
                 ctx.register_temp_file(params.output_path)
 
                 save_ok = save_document(model, params.output_path)
-
-            rebuild_ok = bool(model.ForceRebuild3(False))
 
             return {
 
@@ -4497,7 +4749,7 @@ def solidworks_create_basic_part(params: SolidWorksCreateBasicPartInput) -> str:
 
                 "saved": save_ok,
 
-                "output_path": str(Path(os.path.expandvars(params.output_path)).expanduser().resolve()) if params.output_path else None,
+                "output_path": str(_safe_mcp_path(params.output_path)) if params.output_path else None,
 
                 "document": _model_summary(model),
 
@@ -5170,84 +5422,58 @@ def solidworks_chamfer(params: SolidWorksChamferInput) -> str:
 )
 
 def solidworks_shell(params: SolidWorksShellInput) -> str:
-
     """Hollow out the active part with a uniform wall thickness."""
 
-
-
     def op():
-
         sw, model = _active_part_required()
-
-        faces = None
-
         if params.face_to_remove:
-
-            try:
-
-                model.ClearSelection2(True)
-
-                model.Extension.SelectByID2(params.face_to_remove, "FACE", 0, 0, 0, False, 0,
-
-                                            create_empty_dispatch_variant(), 0)
-
-                faces = None
-
-            except Exception as exc:
-
-                return {
-
-                    "status": "error",
-
-                    "suggestion": f"Could not select face {params.face_to_remove!r}: {exc}. "
-
-                                  "Use solidworks_list_edges / the SolidWorks UI to confirm the face name.",
-
-                }
-
-        feature = shell(model, mm(params.thickness_mm), faces)
-
-        try:
-
             model.ClearSelection2(True)
-
+            selected = bool(
+                model.Extension.SelectByID2(
+                    params.face_to_remove,
+                    "FACE",
+                    0,
+                    0,
+                    0,
+                    False,
+                    0,
+                    create_empty_dispatch_variant(),
+                    0,
+                )
+            )
+            if not selected:
+                model.ClearSelection2(True)
+                return {
+                    "status": "error",
+                    "feature_created": False,
+                    "error_code": "SHELL_FACE_NOT_SELECTED",
+                    "suggestion": (
+                        f"Could not select face {params.face_to_remove!r}. "
+                        "Use solidworks_list_edges / the SolidWorks UI to confirm the face name."
+                    ),
+                }
+        feature = shell(model, mm(params.thickness_mm), None)
+        try:
+            model.ClearSelection2(True)
         except Exception:
-
             pass
-
-        if feature is None:
-
+        if not feature:
             return {
-
                 "status": "error",
-
                 "feature_created": False,
-
                 "suggestion": (
-
                     "Shell failed. Thickness is usually too large relative to the smallest local "
-
                     "radius or wall; reduce thickness_mm."
-
                 ),
-
             }
-
+        feature_name = feature.get("Name") if isinstance(feature, dict) else get_com_member(feature, "Name")
         return {
-
             "status": "ok",
-
             "feature_created": True,
-
-            "feature_name": get_com_member(feature, "Name"),
-
+            "feature_name": feature_name,
             "thickness_mm": params.thickness_mm,
-
             "open_face": params.face_to_remove,
-
         }
-
-
 
     return _run_locked(op, params.response_format)
 
@@ -5749,7 +5975,12 @@ def design_spec_validate(params: DesignSpecValidateInput) -> str:
 
     """
 
-    result = load_design_spec(params.spec_path)
+    from scripts.design_spec import load_design_spec
+
+    try:
+        result = load_design_spec(params.spec_path)
+    except Exception as exc:
+        return _tool_error(exc, params.response_format)
 
     return _result(result, params.response_format)
 
@@ -5837,7 +6068,7 @@ def design_spec_build(params: DesignSpecBuildInput) -> str:
 
         if params.output_path:
 
-            resolved_output = str(Path(os.path.expandvars(params.output_path)).expanduser().resolve())
+            resolved_output = str(_safe_mcp_path(params.output_path))
 
             saved = save_document(model, resolved_output)
 
@@ -5898,6 +6129,13 @@ def solidworks_open_document(params: SolidWorksOpenDocumentInput) -> str:
 
 
     def op():
+
+        norm_target = _expand_path(params.path)
+        _load_automation_modules()
+        if not validate_path_against_allowed_roots(norm_target):
+            raise PermissionError(f"Access denied: open target '{params.path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+        if not os.path.isfile(norm_target):
+            raise FileNotFoundError(f"Document not found before COM connect: {norm_target}")
 
         sw, _ = connect_solidworks(wait_seconds=1)
 
@@ -6089,7 +6327,16 @@ def solidworks_save_document(params: SolidWorksSaveDocumentInput = SolidWorksSav
 
     def op():
 
-        _sw, model = _active_model_required(doc_path=params.path, must_be_owned=True)
+        if params.path:
+            _load_automation_modules()
+            norm_target = _expand_path(params.path)
+            if not validate_path_against_allowed_roots(norm_target):
+                raise PermissionError(f"Access denied: save destination '{params.path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+            ext = os.path.splitext(norm_target)[1].lower()
+            if ext and ext not in {".sldprt", ".sldasm", ".slddrw", ".step", ".stp", ".iges", ".igs", ".stl", ".x_t", ".x_b", ".pdf", ".dxf", ".dwg", ".igs"}:
+                raise ValueError(f"Unsupported SolidWorks save extension: {ext}")
+
+        _sw, model = _active_model_required(doc_path=params.path, must_be_owned=True, allow_launch=False)
 
         if params.path:
 
@@ -6143,7 +6390,7 @@ def solidworks_save_document(params: SolidWorksSaveDocumentInput = SolidWorksSav
 
 )
 
-def solidworks_close_documents(params: SolidWorksCloseDocumentsInput = SolidWorksCloseDocumentsInput()) -> str:
+def solidworks_close_documents(params: SolidWorksCloseDocumentsInput) -> str:
 
     """Close an owned SolidWorks document safely within sandbox boundaries."""
 
@@ -6181,25 +6428,15 @@ def solidworks_close_documents(params: SolidWorksCloseDocumentsInput = SolidWork
 
 
 
-        if params.save_changes:
-
-            from scripts.sw_connect import save_document
-
-            try:
-
-                save_document(target)
-
-            except Exception:
-
-                pass
-
-
-
         from scripts.sw_connect import close_document
 
         # Strictly enforce force_discard=False: MCP callers cannot request discarding unsaved user changes
-
-        success = close_document(sw, target, force_discard=False)
+        success = close_document(
+            sw,
+            target,
+            force_discard=False,
+            save_before_close=bool(params.save_changes),
+        )
 
         if not success:
 
@@ -6239,6 +6476,15 @@ def solidworks_close_documents(params: SolidWorksCloseDocumentsInput = SolidWork
 
 )
 
+def _mate_delta_payload(before_mates, after_mates):
+    before_names = [m.get("name") for m in before_mates if m.get("name")]
+    after_names = [m.get("name") for m in after_mates if m.get("name")]
+    added_names = [n for n in after_names if n not in before_names]
+    if not added_names and len(after_mates) > len(before_mates):
+        added_names = [m.get("name") for m in after_mates[len(before_mates):] if m.get("name")]
+    return added_names
+
+
 def solidworks_add_coincident_mate(params: SolidWorksPlaneCoincidentMateInput) -> str:
 
     """Add a coincident mate between named planes/features inside two assembly components."""
@@ -6257,6 +6503,8 @@ def solidworks_add_coincident_mate(params: SolidWorksPlaneCoincidentMateInput) -
 
         entity_b = get_component_feature_entity(component_b, params.feature_b_name)
 
+        before_mates = collect_mate_feature_summary(asm)
+
         select_entities_for_mate(asm, entity_a, entity_b, mark=1)
 
         mate = add_mate5_checked(
@@ -6269,19 +6517,43 @@ def solidworks_add_coincident_mate(params: SolidWorksPlaneCoincidentMateInput) -
 
         )
 
+        after_mates = collect_mate_feature_summary(asm)
+
+        added_mates = _mate_delta_payload(before_mates, after_mates)
+
+        if before_mates and not added_mates and len(after_mates) <= len(before_mates):
+
+            return {
+
+                "status": "error",
+
+                "error_code": "MATE_NOT_COMMITTED",
+
+                "mate_created": False,
+
+                "mate_features_before": len(before_mates),
+
+                "mate_features_after": len(after_mates),
+
+                "suggestion": "AddMate5 returned without committing a new mate in MateGroup.",
+
+            }
+
         return {
 
             "status": "ok",
 
             "mate_created": mate is not None,
 
-            "mate_name": params.mate_name or (get_com_member(mate, "Name") if mate else None),
+            "mate_name": params.mate_name or (added_mates[-1] if added_mates else None) or (get_com_member(mate, "Name") if mate else None),
+
+            "added_mates": added_mates,
 
             "component_a": get_com_member(component_a, "Name2"),
 
             "component_b": get_com_member(component_b, "Name2"),
 
-            "mate_features": collect_mate_feature_summary(asm),
+            "mate_features": after_mates,
 
             "document": _model_summary(asm),
 
@@ -6333,6 +6605,8 @@ def solidworks_add_distance_mate(params: SolidWorksPlaneDistanceMateInput) -> st
 
         entity_b = get_component_feature_entity(component_b, params.feature_b_name)
 
+        before_mates = collect_mate_feature_summary(asm)
+
         select_entities_for_mate(asm, entity_a, entity_b, mark=1)
 
         mate = add_mate5_checked(
@@ -6347,13 +6621,37 @@ def solidworks_add_distance_mate(params: SolidWorksPlaneDistanceMateInput) -> st
 
         )
 
+        after_mates = collect_mate_feature_summary(asm)
+
+        added_mates = _mate_delta_payload(before_mates, after_mates)
+
+        if before_mates and not added_mates and len(after_mates) <= len(before_mates):
+
+            return {
+
+                "status": "error",
+
+                "error_code": "MATE_NOT_COMMITTED",
+
+                "mate_created": False,
+
+                "mate_features_before": len(before_mates),
+
+                "mate_features_after": len(after_mates),
+
+                "suggestion": "AddMate5 returned without committing a new distance mate in MateGroup.",
+
+            }
+
         return {
 
             "status": "ok",
 
             "mate_created": mate is not None,
 
-            "mate_name": params.mate_name or (get_com_member(mate, "Name") if mate else None),
+            "mate_name": params.mate_name or (added_mates[-1] if added_mates else None) or (get_com_member(mate, "Name") if mate else None),
+
+            "added_mates": added_mates,
 
             "distance_mm": params.distance_mm,
 
@@ -6361,7 +6659,7 @@ def solidworks_add_distance_mate(params: SolidWorksPlaneDistanceMateInput) -> st
 
             "component_b": get_com_member(component_b, "Name2"),
 
-            "mate_features": collect_mate_feature_summary(asm),
+            "mate_features": after_mates,
 
             "document": _model_summary(asm),
 
@@ -6409,6 +6707,8 @@ def solidworks_add_concentric_mate(params: SolidWorksConcentricMateInput) -> str
 
         component_b = find_component_by_name(asm, params.component_b_keyword)
 
+        before_mates = collect_mate_feature_summary(asm)
+
         mate = add_concentric_mate_by_cylinders(
 
             asm,
@@ -6427,13 +6727,37 @@ def solidworks_add_concentric_mate(params: SolidWorksConcentricMateInput) -> str
 
         )
 
+        after_mates = collect_mate_feature_summary(asm)
+
+        added_mates = _mate_delta_payload(before_mates, after_mates)
+
+        if before_mates and not added_mates and len(after_mates) <= len(before_mates):
+
+            return {
+
+                "status": "error",
+
+                "error_code": "MATE_NOT_COMMITTED",
+
+                "mate_created": False,
+
+                "mate_features_before": len(before_mates),
+
+                "mate_features_after": len(after_mates),
+
+                "suggestion": "AddMate5 returned without committing a new concentric mate in MateGroup.",
+
+            }
+
         return {
 
             "status": "ok",
 
             "mate_created": mate is not None,
 
-            "mate_name": params.mate_name or (get_com_member(mate, "Name") if mate else None),
+            "mate_name": params.mate_name or (added_mates[-1] if added_mates else None) or (get_com_member(mate, "Name") if mate else None),
+
+            "added_mates": added_mates,
 
             "lock_rotation": params.lock_rotation,
 
@@ -6441,7 +6765,7 @@ def solidworks_add_concentric_mate(params: SolidWorksConcentricMateInput) -> str
 
             "component_b": get_com_member(component_b, "Name2"),
 
-            "mate_features": collect_mate_feature_summary(asm),
+            "mate_features": after_mates,
 
             "document": _model_summary(asm),
 
@@ -6587,7 +6911,7 @@ def solidworks_export_active(params: SolidWorksExportInput) -> str:
 
             "success": success,
 
-            "output_path": str(Path(os.path.expandvars(params.output_path)).expanduser().resolve()),
+            "output_path": str(_safe_mcp_path(params.output_path)),
 
             "format": params.export_format.value,
 
@@ -6983,7 +7307,7 @@ def solidworks_set_custom_properties(params: SolidWorksCustomPropertiesInput) ->
 
     title="Batch Export SolidWorks Files",
 
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": False, "openWorldHint": False},
 
 )
 
@@ -7008,6 +7332,27 @@ def solidworks_batch_export_files(params: SolidWorksBatchExportInput) -> str:
                 raise PermissionError(f"Access denied: file_path '{fp}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
 
         sw, _model = connect_solidworks(wait_seconds=1)
+
+        # FIX BUG-018：批量导出此前没有任何所有权校验，可把用户自己打开的文档导出到磁盘
+        # （并且 close_documents 默认 true 会顺带关闭它）。此处对“已打开但未登记”的文档拒绝。
+        from scripts.sw_connect import is_document_owned
+
+        for fp in params.file_paths:
+
+            try:
+
+                opened = sw.GetOpenDocumentByName(fp)
+
+            except Exception:
+
+                opened = None
+
+            if opened is not None and not is_document_owned(opened):
+
+                raise PermissionError(
+                    f"DEF-SEC-01: Document '{fp}' is open but not owned by the current automation session. "
+                    "Refusing to export an unowned document."
+                )
 
         return batch_export_formats(
 
@@ -7041,7 +7386,7 @@ def solidworks_batch_export_files(params: SolidWorksBatchExportInput) -> str:
 
     title="Export Reviewed Assembly BOM CSV",
 
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": False, "openWorldHint": False},
 
 )
 
@@ -7085,7 +7430,7 @@ def solidworks_export_assembly_bom(params: SolidWorksBomExportInput) -> str:
 
     title="Native SolidWorks Pack and Go",
 
-    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": False},
+    annotations={"readOnlyHint": False, "destructiveHint": True, "idempotentHint": False, "openWorldHint": False},
 
 )
 
@@ -7217,7 +7562,7 @@ def _drawing_report_path(output_dir: Path, basename: str) -> Path:
 
         "readOnlyHint": False,
 
-        "destructiveHint": False,
+        "destructiveHint": True,
 
         "idempotentHint": False,
 
@@ -7234,135 +7579,134 @@ def solidworks_generate_drawing(params: SolidWorksGenerateDrawingInput) -> str:
 
 
     def op():
+        from scripts.sw_connect import close_document, validate_path_against_allowed_roots
+        from scripts.sw_drawing import validate_generic_drawing_generation
 
-        from scripts.sw_connect import validate_path_against_allowed_roots
-
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
-
+        output_dir = _safe_mcp_path(params.output_dir)
         if not validate_path_against_allowed_roots(str(output_dir)):
-
             raise PermissionError(f"Access denied: output_dir '{output_dir}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
-
         if params.spec_path and not validate_path_against_allowed_roots(str(params.spec_path)):
-
             raise PermissionError(f"Access denied: spec_path '{params.spec_path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
 
-
         drawing_path = output_dir / params.drawing_filename
-
+        if not validate_path_against_allowed_roots(str(drawing_path)):
+            raise PermissionError(f"Access denied: drawing_path '{drawing_path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
         pdf_path = drawing_path.with_suffix(".pdf")
-
         report_path = output_dir / f"{drawing_path.stem}_review_report.json"
-
         if not params.overwrite and any(path.exists() for path in (drawing_path, pdf_path, report_path)):
-
             raise ValueError("输出文件已存在；请更换 output_dir、设置 overwrite=true，或保留旧交付物并另起运行目录")
 
-
-
         spec_validation = drawing_validate_spec(params.spec_path)
-
         if spec_validation.get("status") == "blocked":
-
             return spec_validation
-
         spec = spec_validation["spec"]
 
-        source_path = Path(os.path.expandvars(str(spec["sourceModel"]))).expanduser().resolve()
+        raw_source_model = str(spec["sourceModel"])
+        if not validate_path_against_allowed_roots(raw_source_model):
+            raise PermissionError(f"Access denied: DrawingSpec.sourceModel '{raw_source_model}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+        template_candidates = spec.get("templateCandidates")
+        if template_candidates is not None:
+            candidate_list = [template_candidates] if isinstance(template_candidates, str) else list(template_candidates)
+            for candidate in candidate_list:
+                if isinstance(candidate, str) and candidate.strip():
+                    if not validate_path_against_allowed_roots(candidate):
+                        raise PermissionError(
+                            f"Access denied: DrawingSpec.templateCandidates entry '{candidate}' is outside allowed roots (DSH_ALLOWED_ROOTS)"
+                        )
 
+        source_path = _safe_mcp_path(raw_source_model)
         if not source_path.is_file():
-
             raise FileNotFoundError(f"DrawingSpec.sourceModel 不存在: {source_path}")
 
+        # R2-SEC-03 / BUG-013: 先完成工程图能力与尺寸预检，再启动 SolidWorks 或创建空白工程图标签页，避免失败残留未保存文档。
+        capability = validate_generic_drawing_generation(spec)
+        if capability.get("status") != "pass":
+            return capability
+        model_size_mm = spec.get("modelSizeMm")
+        if not isinstance(model_size_mm, (list, tuple)) or len(model_size_mm) != 3:
+            return {
+                "status": "blocked",
+                "stage": "planning",
+                "error_code": "DRAWING_MODEL_SIZE_MISSING",
+                "message": "DrawingSpec 必须提供 modelSizeMm，避免凭空推断工程图比例和视图布局。",
+                "manual_review_required": True,
+            }
+
         sw, _active = connect_solidworks(wait_seconds=1, visible=True)
+        from scripts.sw_connect import register_owned_document
 
-        source_model = open_document(sw, str(source_path), read_only=False, silent=True, raise_on_error=True)
+        def _is_doc_already_open(target_path: str) -> bool:
+            try:
+                return sw.GetOpenDocumentByName(target_path) is not None
+            except Exception:
+                return False
 
-        drawing_model = new_document(sw, "drawing")
+        was_source_open = _is_doc_already_open(str(source_path))
+        source_model = None
+        source_opened_by_us = False
+        drawing_model = None
+        cleanup_errors: list[str] = []
+        try:
+            source_model = open_document(sw, str(source_path), read_only=True, silent=True, raise_on_error=True)
+            source_opened_by_us = (source_model is not None) and (not was_source_open)
+            drawing_model = new_document(sw, "drawing")
+            generation = drawing_generate_from_spec(
+                drawing_model,
+                spec,
+                str(source_path),
+                template_candidates=spec.get("templateCandidates"),
+            )
+            if generation.get("status") in {"blocked", "failed"}:
+                return generation
+            if not save_document(drawing_model, str(drawing_path)):
+                raise RuntimeError(f"工程图保存失败: {drawing_path}")
 
-        generation = drawing_generate_from_spec(
-
-            drawing_model,
-
-            spec,
-
-            str(source_path),
-
-            template_candidates=spec.get("templateCandidates"),
-
-        )
-
-        if generation.get("status") in {"blocked", "failed"}:
-
-            return generation
-
-        if not save_document(drawing_model, str(drawing_path)):
-
-            raise RuntimeError(f"工程图保存失败: {drawing_path}")
-
-        pdf_ok = drawing_export_sheet_to_pdf(drawing_model, str(pdf_path), sw_app=sw)
-
-        previews = drawing_save_review_previews(
-
-            drawing_model,
-
-            output_dir / "previews",
-
-            basename=drawing_path.stem,
-
-            views=("front", "top", "right"),
-
-        )
-
-        preview_evidence = [drawing_inspect_bmp_preview(path) for path in previews]
-
-        geometry_evidence = collect_geometry_measurements(source_model) if spec.get("holeRequirements") else None
-
-        review = drawing_review_artifacts(
-
-            spec,
-
-            structure=generation.get("structure"),
-
-            pdf_path=pdf_path if pdf_ok and pdf_path.is_file() else None,
-
-            preview_evidence=preview_evidence,
-
-            model_evidence=geometry_evidence,
-
-        )
-
-        payload = {
-
-            "status": review.get("status", "review_required"),
-
-            "capability": "solidworks-engineering-drawing",
-
-            "sourceModel": str(source_path),
-
-            "outputs": {
-
-                "slddrw": {"path": str(drawing_path), "exists": drawing_path.is_file(), "size_bytes": drawing_path.stat().st_size if drawing_path.is_file() else 0},
-
-                "pdf": {"path": str(pdf_path), "exists": pdf_path.is_file(), "size_bytes": pdf_path.stat().st_size if pdf_path.is_file() else 0},
-
-                "previews": preview_evidence,
-
-            },
-
-            "generation": generation,
-
-            "review": review,
-
-            "manual_review_required": bool(review.get("manual_review_required", True)),
-
-        }
-
-        report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-
-        payload["reportPath"] = str(report_path)
-
-        return payload
+            pdf_ok = drawing_export_sheet_to_pdf(drawing_model, str(pdf_path), sw_app=sw)
+            previews = drawing_save_review_previews(
+                drawing_model,
+                output_dir / "previews",
+                basename=drawing_path.stem,
+                views=("front", "top", "right"),
+            )
+            preview_evidence = [drawing_inspect_bmp_preview(path) for path in previews]
+            geometry_evidence = collect_geometry_measurements(source_model) if spec.get("holeRequirements") else None
+            review = drawing_review_artifacts(
+                spec,
+                structure=generation.get("structure"),
+                pdf_path=pdf_path if pdf_ok and pdf_path.is_file() else None,
+                preview_evidence=preview_evidence,
+                model_evidence=geometry_evidence,
+            )
+            payload = {
+                "status": review.get("status", "review_required"),
+                "capability": "solidworks-engineering-drawing",
+                "sourceModel": str(source_path),
+                "outputs": {
+                    "slddrw": {"path": str(drawing_path), "exists": drawing_path.is_file(), "size_bytes": drawing_path.stat().st_size if drawing_path.is_file() else 0},
+                    "pdf": {"path": str(pdf_path), "exists": pdf_path.is_file(), "size_bytes": pdf_path.stat().st_size if pdf_path.is_file() else 0},
+                    "previews": preview_evidence,
+                },
+                "generation": generation,
+                "review": review,
+                "manual_review_required": bool(review.get("manual_review_required", True)),
+            }
+            report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            payload["reportPath"] = str(report_path)
+            return payload
+        finally:
+            if drawing_model is not None:
+                try:
+                    close_document(sw, drawing_model, force_discard=True)
+                except Exception as exc:
+                    cleanup_errors.append(f"drawing_model: {exc}")
+            if source_model is not None and source_opened_by_us:
+                try:
+                    register_owned_document(source_model)
+                    close_document(sw, source_model, force_discard=True)
+                except Exception as exc:
+                    cleanup_errors.append(f"source_model: {exc}")
+            if cleanup_errors:
+                print(f"[warning] solidworks_generate_drawing cleanup errors: {'; '.join(cleanup_errors)}")
 
 
 
@@ -7400,13 +7744,13 @@ def solidworks_review_drawing(params: SolidWorksReviewDrawingInput) -> str:
 
     def op():
 
-        from scripts.sw_connect import validate_path_against_allowed_roots
+        from scripts.sw_connect import close_document, register_owned_document, validate_path_against_allowed_roots
 
         if not validate_path_against_allowed_roots(str(params.drawing_path)):
 
             raise PermissionError(f"Access denied: drawing_path '{params.drawing_path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         if not validate_path_against_allowed_roots(str(output_dir)):
 
@@ -7417,43 +7761,58 @@ def solidworks_review_drawing(params: SolidWorksReviewDrawingInput) -> str:
 
         sw, _active = connect_solidworks(wait_seconds=1, visible=True)
 
-        drawing_model = open_document(sw, params.drawing_path, read_only=True, silent=True, raise_on_error=True)
+        was_open = False
+        try:
+            was_open = sw.GetOpenDocumentByName(str(params.drawing_path)) is not None
+        except Exception:
+            was_open = False
 
-        structure = drawing_inspect_structure(drawing_model)
+        drawing_model = None
+        try:
+            drawing_model = open_document(sw, params.drawing_path, read_only=True, silent=True, raise_on_error=True)
 
-        previews = drawing_save_review_previews(
+            structure = drawing_inspect_structure(drawing_model)
 
-            drawing_model,
+            previews = drawing_save_review_previews(
 
-            output_dir / "previews",
+                drawing_model,
 
-            basename=params.basename,
+                output_dir / "previews",
 
-            views=("front", "top", "right"),
+                basename=params.basename,
 
-        )
+                views=("front", "top", "right"),
 
-        preview_evidence = [drawing_inspect_bmp_preview(path) for path in previews]
+            )
 
-        review = drawing_review_artifacts(
+            preview_evidence = [drawing_inspect_bmp_preview(path) for path in previews]
 
-            params.spec_path,
+            review = drawing_review_artifacts(
 
-            structure=structure,
+                params.spec_path,
 
-            pdf_path=params.pdf_path,
+                structure=structure,
 
-            preview_evidence=preview_evidence,
+                pdf_path=params.pdf_path,
 
-        )
+                preview_evidence=preview_evidence,
 
-        payload = {"status": review.get("status"), "drawingPath": str(Path(params.drawing_path).resolve()), "structure": structure, "previews": preview_evidence, "review": review, "manual_review_required": bool(review.get("manual_review_required", True))}
+            )
 
-        report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            payload = {"status": review.get("status"), "drawingPath": str(Path(params.drawing_path).resolve()), "structure": structure, "previews": preview_evidence, "review": review, "manual_review_required": bool(review.get("manual_review_required", True))}
 
-        payload["reportPath"] = str(report_path)
+            report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
-        return payload
+            payload["reportPath"] = str(report_path)
+
+            return payload
+        finally:
+            if drawing_model is not None and not was_open:
+                try:
+                    register_owned_document(drawing_model)
+                    close_document(sw, drawing_model, force_discard=True)
+                except Exception as exc:
+                    print(f"[warning] solidworks_review_drawing cleanup error: {exc}")
 
 
 
@@ -7491,13 +7850,13 @@ def solidworks_inspect_drawing(params: SolidWorksInspectDrawingInput) -> str:
 
     def op():
 
-        from scripts.sw_connect import validate_path_against_allowed_roots
+        from scripts.sw_connect import close_document, register_owned_document, validate_path_against_allowed_roots
 
         if not validate_path_against_allowed_roots(str(params.drawing_path)):
 
             raise PermissionError(f"Access denied: drawing_path '{params.drawing_path}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
 
-        output_dir = Path(os.path.expandvars(params.output_dir)).expanduser().resolve()
+        output_dir = _safe_mcp_path(params.output_dir)
 
         if not validate_path_against_allowed_roots(str(output_dir)):
 
@@ -7508,29 +7867,44 @@ def solidworks_inspect_drawing(params: SolidWorksInspectDrawingInput) -> str:
 
         sw, _active = connect_solidworks(wait_seconds=1, visible=True)
 
-        drawing_model = open_document(sw, params.drawing_path, read_only=True, silent=True, raise_on_error=True)
+        was_open = False
+        try:
+            was_open = sw.GetOpenDocumentByName(str(params.drawing_path)) is not None
+        except Exception:
+            was_open = False
 
-        structure = drawing_inspect_structure(drawing_model, paper_size_hint=params.paper_size_hint)
+        drawing_model = None
+        try:
+            drawing_model = open_document(sw, params.drawing_path, read_only=True, silent=True, raise_on_error=True)
 
-        previews = drawing_save_review_previews(
+            structure = drawing_inspect_structure(drawing_model, paper_size_hint=params.paper_size_hint)
 
-            drawing_model,
+            previews = drawing_save_review_previews(
 
-            output_dir / "previews",
+                drawing_model,
 
-            basename=params.basename,
+                output_dir / "previews",
 
-            views=("front", "top", "right"),
+                basename=params.basename,
 
-        )
+                views=("front", "top", "right"),
 
-        payload = {"status": structure.get("status"), "drawingPath": str(Path(params.drawing_path).resolve()), "structure": structure, "previews": [drawing_inspect_bmp_preview(path) for path in previews], "manual_review_required": True}
+            )
 
-        report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            payload = {"status": structure.get("status"), "drawingPath": str(Path(params.drawing_path).resolve()), "structure": structure, "previews": [drawing_inspect_bmp_preview(path) for path in previews], "manual_review_required": True}
 
-        payload["reportPath"] = str(report_path)
+            report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
-        return payload
+            payload["reportPath"] = str(report_path)
+
+            return payload
+        finally:
+            if drawing_model is not None and not was_open:
+                try:
+                    register_owned_document(drawing_model)
+                    close_document(sw, drawing_model, force_discard=True)
+                except Exception as exc:
+                    print(f"[warning] solidworks_inspect_drawing cleanup error: {exc}")
 
 
 
@@ -7960,6 +8334,8 @@ class ArtifactReadInput(BaseInput):
 
     as_preview: bool = Field(default=True)
 
+    response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
+
 
 
 
@@ -7986,9 +8362,14 @@ def cadstudio_read_artifact(params: ArtifactReadInput):
 
             import io
 
-            from PIL import Image as PillowImage
+            try:
+                from PIL import Image as PillowImage
+            except ImportError as exc:
+                raise RuntimeError(
+                    "当前 Python 运行环境未安装 Pillow (PIL)，无法生成内联 PNG 预览；请传入 as_preview=false 读取 base64 原始块。"
+                ) from exc
 
-            from mcp.server.fastmcp import Image
+            Image = _McpImage
 
             with PillowImage.open(io.BytesIO(data)) as source:
 
@@ -8050,6 +8431,147 @@ _register_native_wire_tools(
 
 
 
+
+
+def _install_stdio_protocol_guard() -> None:
+    """Install JSON-RPC framing guard over stdio (fixes BUG-0012, BUG-0013, BUG-0024)."""
+    import re
+    from contextlib import asynccontextmanager
+    from io import TextIOWrapper
+    import anyio
+    import anyio.lowlevel
+    import mcp.types as _mcp_types
+    from mcp.shared.message import SessionMessage
+    import mcp.server.stdio as _stdio_mod
+    _fmcp_srv = _fmcp_srv_mod
+
+    _SUPPORTED_PROTOCOLS = {"2025-06-18", "2025-03-26", "2024-11-05"}
+    _ID_RE = re.compile(r'"id"\s*:\s*(\d+|"[^"]*"|null)')
+
+    def _extract_id(raw_line: str):
+        m = _ID_RE.search(raw_line)
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(1))
+        except Exception:
+            return None
+
+    @asynccontextmanager
+    async def _guarded_stdio_server(stdin=None, stdout=None):
+        if not stdin:
+            stdin = anyio.wrap_file(TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="replace"))
+        if not stdout:
+            stdout = anyio.wrap_file(TextIOWrapper(_MCP_STDOUT.buffer, encoding="utf-8"))
+
+        read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
+        write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
+        initialized_state = {"done": False}
+
+        async def _send_raw_error(req_id, code: int, msg: str):
+            err_payload = {
+                "jsonrpc": "2.0",
+                "id": req_id if req_id is not None else 0,
+                "error": {"code": code, "message": msg},
+            }
+            await stdout.write(json.dumps(err_payload) + "\n")
+            await stdout.flush()
+
+        async def stdin_reader():
+            try:
+                async with read_stream_writer:
+                    async for line in stdin:
+                        stripped = line.strip()
+                        if not stripped:
+                            continue
+                        # BUG-0024: Reject NUL bytes in JSON-RPC frame immediately
+                        if "\x00" in line:
+                            await _send_raw_error(
+                                _extract_id(line),
+                                -32600,
+                                "Invalid Request: NUL byte control character is not permitted",
+                            )
+                            continue
+                        # BUG-0024: Reject JSON-RPC batch arrays immediately
+                        if stripped.startswith("["):
+                            req_id = None
+                            try:
+                                parsed_arr = json.loads(stripped)
+                                if isinstance(parsed_arr, list) and parsed_arr and isinstance(parsed_arr[0], dict):
+                                    req_id = parsed_arr[0].get("id")
+                            except Exception:
+                                req_id = _extract_id(stripped)
+                            await _send_raw_error(
+                                req_id,
+                                -32600,
+                                "Invalid Request: JSON-RPC batch requests are not supported",
+                            )
+                            continue
+                        try:
+                            raw_obj = json.loads(stripped)
+                        except Exception as exc:
+                            await read_stream_writer.send(exc)
+                            continue
+
+                        if isinstance(raw_obj, dict):
+                            req_id = raw_obj.get("id")
+                            method = raw_obj.get("method")
+                            if isinstance(method, str) and "\x00" in method:
+                                if req_id is not None:
+                                    await _send_raw_error(req_id, -32601, "Method not found (invalid NUL byte)")
+                                continue
+                            if not initialized_state["done"]:
+                                if method == "initialize":
+                                    params = raw_obj.get("params")
+                                    if isinstance(params, dict) and isinstance(params.get("protocolVersion"), str):
+                                        initialized_state["done"] = True
+                                elif isinstance(method, str) and method != "ping" and not method.startswith("notifications/"):
+                                    # BUG-0012: Return standard -32002 Server not initialized before handshake
+                                    if req_id is not None:
+                                        await _send_raw_error(req_id, -32002, "Server not initialized")
+                                    continue
+                            else:
+                                if method == "initialize":
+                                    params = raw_obj.get("params")
+                                    proto = params.get("protocolVersion") if isinstance(params, dict) else None
+                                    if not isinstance(proto, str) or proto not in _SUPPORTED_PROTOCOLS:
+                                        if req_id is not None:
+                                            await _send_raw_error(
+                                                req_id,
+                                                -32602,
+                                                f"Unsupported protocolVersion: {proto}",
+                                            )
+                                        continue
+
+                        try:
+                            if hasattr(_mcp_types.JSONRPCMessage, "model_validate_json"):
+                                message = _mcp_types.JSONRPCMessage.model_validate_json(line)
+                            else:
+                                message = _mcp_types.jsonrpc_message_adapter.validate_json(line)
+                        except Exception as exc:
+                            await read_stream_writer.send(exc)
+                            continue
+                        await read_stream_writer.send(SessionMessage(message))
+            except anyio.ClosedResourceError:
+                await anyio.lowlevel.checkpoint()
+
+        async def stdout_writer():
+            try:
+                async with write_stream_reader:
+                    async for session_message in write_stream_reader:
+                        json_str = session_message.message.model_dump_json(by_alias=True, exclude_none=True)
+                        await stdout.write(json_str + "\n")
+                        await stdout.flush()
+            except anyio.ClosedResourceError:
+                await anyio.lowlevel.checkpoint()
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(stdin_reader)
+            tg.start_soon(stdout_writer)
+            yield read_stream, write_stream
+
+    _stdio_mod.stdio_server = _guarded_stdio_server
+    _fmcp_srv.stdio_server = _guarded_stdio_server
 
 
 def main() -> None:
@@ -8123,9 +8645,8 @@ def main() -> None:
 
 
     if args.transport == "stdio":
-
+        _install_stdio_protocol_guard()
         mcp.run(transport="stdio")
-
         return
 
     try:
@@ -8161,6 +8682,11 @@ def main() -> None:
         )
 
     # FastMCP reads the bind address from its settings, so set them before run().
+    if not hasattr(mcp, "settings"):
+        raise SystemExit(
+            "streamable-http transport requires FastMCP (mcp<2) with mcp.settings; "
+            "current mcp 2.x MCPServer does not expose mcp.settings."
+        )
 
     mcp.settings.host = args.host
 

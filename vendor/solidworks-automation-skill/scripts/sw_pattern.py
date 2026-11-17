@@ -90,8 +90,51 @@ def linear_pattern(model, feature_name, first, spacing, count, second=(0, 0, 0),
         model.ClearSelection2(True)
 
 
+def _auto_create_or_select_reference_axis(model, axis_spec: str, feature_name: str, mark: int = 1) -> bool:
+    """当指定基准轴不存在时，尝试按两正交基准面自动创建基准轴（InsertRefAxis / CreateAxis）并选中 (BUG-012)。"""
+    ext = getattr(model, "Extension", None)
+    if ext is None:
+        return False
+    plane_pairs = {
+        "z": [("Front Plane", "Right Plane"), ("前视基准面", "右视基准面")],
+        "x": [("Front Plane", "Top Plane"), ("前视基准面", "上视基准面")],
+        "y": [("Top Plane", "Right Plane"), ("上视基准面", "右视基准面")],
+    }
+    key = axis_spec.strip().lower()
+    candidate_pairs = plane_pairs.get(key, plane_pairs["z"])
+    for p1, p2 in candidate_pairs:
+        model.ClearSelection2(True)
+        s1 = bool(ext.SelectByID2(p1, "PLANE", 0, 0, 0, False, 0, create_empty_dispatch_variant(), 0))
+        s2 = bool(ext.SelectByID2(p2, "PLANE", 0, 0, 0, True, 0, create_empty_dispatch_variant(), 0)) if s1 else False
+        if not (s1 and s2):
+            continue
+        created = False
+        insert_ref_axis = getattr(model, "InsertRefAxis", None)
+        if callable(insert_ref_axis):
+            try:
+                created = bool(insert_ref_axis(2))
+            except Exception:
+                created = False
+        if not created and hasattr(model, "FeatureManager"):
+            fm_axis = getattr(model.FeatureManager, "InsertRefAxis", None) or getattr(model.FeatureManager, "CreateAxis", None)
+            if callable(fm_axis):
+                try:
+                    created = bool(fm_axis(2))
+                except Exception:
+                    created = False
+        if created:
+            model.ClearSelection2(True)
+            _seed(model, feature_name)
+            for candidate_name in (axis_spec, "Axis1", "基准轴1", "Axis2", "基准轴2"):
+                if bool(ext.SelectByID2(candidate_name, "AXIS", 0, 0, 0, True, mark, create_empty_dispatch_variant(), 0)):
+                    return True
+    model.ClearSelection2(True)
+    _seed(model, feature_name)
+    return False
+
+
 def circular_pattern(model, feature_name, axis, angle, count, equal_spacing=True):
-    """@brief 选择母特征与明确的轴实体，保留现有 7 参数原生接口。"""
+    """@brief 选择母特征与明确的轴实体（支持缺失时自动通过正交基准面创建基准轴），保留现有 7 参数原生接口。"""
     if int(count) < 2 or not math.isfinite(float(angle)) or not 0 < angle <= 2 * math.pi + 1e-9:
         raise ValueError("圆周阵列数量或角度无效")
     model.ClearSelection2(True)
@@ -100,6 +143,13 @@ def circular_pattern(model, feature_name, axis, angle, count, equal_spacing=True
         if isinstance(axis, str):
             selected = bool(model.Extension.SelectByID2(axis, "AXIS", 0, 0, 0, True, 1,
                 create_empty_dispatch_variant(), 0))
+            if not selected:
+                for alias in ("Axis1", "基准轴1") if axis not in ("Axis1", "基准轴1") else ():
+                    if bool(model.Extension.SelectByID2(alias, "AXIS", 0, 0, 0, True, 1, create_empty_dispatch_variant(), 0)):
+                        selected = True
+                        break
+            if not selected:
+                selected = _auto_create_or_select_reference_axis(model, axis, feature_name, mark=1)
         else:
             selected = _select_entity(model, axis, 1)
         if not selected:

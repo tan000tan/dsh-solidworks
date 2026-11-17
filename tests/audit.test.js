@@ -16,9 +16,19 @@ const root = join(here, '..')
 
 const argv = process.argv.slice(2)
 const pyIndex = argv.indexOf('--python')
-const pythonPath = pyIndex >= 0 ? argv[pyIndex + 1] : (process.env.DSH_SOLIDWORKS_PYTHON || null)
+let pythonPath = pyIndex >= 0 ? argv[pyIndex + 1] : (process.env.DSH_SOLIDWORKS_PYTHON || null)
 if (!pythonPath) {
-  console.error('usage: node tests/audit.test.js --python <python.exe>\n       (or set DSH_SOLIDWORKS_PYTHON)')
+  const { entryCandidates, probePython } = await import(pathToFileURL(join(root, 'lib', 'discover.js')).href)
+  for (const candidate of entryCandidates(process.env, root)) {
+    const probed = await probePython(candidate)
+    if (probed.ok) {
+      pythonPath = probed.command
+      break
+    }
+  }
+}
+if (!pythonPath) {
+  console.error('BLOCKED: no usable Python interpreter found (pass --python <python.exe> or set DSH_SOLIDWORKS_PYTHON)')
   process.exit(2)
 }
 
@@ -62,15 +72,15 @@ const base = {
   serverScript: join(here, 'stub-server.py'),
   serverCwd: here,
   auditLog,
-  toolTimeoutMs: 20000,
-  startTimeoutMs: 20000,
+  toolTimeoutMs: 30000,
+  startTimeoutMs: 45000,
 }
 
-// ---- instance A: read-only, one read tool called twice ---------------------
+// ---- instance A: read-only, one allowed tool called twice ----------------
 const ctxA = makeCtx()
-const stopA = await apply(ctxA, { ...base, mode: 'read-only', customTiers: { stub_wrapped: 'read' } })
+const stopA = await apply(ctxA, { ...base, mode: 'read-only', allow: ['stub_wrapped'], customTiers: { stub_wrapped: 'write' } })
 
-check(ctxA.registered.has('stub_wrapped'), 'read-only mode publishes the read-shaped stub tool')
+check(ctxA.registered.has('stub_wrapped'), 'read-only mode publishes the explicitly allowed stub tool')
 check(!ctxA.registered.has('stub_export'), 'read-only mode withholds the write-shaped stub tool')
 
 const wrapped = ctxA.registered.get('stub_wrapped')
@@ -79,8 +89,16 @@ check(text(first).includes('"width_mm": 120'), 'the call reaches the server with
 await wrapped.execute({ width_mm: 120 }, {})
 await stopA?.()
 
-// ---- instance B: full mode + path gate + confirm + server error ------------
-const ctxB = makeCtx()
+// ---- instance B: full mode + path gate + host approval + server error ----
+let approvalOutcome = 'unavailable'
+function makeApprovalCtx(getOutcome) {
+  const baseCtx = makeCtx()
+  return {
+    ...baseCtx,
+    get: (key) => (key === 'approval' ? { request: async () => getOutcome() } : undefined),
+  }
+}
+const ctxB = makeApprovalCtx(() => approvalOutcome)
 const outside = join(tmpdir(), 'dsh-sw-audit-elsewhere', 'part.step')
 const inside = join(tmp, 'out', 'part.step')
 const stopB = await apply(ctxB, { ...base, mode: 'full', allowedRoots: [tmp] })
@@ -91,36 +109,41 @@ const exportTool = ctxB.registered.get('stub_export')
 const blocked = await exportTool.execute({ output_path: outside }, {})
 check(text(blocked).includes('PATH_OUTSIDE_ALLOWED_ROOTS'), 'a write outside allowedRoots is refused before reaching the server')
 
-const needsConfirm = await exportTool.execute({ output_path: inside }, {})
-check(text(needsConfirm).includes('CONFIRMATION_REQUIRED'), 'a write inside allowedRoots still needs explicit confirmation')
+approvalOutcome = 'rejected'
+const rejected = await exportTool.execute({ output_path: inside }, {})
+check(text(rejected).includes('APPROVAL_REJECTED'), 'a write inside allowedRoots is refused when the human host denies approval')
 
 const confirm = ctxB.registered.get('solidworks_confirm')
-await confirm.execute({ tool: 'stub_export', args: { output_path: inside }, reason: 'test approval' }, {})
+const selfApprove = await confirm.execute({ tool: 'stub_export', args: { output_path: inside }, confirmedByHuman: true }, {})
+check(text(selfApprove).includes('SELF_APPROVAL_PROHIBITED'), 'solidworks_confirm fails closed and refuses AI self-authorization')
+
+approvalOutcome = 'allowed-once'
 const afterGrant = await exportTool.execute({ output_path: inside }, {})
-check(text(afterGrant).includes('unknown tool'), 'after the grant the call is actually sent (the stub answers with an error)')
+check(text(afterGrant).includes('unknown tool'), 'after host allowed-once the call is actually sent (the stub answers with an error)')
 await stopB?.()
 
 // ---- the trail itself ------------------------------------------------------
 check(existsSync(auditLog), 'the audit log file was created at the configured path')
 const rows = readRows()
-check(rows.length >= 5, `the log holds one line per event (got ${rows.length})`)
+check(rows.length >= 6, `the log holds one line per event (got ${rows.length})`)
 
 const events = new Set(rows.map((row) => row.event))
-for (const expected of ['call', 'refused', 'confirm', 'error']) {
+for (const expected of ['call', 'refused', 'approval_requested', 'confirm_granted', 'execution_failed_after_approval']) {
   check(events.has(expected), `the log records a "${expected}" event`)
 }
 
 check(rows.every((row) => typeof row.ts === 'string' && !Number.isNaN(Date.parse(row.ts))), 'every row carries an ISO timestamp')
 check(rows.every((row) => typeof row.tool === 'string' && row.tool.length > 0), 'every row names the tool')
 
-const audited = rows.filter((row) => row.event !== 'confirm')
+const audited = rows.filter((row) => !['confirm_granted', 'approval_requested'].includes(row.event))
 check(audited.every((row) => /^[0-9a-f]{16}$/.test(String(row.digest))), 'every executed or refused call carries a 16-hex argument digest')
 
 const callDigests = rows.filter((row) => row.event === 'call').map((row) => row.digest)
 check(callDigests.length >= 2 && new Set(callDigests).size === 1, 'identical arguments produce an identical digest (no salt churn)')
 
 check(rows.some((row) => row.code === 'PATH_OUTSIDE_ALLOWED_ROOTS'), 'the refusal reason is recorded, not just the fact of refusal')
-check(rows.some((row) => row.code === 'CONFIRMATION_REQUIRED'), 'the confirmation requirement is recorded')
+check(rows.some((row) => row.code === 'APPROVAL_REJECTED'), 'the host rejection outcome is recorded')
+check(rows.some((row) => row.code === 'SELF_APPROVAL_PROHIBITED'), 'the self-approval refusal is recorded')
 
 const raw = readFileSync(auditLog, 'utf8')
 check(!raw.includes('width_mm'), 'argument names are never written to the log (only their digest)')

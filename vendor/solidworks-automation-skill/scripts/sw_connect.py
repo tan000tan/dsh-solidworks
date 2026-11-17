@@ -36,6 +36,32 @@ except ImportError:
 
     from sw_file_load import SolidWorksDocumentOpenError, classify_sw_file_load_errors, classify_sw_file_load_warnings
 
+try:
+
+    from .path_security import (
+        PROTECTED_FILENAMES_LOWER as _PROTECTED_FILENAMES_LOWER,
+        get_final_path as _ps_get_final_path,
+        has_forbidden_path_syntax as _has_forbidden_path_syntax,
+        reject_forbidden_expand,
+        require_allowed_path,
+        safe_ensure_parent_dir,
+        validate_path_against_allowed_roots,
+        validate_nested_tool_paths,
+    )
+
+except ImportError:
+
+    from path_security import (
+        PROTECTED_FILENAMES_LOWER as _PROTECTED_FILENAMES_LOWER,
+        get_final_path as _ps_get_final_path,
+        has_forbidden_path_syntax as _has_forbidden_path_syntax,
+        reject_forbidden_expand,
+        require_allowed_path,
+        safe_ensure_parent_dir,
+        validate_path_against_allowed_roots,
+        validate_nested_tool_paths,
+    )
+
 
 
 try:
@@ -132,163 +158,99 @@ _SESSION_OWNED_DOCUMENTS = set()
 
 
 
+def _canonical_doc_path(p: str) -> tuple[str, str]:
+    abs_p = os.path.normcase(os.path.abspath(p))
+    real_p = os.path.normcase(os.path.realpath(abs_p))
+    return abs_p, real_p
+
+
 def register_owned_document(doc_or_title_or_path):
+    """Explicitly register a document as owned by this automation session.
 
-    """Explicitly register a document as owned by this automation session."""
-
+    FIX RT-SEC-03 / BUG-010:
+    - Saved documents (non-empty path) are keyed STRICTLY by canonical path
+      (abspath + realpath), NEVER by bare GetTitle / basename / stem.
+    - Unsaved documents (empty GetPathName) are keyed ONLY by exact full title
+      (never extension-stripped stem).
+    """
     if not doc_or_title_or_path:
-
         return
 
     if hasattr(doc_or_title_or_path, "GetTitle"):
-
+        p = ""
+        t = ""
         try:
-
-            t = str(get_com_member(doc_or_title_or_path, "GetTitle") or "").strip()
-
-            if t:
-
-                _SESSION_OWNED_DOCUMENTS.add(t)
-
-                _SESSION_OWNED_DOCUMENTS.add(os.path.splitext(t)[0])
-
-        except Exception:
-
-            pass
-
-        try:
-
             p = str(get_com_member(doc_or_title_or_path, "GetPathName") or "").strip()
-
-            if p:
-
-                _SESSION_OWNED_DOCUMENTS.add(os.path.normcase(os.path.abspath(p)))
-
-                b = os.path.basename(p)
-
-                _SESSION_OWNED_DOCUMENTS.add(b)
-
-                _SESSION_OWNED_DOCUMENTS.add(os.path.splitext(b)[0])
-
         except Exception:
-
-            pass
-
+            p = ""
+        try:
+            t = str(get_com_member(doc_or_title_or_path, "GetTitle") or "").strip()
+        except Exception:
+            t = ""
+        if p:
+            abs_p, real_p = _canonical_doc_path(p)
+            _SESSION_OWNED_DOCUMENTS.add(abs_p)
+            _SESSION_OWNED_DOCUMENTS.add(real_p)
+        elif t:
+            _SESSION_OWNED_DOCUMENTS.add(t)
     elif isinstance(doc_or_title_or_path, str):
-
         s = doc_or_title_or_path.strip()
-
-        if s:
-
+        if not s:
+            return
+        if os.path.isabs(s) or os.path.sep in s or "/" in s:
+            abs_p, real_p = _canonical_doc_path(s)
+            _SESSION_OWNED_DOCUMENTS.add(abs_p)
+            _SESSION_OWNED_DOCUMENTS.add(real_p)
+        else:
             _SESSION_OWNED_DOCUMENTS.add(s)
-
-            _SESSION_OWNED_DOCUMENTS.add(os.path.splitext(s)[0])
-
-            if os.path.isabs(s):
-
-                _SESSION_OWNED_DOCUMENTS.add(os.path.normcase(os.path.abspath(s)))
-
-                b = os.path.basename(s)
-
-                _SESSION_OWNED_DOCUMENTS.add(b)
-
-                _SESSION_OWNED_DOCUMENTS.add(os.path.splitext(b)[0])
-
-
-
 
 
 def is_document_owned(doc_or_title, path=None, allowed_roots=None) -> bool:
-
     """
-
-    Check if a document is provably owned by this session or within allowed sandbox roots.
-
+    Check if a document is provably owned by this session and within allowed sandbox roots.
     Returns True only if confirmed; returns False for any arbitrary user files.
-
     """
-
     if doc_or_title is None and not path:
-
         return False
-
-
 
     title_str = ""
-
     path_str = str(path or "").strip()
 
-
-
     if hasattr(doc_or_title, "GetTitle"):
-
         try:
-
             title_str = str(get_com_member(doc_or_title, "GetTitle") or "").strip()
-
         except Exception:
-
             pass
-
         if not path_str:
-
             try:
-
                 path_str = str(get_com_member(doc_or_title, "GetPathName") or "").strip()
-
             except Exception:
-
                 pass
-
     elif isinstance(doc_or_title, str):
-
-        if os.path.isabs(doc_or_title):
-
-            path_str = doc_or_title.strip()
-
-            title_str = os.path.basename(path_str)
-
+        raw = doc_or_title.strip()
+        if os.path.isabs(raw) or (os.path.sep in raw) or ("/" in raw):
+            if not path_str:
+                path_str = raw
+            title_str = os.path.basename(raw)
         else:
+            title_str = raw
 
-            title_str = doc_or_title.strip()
-
-
-
-    # DEF-SEC-01 / DEF-SEC-02 强化：文档所有权必须满足严格双重校验
-
-    # 1. 必须在当前会话显式登记集合 _SESSION_OWNED_DOCUMENTS 中（由当前自动化测试创建或载入）
-
-    # 2. 若具备物理路径，该路径必须符合 DSH_ALLOWED_ROOTS 沙箱白名单目录规范
-
+    # DEF-SEC-01 / DEF-SEC-02 / RT-SEC-03 强化：
+    # 1. 有物理路径的文档必须严格按规范路径命中 _SESSION_OWNED_DOCUMENTS，禁止回退标题/文件名匹配。
+    # 2. 仅无路径的未保存新建文档允许按完整精确标题匹配（禁止去扩展名匹配）。
+    # 3. 凡具备物理路径者必须处于 DSH_ALLOWED_ROOTS 白名单目录内。
     is_registered = False
-
     if path_str:
-
-        norm_p = os.path.normcase(os.path.abspath(path_str))
-
-        if norm_p in _SESSION_OWNED_DOCUMENTS:
-
-            is_registered = True
-
-    if title_str and (title_str in _SESSION_OWNED_DOCUMENTS or os.path.splitext(title_str)[0] in _SESSION_OWNED_DOCUMENTS):
-
-        is_registered = True
-
-
+        abs_p, real_p = _canonical_doc_path(path_str)
+        is_registered = (abs_p in _SESSION_OWNED_DOCUMENTS) or (real_p in _SESSION_OWNED_DOCUMENTS)
+    elif title_str:
+        is_registered = title_str in _SESSION_OWNED_DOCUMENTS
 
     if not is_registered:
-
         return False
-
-
-
-    # 若具备物理路径，必须处于沙箱白名单目录内，严禁超出边界
 
     if path_str and not validate_path_against_allowed_roots(path_str, allowed_roots):
-
         return False
-
-
 
     return True
 
@@ -587,24 +549,13 @@ def normalize_doc_type(doc_type):
 
 
 def _expand_path(file_path):
-
-    """展开用户目录和环境变量，并返回绝对路径。"""
-
-    return os.path.abspath(os.path.expandvars(os.path.expanduser(file_path)))
-
-
-
+    """Fail-closed 路径规范化：拒绝环境变量/%VAR%/~/非法语法并结合 DSH_DEFAULT_CWD 绝对化。"""
+    return reject_forbidden_expand(file_path)
 
 
 def _ensure_parent_dir(file_path):
-
-    """确保输出文件的父目录存在。"""
-
-    parent = os.path.dirname(_expand_path(file_path))
-
-    if parent:
-
-        os.makedirs(parent, exist_ok=True)
+    """先校验 DSH_ALLOWED_ROOTS 再安全创建父目录，并在创建后二次物理校验（防 TOCTOU）。"""
+    return safe_ensure_parent_dir(file_path, label="output_path")
 
 
 
@@ -1165,140 +1116,8 @@ def get_sta_worker():
 
 
 def get_final_path(target_path):
-
-    """
-
-    Resolve final physical path on disk using Windows Native GetFinalPathNameByHandle,
-
-    properly expanding Directory Junctions, Symlinks, and uncreated child paths.
-
-    """
-
-    if os.name != "nt":
-
-        return os.path.abspath(str(target_path))
-
-    try:
-
-        import ctypes
-
-        from ctypes import wintypes
-
-        kernel32 = ctypes.windll.kernel32
-
-        kernel32.CreateFileW.restype = wintypes.HANDLE
-
-        kernel32.CreateFileW.argtypes = [
-
-            wintypes.LPCWSTR,
-
-            wintypes.DWORD,
-
-            wintypes.DWORD,
-
-            wintypes.LPVOID,
-
-            wintypes.DWORD,
-
-            wintypes.DWORD,
-
-            wintypes.HANDLE,
-
-        ]
-
-        kernel32.GetFinalPathNameByHandleW.restype = wintypes.DWORD
-
-        kernel32.GetFinalPathNameByHandleW.argtypes = [
-
-            wintypes.HANDLE,
-
-            wintypes.LPWSTR,
-
-            wintypes.DWORD,
-
-            wintypes.DWORD,
-
-        ]
-
-        kernel32.CloseHandle.restype = wintypes.BOOL
-
-        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
-
-
-
-        cur = os.path.abspath(str(target_path))
-
-        tail = []
-
-        while not os.path.exists(cur):
-
-            parent = os.path.dirname(cur)
-
-            if parent == cur:
-
-                break
-
-            tail.append(os.path.basename(cur))
-
-            cur = parent
-
-
-
-        if os.path.exists(cur):
-
-            handle = kernel32.CreateFileW(
-
-                cur,
-
-                0,
-
-                1 | 2,  # FILE_SHARE_READ | FILE_SHARE_WRITE
-
-                None,
-
-                3,  # OPEN_EXISTING
-
-                0x02000000,  # FILE_FLAG_BACKUP_SEMANTICS
-
-                None,
-
-            )
-
-            if handle is not None and handle not in (-1, 0, 0xFFFFFFFFFFFFFFFF):
-
-                try:
-
-                    buf = ctypes.create_unicode_buffer(1024)
-
-                    res = kernel32.GetFinalPathNameByHandleW(handle, buf, 1024, 0)
-
-                    if res > 0:
-
-                        real = buf.value
-
-                        if real.startswith("\\\\?\\UNC\\") or real.startswith("\\\\?\\UNC/"):
-
-                            real = "\\\\" + real[8:]
-
-                        elif real.startswith("\\\\?\\"):
-
-                            real = real[4:]
-
-                        for part in reversed(tail):
-
-                            real = os.path.join(real, part)
-
-                        return os.path.abspath(real)
-
-                finally:
-
-                    kernel32.CloseHandle(handle)
-
-    except Exception:
-
-        pass
-
-    return os.path.abspath(str(target_path))
+    """解析物理路径（含 Windows Directory Junction / Symlink）。委托给 path_security.get_final_path。"""
+    return _ps_get_final_path(target_path)
 
 
 
@@ -1346,77 +1165,8 @@ def get_default_workspace():
 
 
 
-def validate_path_against_allowed_roots(target_path, allowed_roots=None):
-
-    """
-
-    Python-layer defense-in-depth: validates target_path against allowed roots.
-
-    Fails closed if target_path falls outside or if roots are empty under DSH environment.
-
-    """
-
-    if not target_path:
-
-        return True
-
-
-
-    env_roots = os.environ.get("DSH_ALLOWED_ROOTS")
-    is_dsh_env = env_roots is not None
-    if is_dsh_env and allowed_roots is None:
-        try:
-            allowed_roots = json.loads(env_roots)
-            if isinstance(allowed_roots, str):
-                allowed_roots = [allowed_roots]
-        except Exception:
-            if ";" in str(env_roots) or "," in str(env_roots):
-                import re
-                allowed_roots = [p.strip() for p in re.split(r"[;,]", env_roots) if p.strip()]
-            elif str(env_roots).strip():
-                allowed_roots = [str(env_roots).strip()]
-            else:
-                allowed_roots = []
-
-
-
-    # If allowed_roots was explicitly passed or configured via DSH_ALLOWED_ROOTS
-
-    if allowed_roots is not None:
-
-        if not allowed_roots:
-
-            return False  # Fail-closed when roots list is configured but empty
-
-        final_target = get_final_path(target_path).lower()
-
-        for root in allowed_roots:
-
-            if not root:
-
-                continue
-
-            final_root = get_final_path(root).lower()
-
-            try:
-
-                rel = os.path.relpath(final_target, final_root)
-
-                if not rel.startswith("..") and not os.path.isabs(rel):
-
-                    return True
-
-            except ValueError:
-
-                continue
-
-        return False
-
-
-
-    # Standalone script execution without explicit DSH sandbox boundary
-
-    return True
+# _PROTECTED_FILENAMES_LOWER, _has_forbidden_path_syntax, validate_path_against_allowed_roots
+# 已统一由 scripts.path_security 导出并在顶部重绑定（保持向后兼容导出名，fail-closed）。
 
 
 
@@ -1456,7 +1206,16 @@ def is_co_e_server_exec_failure(exc: Exception) -> bool:
     return "0x80080005" in s or "80080005" in s or "CO_E_SERVER_EXEC_FAILURE" in s or "-2146959355" in s
 
 
-def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metadata=False, target_pid=None):
+def is_launch_allowed(allow_launch=None):
+    """@brief 判断当前策略是否允许通过 COM Dispatch 拉起新 SolidWorks 进程（默认 fail-closed 禁止）。"""
+    if allow_launch is not None:
+        return bool(allow_launch)
+    env_launch = os.environ.get("DSH_ALLOW_LAUNCH_SW", "0").strip().lower()
+    env_mode = os.environ.get("DSH_POLICY_MODE", "").strip().lower()
+    return (env_launch in {"1", "true", "yes"}) and (env_mode != "read-only")
+
+
+def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metadata=False, target_pid=None, allow_launch=None):
 
     """
 
@@ -1488,7 +1247,9 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
     if worker and threading.current_thread() != worker._thread:
 
-        return worker.execute(lambda: connect_solidworks(version, wait_seconds, visible, return_metadata, target_pid))
+        return worker.execute(lambda: connect_solidworks(version, wait_seconds, visible, return_metadata, target_pid, allow_launch))
+
+    effective_allow_launch = is_launch_allowed(allow_launch)
 
     ensure_solidworks_installed()
 
@@ -1512,6 +1273,16 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
         before = solidworks_processes()
 
+        requested_pid = None
+        if target_pid is not None:
+            if isinstance(target_pid, bool) or not isinstance(target_pid, int) or target_pid <= 0:
+                raise SolidWorksConnectionError(
+                    "SW_INVALID_TARGET_PID",
+                    "connect",
+                    f"非法目标 PID ({target_pid!r})，必须为正整数",
+                )
+            requested_pid = int(target_pid)
+
         # 多实例检测与提示
         instances = list_solidworks_instances()
         if len(instances) > 1 and target_pid is None:
@@ -1521,12 +1292,20 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
             sw = _get_active_object(prog_id)
 
-            if target_pid is not None and sw is not None:
+            if requested_pid is not None and sw is not None:
                 actual_pid = int(get_com_member(sw, "GetProcessID") or 0)
-                if actual_pid != int(target_pid):
-                    print(f"[提示] 当前活动 COM 实例 PID ({actual_pid}) 与请求的目标 PID ({target_pid}) 不一致，正在尝试绑定指定实例...")
+                if actual_pid != requested_pid:
+                    raise SolidWorksConnectionError(
+                        "SW_TARGET_PID_MISMATCH",
+                        "attach",
+                        f"当前活动 COM 实例 PID ({actual_pid}) 与请求的目标 PID ({requested_pid}) 不一致，已拒绝绑定错误实例",
+                    )
 
             print(f"已连接到运行中的 SolidWorks 实例（ProgID: {prog_id}）")
+
+        except SolidWorksConnectionError:
+
+            raise
 
         except Exception as attach_error:
 
@@ -1556,6 +1335,9 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
                     if sw is None:
 
+                        if not effective_allow_launch:
+                            raise SolidWorksConnectionError("SW_LAUNCH_PROHIBITED", "attach", "已有实例尚不可连接，且当前策略禁止自动 Dispatch 启动 SolidWorks")
+
                         try:
 
                             worker = get_sta_worker()
@@ -1578,6 +1360,9 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
                                 raise SolidWorksConnectionError("SW_INSTANCE_NOT_READY", "attach", f"已有实例尚不可连接 ({disp_err})，已阻止重复启动")
 
                 if sw is None:
+
+                    if not effective_allow_launch:
+                        raise SolidWorksConnectionError("SW_LAUNCH_PROHIBITED", "attach", "SolidWorks 未运行，且只读模式/只读工具调用禁止自动启动新进程")
 
                     try:
                         sw = win32com_client.Dispatch(prog_id)
@@ -1644,6 +1429,16 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
         actual = get_sw_version(sw)
 
+        if requested_pid is not None:
+            actual_pid = int(get_com_member(sw, "GetProcessID") or 0)
+            if actual_pid != requested_pid:
+                close_owned_solidworks(sw, launched_here)
+                raise SolidWorksConnectionError(
+                    "SW_TARGET_PID_MISMATCH",
+                    "verify",
+                    f"目标 PID ({requested_pid}) 与实际连接实例 PID ({actual_pid}) 不一致，已拒绝连接",
+                )
+
         if version is not None and actual["year"] != int(version):
 
             close_owned_solidworks(sw, launched_here)
@@ -1676,6 +1471,11 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
 
 
+    proc_id = get_com_member(sw, "GetProcessID", default=None)
+    proc_create_time = _get_process_create_time(proc_id)
+    _LAST_CONNECTED_INSTANCE["pid"] = proc_id
+    _LAST_CONNECTED_INSTANCE["create_time"] = proc_create_time
+
     metadata = {
 
         "prog_id": prog_id,
@@ -1688,11 +1488,92 @@ def connect_solidworks(version=None, wait_seconds=5, visible=True, return_metada
 
         "actual_revision": actual["revision"],
 
-        "process_id": get_com_member(sw, "GetProcessID", default=None),
+        "process_id": proc_id,
+
+        "process_create_time": proc_create_time,
 
     }
 
     return (sw, model, metadata) if return_metadata else (sw, model)
+
+
+_LAST_CONNECTED_INSTANCE = {"pid": None, "create_time": None}
+
+
+def _get_process_create_time(pid):
+    """获取仍在运行中的进程创建时间戳（100ns FILETIME 转换秒），用于区分 PID 复用与已退出进程。"""
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0 or os.name != "nt":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid))
+        if not handle:
+            return None
+        try:
+            creation = wintypes.FILETIME()
+            exit_t = wintypes.FILETIME()
+            kernel_t = wintypes.FILETIME()
+            user_t = wintypes.FILETIME()
+            if not kernel32.GetProcessTimes(
+                handle,
+                ctypes.byref(creation),
+                ctypes.byref(exit_t),
+                ctypes.byref(kernel_t),
+                ctypes.byref(user_t),
+            ):
+                return None
+            ft_exit = (exit_t.dwHighDateTime << 32) | exit_t.dwLowDateTime
+            if ft_exit != 0:
+                return None
+            ft = (creation.dwHighDateTime << 32) | creation.dwLowDateTime
+            if ft <= 0:
+                return None
+            return round((ft - 116444736000000000) / 10_000_000.0, 6)
+        finally:
+            kernel32.CloseHandle(handle)
+    except Exception:
+        return None
+
+
+def get_connected_instance_identity():
+    """返回最近一次连接的 SolidWorks 进程 (pid, create_time) 身份快照，并校验当前进程是否存活或发生重启替换。"""
+    pid = _LAST_CONNECTED_INSTANCE.get("pid")
+    recorded_ct = _LAST_CONNECTED_INSTANCE.get("create_time")
+    live_ct = _get_process_create_time(pid) if pid else None
+    alive = bool(pid and live_ct is not None)
+    replaced = bool(pid and recorded_ct is not None and live_ct is not None and abs(live_ct - recorded_ct) > 1e-3)
+    identity_valid = bool(pid and recorded_ct is not None and live_ct is not None and not replaced)
+    return {
+        "pid": pid,
+        "create_time": recorded_ct,
+        "live_create_time": live_ct,
+        "alive": alive,
+        "instance_replaced": replaced,
+        "identity_valid": identity_valid,
+    }
+
+
+def verify_connected_instance_identity(expected_pid=None, expected_create_time=None):
+    """Fail-closed 校验目标进程 (pid, create_time) 是否仍为同一存活实例。"""
+    snap = get_connected_instance_identity()
+    pid = snap["pid"] if expected_pid is None else expected_pid
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return {"ok": False, "reason": "INVALID_PID", **snap}
+    if expected_pid is not None and snap["pid"] is not None and snap["pid"] != expected_pid:
+        return {"ok": False, "reason": "PID_MISMATCH", **snap}
+    rec_ct = snap["create_time"] if expected_create_time is None else expected_create_time
+    if rec_ct is None:
+        return {"ok": False, "reason": "RECORDED_CREATE_TIME_UNAVAILABLE", **snap}
+    live_ct = _get_process_create_time(pid)
+    if live_ct is None:
+        return {"ok": False, "reason": "PROCESS_EXITED_OR_UNREADABLE", **snap, "live_create_time": None, "alive": False}
+    if abs(live_ct - rec_ct) > 1e-3:
+        return {"ok": False, "reason": "PID_REUSED_OR_REPLACED", **snap, "live_create_time": live_ct, "instance_replaced": True, "identity_valid": False}
+    return {"ok": True, "reason": "OK", "pid": pid, "create_time": rec_ct, "live_create_time": live_ct, "alive": True, "instance_replaced": False, "identity_valid": True}
 
 
 
@@ -1996,7 +1877,7 @@ def new_document(sw, doc_type="part", template_path=None, *, max_documents=None)
 
     else:
 
-        template_path = _expand_path(template_path)
+        template_path = require_allowed_path(template_path, label="template_path")
 
 
 
@@ -2136,6 +2017,11 @@ def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=F
 
         print(f"已复用打开文档: {file_path}")
 
+        # FIX BUG-001 / RT-SEC-01：仅非只读打开才登记可写所有权，避免只读引用打开提升写权限。
+        if not read_only:
+            register_owned_document(existing_model)
+            register_owned_document(file_path)
+
         return existing_model
 
 
@@ -2256,9 +2142,9 @@ def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=F
 
         print(f"已打开: {file_path}")
 
-        register_owned_document(model)
-
-        register_owned_document(file_path)
+        if not read_only:
+            register_owned_document(model)
+            register_owned_document(file_path)
 
     else:
 
@@ -2326,12 +2212,10 @@ def save_document(model, file_path=None):
             raise PermissionError("DEF-SEC-01: Existing document is not owned by current session. Refusing save.")
     else:
         if not is_document_owned(model):
-            curr_title = str(get_com_member(model, "GetTitle") or "").strip()
-            is_derived = any(owned in curr_title for owned in _SESSION_OWNED_DOCUMENTS if len(owned) >= 3)
-            if is_derived:
-                register_owned_document(model)
-            else:
-                raise PermissionError("DEF-SEC-01: Document is not owned by current automation session.")
+            # FIX BUG-016：旧实现用子串包含（owned in curr_title）判定“派生自有”，
+            # 使标题包含任一已登记键的文档被自动授权。授权必须来自显式登记/新建，
+            # 因此这里直接拒绝，不再做启发式放行。
+            raise PermissionError("DEF-SEC-01: Document is not owned by current automation session.")
 
 
 
@@ -2343,7 +2227,7 @@ def save_document(model, file_path=None):
 
 
 
-    _ensure_parent_dir(target_path)
+    safe_ensure_parent_dir(target_path, label="save_path")
 
     save_code = get_com_member(model, "SaveAs3", target_path, 0, 1)
 
@@ -2354,6 +2238,14 @@ def save_document(model, file_path=None):
     if success:
 
         print(f"保存成功: {target_path}")
+
+        if not existing_path:
+            try:
+                old_t = str(get_com_member(model, "GetTitle") or "").strip()
+                if old_t and old_t in _SESSION_OWNED_DOCUMENTS:
+                    _SESSION_OWNED_DOCUMENTS.discard(old_t)
+            except Exception:
+                pass
 
         register_owned_document(model)
 
@@ -2369,7 +2261,7 @@ def save_document(model, file_path=None):
 
 
 
-def close_document(sw, doc_or_title, force_discard=False, allowed_roots=None) -> bool:
+def close_document(sw, doc_or_title, force_discard=False, allowed_roots=None, save_before_close=False) -> bool:
 
     """
 
@@ -2435,7 +2327,7 @@ def close_document(sw, doc_or_title, force_discard=False, allowed_roots=None) ->
 
 
 
-    # 若尚未获取目标文档对象，尝试从 sw.GetDocuments() 中根据标题或路径精确匹配
+    # 若尚未获取目标文档对象，尝试从 sw.GetDocuments() 中按规范路径优先，其次严格完整标题匹配（禁止扩展名前缀撞库）
 
     if target_doc is None and sw is not None:
 
@@ -2443,28 +2335,34 @@ def close_document(sw, doc_or_title, force_discard=False, allowed_roots=None) ->
 
             docs = get_com_member(sw, "GetDocuments") or []
 
+            norm_target_path = _canonical_doc_path(target_path)[0] if target_path else None
+            path_matches = []
+            title_matches = []
             for d in docs:
-
                 dt = str(get_com_member(d, "GetTitle") or "").strip()
-
                 dp = str(get_com_member(d, "GetPathName") or "").strip()
+                if norm_target_path and dp and _canonical_doc_path(dp)[0] == norm_target_path:
+                    path_matches.append((d, dt, dp))
+                elif not norm_target_path and target_title and dt and dt.lower() == target_title.strip().lower():
+                    title_matches.append((d, dt, dp))
 
-                is_title_match = bool(target_title and (dt == target_title or os.path.splitext(dt)[0] == os.path.splitext(target_title)[0]))
-                is_path_match = bool(target_path and dp and os.path.normcase(os.path.abspath(dp)) == os.path.normcase(os.path.abspath(target_path)))
-                if is_title_match or is_path_match:
+            if path_matches:
+                target_doc, dt, dp = path_matches[0]
+            elif len(title_matches) > 1:
+                raise ValueError(f"存在多个同名文档 '{target_title}'，请改用 document_path 精确指定要关闭的文档")
+            elif len(title_matches) == 1:
+                target_doc, dt, dp = title_matches[0]
+            else:
+                dt, dp = "", ""
 
-                    target_doc = d
+            if target_doc is not None:
+                if not target_title:
+                    target_title = dt
+                if not target_path:
+                    target_path = dp
 
-                    if not target_title:
-
-                        target_title = dt
-
-                    if not target_path:
-
-                        target_path = dp
-
-                    break
-
+        except ValueError:
+            raise
         except Exception:
 
             pass
@@ -2483,7 +2381,14 @@ def close_document(sw, doc_or_title, force_discard=False, allowed_roots=None) ->
 
         )
 
-
+    if save_before_close:
+        if target_doc is None:
+            raise FileNotFoundError(f"无法在保存前定位已打开文档: {target_title or target_path}")
+        if not target_path and not allowed_roots and not parse_allowed_roots_env():
+            raise PermissionError("Access denied: DSH_ALLOWED_ROOTS is required before saving an unnamed document")
+        saved = save_document(target_doc)
+        if not saved:
+            raise RuntimeError(f"Failed to save document before closing: {target_title or target_path}")
 
     # 第三层防线：未保存修改核验
 
@@ -2497,7 +2402,10 @@ def close_document(sw, doc_or_title, force_discard=False, allowed_roots=None) ->
 
                 raise ValueError(
 
-                    f"安全拦截: 文档 '{target_title}' 包含未保存的修改。为保护设计数据，必须先保存或显式指定 force_discard=True 才能关闭。"
+                    # FIX BUG-003：MCP 的 close_documents 未暴露该参数，旧文案却让用户传它，
+                    # 形成“无法关闭”的死路。文案改为可执行的真实指引。
+                    f"安全拦截: 文档 '{target_title}' 包含未保存的修改。请先保存后再关闭；"
+                    f"本接口不提供丢弃未保存修改的选项。"
 
                 )
 

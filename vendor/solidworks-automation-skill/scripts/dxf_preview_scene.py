@@ -124,8 +124,12 @@ def _bounds(entities: Iterable[dict[str, Any]]) -> dict[str, float]:
 def dxf_to_preview_scene(source: str | Path, output: str | Path | None = None) -> dict[str, Any]:
     """@brief 只读解析 DXF，返回并可选写出 PreviewScene 1.0。"""
     import ezdxf
+    try:
+        from .path_security import require_allowed_path, safe_ensure_parent_dir
+    except ImportError:
+        from path_security import require_allowed_path, safe_ensure_parent_dir
 
-    source_path = Path(source).expanduser().resolve()
+    source_path = Path(require_allowed_path(source, label="source_path"))
     if source_path.suffix.lower() != ".dxf":
         raise ValueError("PreviewScene 转换只接受 DXF")
     if not source_path.is_file():
@@ -163,12 +167,11 @@ def dxf_to_preview_scene(source: str | Path, output: str | Path | None = None) -
         "limitations": ["只读 PreviewScene，不修改 DXF", *warnings],
     }
     if output is not None:
-        target = Path(output).expanduser().resolve()
+        target = Path(safe_ensure_parent_dir(output, label="output_path"))
         if target.suffix.lower() != ".json" or not target.name.lower().endswith(".scene.json"):
             raise ValueError("PreviewScene 输出必须使用 .scene.json 后缀")
         if target.exists():
             raise FileExistsError(f"拒绝覆盖已有 PreviewScene: {target.name}")
-        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(scene, ensure_ascii=False, indent=2), encoding="utf-8")
     return scene
 

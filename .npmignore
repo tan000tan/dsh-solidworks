@@ -24,8 +24,26 @@ Thumbs.db
 audit.jsonl
 *.log
 .dsh-audit/
+config-backups/
+diagnostic-report.json
+diagnostic-report.txt
+dsh-mcp-config.json
 
 # 本地测试与临时生成目录
-测试代码/sandbox_benchmark/
+tests/
+audit/
+*.pdf
+测试代码/
+temp_evidence*/
 scratch/
 .local/
+
+docs/audit_night_03/
+docs/drawing_research/
+docs/extreme_engineering/
+docs/night_engineering_*/
+docs/overnight/
+docs/roadmap/
+docs/self_review_engine/
+docs/system_audit_01/
+

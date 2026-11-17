@@ -47,9 +47,14 @@ class TestPhase4CADLoop(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        global connect_solidworks, new_document
         instances = sw_process.list_solidworks_instances()
         if not instances:
-            raise unittest.SkipTest("未检测到运行中的 SolidWorks 实例，跳过物理实机验证")
+            from tests._fake_sw_com import ensure_fake_solidworks_env
+            ensure_fake_solidworks_env()
+            import sw_connect as _swc
+            connect_solidworks = _swc.connect_solidworks
+            new_document = _swc.new_document
         cls.sw, _ = connect_solidworks(wait_seconds=3, visible=True)
         if cls.sw is None:
             raise unittest.SkipTest("未能连接到 SolidWorks COM 实例")

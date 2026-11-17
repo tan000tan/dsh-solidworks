@@ -1,5 +1,4 @@
-[![M8ven Score](https://m8ven.ai/badge/mcp/tan000tan/dsh-solidworks)](https://m8ven.ai/mcp/tan000tan/dsh-solidworks?s=readme)
-[![Release](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/tan000tan/dsh-solidworks)
+[![Release](https://img.shields.io/badge/version-0.3.2-blue.svg)](https://github.com/tan000tan/dsh-solidworks)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-green.svg)](LICENSE)
 [![SolidWorks](https://img.shields.io/badge/SolidWorks-2020%7E2026-orange.svg)](docs/FEATURE_MATRIX.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)](docs/USER_GUIDE.md)
@@ -19,8 +18,8 @@
 - **Zero-Friction Automated Lifecycle**: One-click setup (`npm run setup`), comprehensive diagnostics (`npm run doctor`), safe upgrade with auto-backups (`npm run upgrade`), and non-destructive uninstaller (`npm run uninstall`).
 - **Natural Language CAD**: Tell the AI what you want in plain words; it plans feature graphs, builds parametric geometry, and drives SolidWorks in real-time.
 - **Fail-Safe Shadow Backup**: Every geometric modification is safeguarded by atomic shadow backups. If an operation fails or causes a rebuild error, your model is losslessly restored in sub-second time.
-- **Double-Precision Physical Verification**: Proved on live SolidWorks 2026 with exact double-precision mass property assertions ($\le 0.0003\text{ mm}^3$ volume delta against analytical theory).
-- **Zero-Trust Policy Gate**: Three runtime policy tiers (`read-only`, `standard`, `full`) with strict path confinement ensure your CAD assets remain completely protected.
+- **Double-Precision Physical Verification**: Geometry/volume checks verified in pre-expiration SolidWorks 2026 baseline runs (`<= 0.0003 mm³` / `<= 4.7e-4` relative delta across `27/71` covered tools); post-unification live SW re-run is currently blocked by local Student Edition expiration (`L5-BLOCK-01`).
+- **Zero-Trust Policy Gate**: Three runtime policy tiers (`read-only`, `standard`, `full`) with strict path confinement, host-native `ctx.approval` interactive human authorization (`solidworks_confirm` self-approval is disabled / `SELF_APPROVAL_PROHIBITED`), and `SW_LOCK_WAIT_TIMEOUT_SECONDS` fast-fail isolation against modal/Head-of-Line stalls.
 
 ---
 
@@ -31,7 +30,7 @@ No manual Python path tuning, environment variable editing, or manual DLL regist
 ### 1. Prerequisites
 - **Operating System**: Windows 10/11 x64
 - **SolidWorks**: Desktop versions 2020–2026 (activated and launched at least once)
-- **Node.js**: v18.0.0+ LTS
+- **Node.js**: v22.12+ (`engines.node >=22.12`)
 - **Python**: 3.10+ x64 (installed on your system)
 
 ### 2. One-Click Setup
@@ -46,10 +45,10 @@ The setup script automatically:
 2. Creates an isolated local virtual environment (`.venv`).
 3. Installs all required packages (`mcp`, `pydantic`, `pywin32`, `comtypes`, etc.) silently with idempotency.
 4. Invokes `pywin32_postinstall.py` to register SolidWorks COM automation interfaces.
-5. Emits ready-to-use MCP configuration (`dsh-mcp-config.json`).
+5. Registers the plugin into your active DSH profile via `dsh_adapter.js` (to emit a standalone direct MCP client config only when explicitly needed, run `node scripts/generate_mcp_config.js --write-direct-config`).
 
 ### 3. Run System Doctor
-Verify your environment at any time using the 8-dimensional health check:
+Verify your environment at any time using the 12-dimensional health check:
 
 ```cmd
 npm run doctor
@@ -98,11 +97,11 @@ For standalone MCP hosts (such as Claude Desktop or custom agents):
 | :--- | :--- |
 | `npm run setup` | Automatically configure virtual environment & register COM |
 | `npm run setup -- --optional` | Install optional DFM manufacturing & Office report extensions |
-| `npm run doctor` | Run comprehensive 8-point system diagnostic |
+| `npm run doctor` | Run comprehensive 12-point system diagnostic |
 | `npm run upgrade` | Auto-backup existing configs and perform safe incremental upgrade |
 | `npm run uninstall -- --dry-run` | Preview safe cleanup targets (never touches your CAD assets) |
 | `npm run uninstall -- --yes` | Perform non-destructive cleanup of plugin runtimes |
-| `npm test` | Run complete offline test suite (110 assertions across 7 suites) |
+| `npm test` | Run core offline test suite (85 assertions across 4 offline suites; `npm run test:all`: 201 assertions across 20 suites including 42 Python suites) |
 
 ---
 

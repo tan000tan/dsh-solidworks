@@ -33,8 +33,8 @@ function walk(dir, out = []) {
 
 test('package.json declares the identity and the bundle patch the host needs', () => {
   assert.equal(pkg.name, 'dsh-solidworks');
-  assert.equal(pkg.version, '0.3.1');
-  assert.equal(manifest.version, '0.3.1');
+  assert.equal(pkg.version, '0.3.2');
+  assert.equal(manifest.version, '0.3.2');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
@@ -187,7 +187,7 @@ test('user-facing docs exist and state the tool count the code actually ships', 
     return match ? Number(match[1]) : null;
   };
   const verificationTotal = totalFrom(verification, /合计\s*\*\*(\d+)\s*项断言\*\*/);
-  const readmeTotal = totalFrom(read('README.md'), /(\d+)\s+assertions across/);
+  const readmeTotal = totalFrom(read('README.md'), /test:all`?:\s*(\d+)\s+assertions across/);
   assert.ok(Number.isInteger(verificationTotal), 'verification.md must state the total assertion count');
   assert.equal(readmeTotal, verificationTotal, `README.md (${readmeTotal}) and verification.md (${verificationTotal}) disagree on the assertion count`);
 
@@ -204,7 +204,7 @@ test('shipped files (docs, provenance, tests) do not leak build machine paths', 
     ['D:', 'dsh-sw-test'],
     ['D:', 'Solidwork'],
   ];
-  const needles = parts.flatMap((p) => [p.join('\\'), p.join('/')]);
+  const needles = parts.flatMap((p) => [p.join('\\'), p.join('\\\\'), p.join('/')]);
 
   const roots = [
     'README.md',
@@ -219,12 +219,13 @@ test('shipped files (docs, provenance, tests) do not leak build machine paths', 
     'NOTICE',
   ];
   const docs = walk('docs');
-  const tests = walk('tests');
+  const tests = walk('tests').filter((rel) => !rel.startsWith('tests/real_cad/sandbox/'));
   const scripts = walk('scripts');
   const lib = walk('lib');
   const bin = walk('bin');
+  const vendor = walk('vendor');
 
-  const targets = [...roots, ...docs, ...tests, ...scripts, ...lib, ...bin];
+  const targets = [...roots, ...docs, ...tests, ...scripts, ...lib, ...bin, ...vendor];
   assert.ok(targets.length >= 20, `expected target files, found ${targets.length}`);
 
   for (const rel of targets) {

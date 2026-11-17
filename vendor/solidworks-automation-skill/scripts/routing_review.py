@@ -443,8 +443,13 @@ def build_routing_report(document: dict[str, Any]) -> dict[str, Any]:
 
 def review_routing_file(input_path: str | Path, output_path: str | Path) -> dict[str, Any]:
     """@brief 读取 Routing JSON 并写出不覆盖旧文件的结构化报告。"""
-    source = Path(input_path).expanduser().resolve()
-    target = Path(output_path).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path, safe_ensure_parent_dir
+    except ImportError:
+        from path_security import require_allowed_path, safe_ensure_parent_dir
+
+    source = Path(require_allowed_path(input_path, label="input_path"))
+    target = Path(require_allowed_path(output_path, label="output_path", must_not_be_root_dir=True))
 
     def blocked(code: str, message: str, *, retryable: bool = False) -> dict[str, Any]:
         """@brief 返回输入阶段的稳定阻断报告，不写入不可信内容。"""
@@ -484,7 +489,7 @@ def review_routing_file(input_path: str | Path, output_path: str | Path) -> dict
             index += 1
         target = target.with_name(f"{target.stem}_v{index}{target.suffix}")
     try:
-        target.parent.mkdir(parents=True, exist_ok=True)
+        target = Path(safe_ensure_parent_dir(target, label="output_path"))
     except OSError as exc:
         report = blocked("routing_output_unwritable", f"Routing 报告目录不可写: {exc}", retryable=True)
         report["reportPath"] = str(target)

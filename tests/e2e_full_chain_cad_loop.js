@@ -50,7 +50,7 @@ function makeMockDshContext() {
 
 function runPythonScript(scriptPath, args = []) {
   return new Promise((resolve) => {
-    const pythonExe = process.env.DSH_SOLIDWORKS_PYTHON || 'D:\\SWCAD-MCP\\Python313\\python.exe';
+    const pythonExe = process.env.DSH_SOLIDWORKS_PYTHON || 'python';
     const proc = spawn(pythonExe, ['-B', scriptPath, ...args], {
       cwd: ROOT_DIR,
       stdio: ['ignore', 'pipe', 'pipe'],

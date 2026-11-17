@@ -3,7 +3,7 @@
   "manifestVersion": "0.15",
   "id": "dsh-solidworks.solidworks",
   "name": "dsh-solidworks",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "license": "AGPL-3.0-only",
   "facets": {
     "host": {
@@ -52,7 +52,7 @@
       {
         "name": "dsh-solidworks:cad-policy",
         "order": 3400,
-        "summary": "SolidWorks tools are policy-gated: read-only by default; high-risk calls need an explicit solidworks_confirm grant; solidworks_status explains a broken environment."
+        "summary": "SolidWorks tools are policy-gated: read-only by default; high-risk calls require interactive human approval via the DSH host UI (ctx.approval); solidworks_confirm is diagnostic-only and self-approval is disabled (SELF_APPROVAL_PROHIBITED); solidworks_status explains a broken environment."
       }
     ],
     "x-tool-namespaces": [
@@ -150,7 +150,7 @@
         "presentation": "71 CAD tools published on load; the set narrows to read-only under the default policy",
         "runtime": "Python 3 interpreter with the mcp package, plus a local SolidWorks desktop session",
         "tools": [],
-        "permissions": "Read-only by default; standard enables document edits; full enables save/export/close behind a one-shot solidworks_confirm grant; every call is audited"
+        "permissions": "Read-only by default; standard enables document edits; full enables save/export/close behind interactive human approval via DSH host UI (ctx.approval); solidworks_confirm self-approval is disabled; every call is audited"
       }
     ]
   },

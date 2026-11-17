@@ -101,7 +101,7 @@ Connects DeepSeek Harness to a local SolidWorks installation via an MCP server w
   - Three operation modes: default `read-only` (only 16 read-only inspection tools exposed), `standard` (adds write tools with path restriction to `allowedRoots`), and `full` (high-risk tools require per-call interactive confirmation via `solidworks_confirm`).
   - Pure local stdio MCP bridge; no external network requests or remote credentials required.
 - **Test Coverage**:
-  - 47/47 automated unit assertions passing in host test suite (`npm test`: policy, mcp, schema, package); full 110-assertion suite verified during v0.1.0 release pass with Python environment.
+  - 75/75 automated offline unit assertions passing (`npm test`: policy 27, mcp 13, schema 23, package 12); full 157-assertion suite (`npm run test:all`: 9 suites) verified with Python environment.
 - **Transparency & Disclosures**:
   - Live write operations on physical CAD models have not completed full on-site hardware verification; the plugin intentionally enforces default read-only restrictions and confirmation gates to prevent accidental modifications.
   - Licensing: AGPL-3.0-only. An upstream licensing provenance question remains unresolved and is documented in PROVENANCE.md and docs/license-risk.md.
@@ -125,6 +125,6 @@ Connects DeepSeek Harness to a local SolidWorks installation via an MCP server w
 - Release 安装包：https://github.com/tan000tan/dsh-solidworks/releases/download/v0.1.0/dsh-solidworks-0.1.0.tgz
 - 校验哈希（SHA-256）：`799247bef17371781907568e05eac2677e5d41a18d58fe79e67584bffaf2f8f1`
 - 工具体系：共 66 个工具（16 只读、26 写操作、24 高风险）。默认只读模式仅注册 16 个只读工具；写操作受 `allowedRoots` 白名单沙箱保护；高风险操作需通过 `solidworks_confirm` 逐次确认。
-- 自动化测试：单元测试套件 47 项断言全部通过；发布期全量 110 项断言在具备 Python 环境下验证通过。
+- 自动化测试：离线单元测试套件 75 项断言全部通过；全量 9 个套件 157 项断言（`npm run test:all`）在具备 Python 环境下验证通过。
 - 局限与风险说明：CAD 实机破坏性写操作尚未在物理机现场全量实测闭环，故以安全闸门保障用户环境；代码许可证采用 AGPL-3.0-only，上游授权来源链问题尚未完全闭合，详细风险记录见 `PROVENANCE.md` 和 `docs/license-risk.md`。
 ```

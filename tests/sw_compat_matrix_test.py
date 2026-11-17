@@ -16,6 +16,7 @@ SolidWorks 2020-2026 多版本兼容性与异常分类深度验证测试：
 
 import sys
 import json
+import tempfile
 import time
 from pathlib import Path
 
@@ -37,7 +38,8 @@ from sw_compat import (
     GLOBAL_DEGRADATION_LOG
 )
 
-EVIDENCE_DIR = REPO_ROOT / "temp_evidence_v030_compat" / "C-Compat-Matrix-Tests"
+# [MOCK-COM] L3 离线多版本分发与降级矩阵仿真（证据输出至系统临时目录，禁止污染源码树）
+EVIDENCE_DIR = Path(tempfile.gettempdir()) / "dsh-sw-compat-matrix-tests"
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 
 

@@ -185,10 +185,15 @@ def export_occt(
     from OCP.StlAPI import StlAPI_Writer
 
     from cad_workbench.cad_core_contracts import sha256_file
+    try:
+        from .path_security import require_allowed_path, safe_ensure_dir
+    except ImportError:
+        from path_security import require_allowed_path, safe_ensure_dir
 
+    document_path = Path(require_allowed_path(document_path, label="input_path"))
+    out_dir = safe_ensure_dir(out_dir, label="output_dir")
     document = json.loads(document_path.read_text(encoding="utf-8"))
     name = str(document.get("documentId") or document_path.stem).replace(" ", "_")
-    out_dir.mkdir(parents=True, exist_ok=True)
     shape = build_shape(document)
     evidence = collect_evidence(shape)
     if not evidence["valid"] or evidence["topology"]["solids"] < 1 or evidence["volume"] <= 0:

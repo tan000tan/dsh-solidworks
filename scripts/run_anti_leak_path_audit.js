@@ -15,13 +15,14 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 
 // 严禁泄露的开发者私有路径模式
 const FORBIDDEN_PATTERNS = [
-  /D:\\SWCAD-MCP\\Python313/i,
-  /D:\\SWCAD-MCP\\solidworks-cad/i,
-  /C:\\Users\\(?!Default|Public)[a-zA-Z0-9_\-\.]+\\/i,
-  /D:\\Agent工作区\\Antigravity工作区/i,
+  /D:\\{1,2}SWCAD-MCP\\{1,2}Python313/i,
+  /D:\\{1,2}SWCAD-MCP\\{1,2}solidworks-cad/i,
+  /C:\\{1,2}Users\\{1,2}(?!Default|Public)[a-zA-Z0-9_\-\.]+\\{1,2}/i,
+  /D:\\{1,2}Agent工作区\\{1,2}Antigravity工作区/i,
+  /D:\\{1,2}Agent工作区\\{1,2}DeepSeek Harness工作区/i,
 ];
 
-const SCAN_DIRS = ['lib', 'bin', 'scripts', 'vendor'];
+const SCAN_DIRS = ['lib', 'bin', 'scripts', 'vendor', 'docs'];
 const SCAN_FILES = ['package.json', 'dsh-plugin.json', 'cordis.patch.yml'];
 
 // 允许在某些特定自测测试脚本或历史记录中提及的白名单（例如针对性审计脚本除外）

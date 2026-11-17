@@ -113,7 +113,11 @@ def ask_install_permission(
     input_func: Callable[[str], str] = input,
     output_func: Callable[[str], None] = print,
 ) -> bool:
-    """向用户请求自动配置本地 Python 环境的授权。"""
+    """向用户请求自动配置本地 Python 环境的授权。非交互式 stdin 或 SW_NON_INTERACTIVE 下直接拒绝。"""
+    if os.environ.get("SW_NON_INTERACTIVE", "").strip().lower() in {"1", "true", "yes"}:
+        return False
+    if input_func is input and (sys.stdin is None or not sys.stdin.isatty()):
+        return False
     output_func(DEPENDENCY_PROMPT)
     try:
         answer = input_func("").strip().lower()
@@ -168,7 +172,12 @@ def import_com_dependencies(allow_install: Optional[bool] = None):
 
     该函数用于替代模块顶部直接 import，避免 ModuleNotFoundError 变成冷冰冰的报错。
     """
-    ensure_com_dependencies(allow_install=allow_install)
+    core_missing: List[str] = []
+    for module_name, requirement in (("pythoncom", "pywin32>=305"), ("win32com.client", "pywin32>=305")):
+        if not _module_available(module_name) and requirement not in core_missing:
+            core_missing.append(requirement)
+    if core_missing:
+        ensure_com_dependencies(allow_install=allow_install)
     pythoncom = importlib.import_module("pythoncom")
     client = importlib.import_module("win32com.client")
     return pythoncom, client, client.VARIANT
@@ -231,7 +240,7 @@ def _parse_args():
     """解析命令行参数。"""
     parser = argparse.ArgumentParser(description="SolidWorks 自动化技能运行前自检。")
     parser.add_argument("--yes", action="store_true", help="检测到缺失依赖时直接授权安装。")
-    parser.add_argument("--no-install", action="store_true", help="检测到缺失依赖时不自动安装。")
+    parser.add_argument("--no-install", "--non-interactive", dest="no_install", action="store_true", help="检测到缺失依赖时不自动安装（非交互模式）。")
     parser.add_argument("--no-solidworks-check", action="store_true", help="跳过 SolidWorks 安装检测。")
     return parser.parse_args()
 

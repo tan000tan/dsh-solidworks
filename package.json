@@ -1,6 +1,6 @@
 {
   "name": "dsh-solidworks",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": false,
   "description": "SolidWorks CAD tools for DeepSeek Harness: a policy-gated plugin that drives a local SolidWorks desktop through the bundled SolidWorks MCP server.",
   "type": "module",
@@ -36,7 +36,8 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.12",
+    "dsh": ">=0.1.7-rc.2"
   },
   "dsh": {
     "bundle": {
@@ -46,10 +47,33 @@
   "files": [
     "lib",
     "bin",
-    "scripts",
-    "tests",
     "vendor",
     "docs",
+    "!docs/audit_night_03/**",
+    "!docs/overnight/**",
+    "!docs/night_engineering_04/**",
+    "!docs/night_engineering_05/**",
+    "!docs/night_engineering_07/**",
+    "!docs/extreme_engineering/**",
+    "!docs/system_audit_01/**",
+    "!docs/stage4_core_cad/**",
+    "!docs/stage5_advanced_ai_cad/**",
+    "!docs/drawing_research/**",
+    "!docs/self_review_engine/**",
+    "!docs/roadmap/**",
+    "!docs/submission/**",
+    "!docs/v030_*.md",
+    "!docs/audit-and-hardening-v0.2.0.md",
+    "!docs/final-release-readiness-v0.1.0.md",
+    "!docs/phase4_cad_verification_report.md",
+    "!docs/v0.2.0-release-plan.md",
+    "!docs/发布前全项目文件夹清理报告.md",
+    "scripts/setup.js",
+    "scripts/doctor.js",
+    "scripts/upgrade.js",
+    "scripts/uninstall.js",
+    "scripts/generate_mcp_config.js",
+    "scripts/dsh_adapter.js",
     "requirements.txt",
     "requirements-optional.txt",
     "cordis.patch.yml",
@@ -77,6 +101,6 @@
     "test:package": "node tests/package.test.js",
     "probe": "node tests/probe-server.mjs",
     "write-loop": "node tests/write-loop.mjs",
-    "test:all": "node tests/policy.test.js && node tests/mcp.test.js && node tests/schema.test.js && node tests/package.test.js && node tests/audit.test.js && node tests/host.test.js && node tests/crash.test.js"
+    "test:all": "node scripts/run_test_all.mjs"
   }
 }

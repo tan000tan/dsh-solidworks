@@ -16,6 +16,7 @@ SW_FM_BASE_FLANGE = 34
 SW_END_COND_BLIND = 0
 SW_BEND_ALLOWANCE_K_FACTOR = 2
 SW_SHEET_METAL_RELIEF_RECTANGULAR = 1
+# swBodyType_e.swSolidBody == 0 (swAllBodies == -1, swSheetBody == 1; BUG-B-03)
 SW_SOLID_BODY = 0
 
 

@@ -58,13 +58,14 @@ test('unknown tools are refused by evaluate unless explicitly allowed', () => {
 
 test('explicit customTiers allow explicit test binding without ambient prefix privileges', () => {
   const policy = new Policy({
-    mode: 'read-only',
-    customTiers: { explicit_test_tool: READ },
+    mode: 'standard',
+    customTiers: { explicit_test_tool: WRITE, unknown_read_attempt: READ },
   });
   assert.equal(policy.registerable('explicit_test_tool'), true);
   assert.equal(policy.evaluate('explicit_test_tool', {}).allowed, true);
 
-  // Unlisted stub tool remains rejected
+  // Unknown tools mapped to READ via customTiers or unlisted stub tools remain rejected (BUG-0006)
+  assert.equal(policy.registerable('unknown_read_attempt'), false);
   assert.equal(policy.registerable('stub_unlisted'), false);
 });
 
@@ -256,8 +257,16 @@ test('Windows Junction pointing inside allowedRoots allows uncreated files', () 
     assert.equal(isContained, true, 'Internal junction target must be recognized as inside sandbox');
 
     const policy = new Policy({ mode: 'standard', allowedRoots: [sandbox] });
-    const decision = policy.evaluate('solidworks_create_basic_part', { output_path: uncreatedTarget });
-    assert.equal(decision.allowed, true);
+    // RT-SEC-01 / BUG-020: without output_path, solidworks_create_basic_part stays WRITE; with output_path it persists to disk
+    assert.equal(policy.evaluate('solidworks_create_basic_part', { shape: 'box' }).allowed, true);
+    const stdPersist = policy.evaluate('solidworks_create_basic_part', { output_path: uncreatedTarget });
+    assert.equal(stdPersist.allowed, false);
+    assert.equal(stdPersist.code, 'POLICY_MODE');
+
+    const fullPolicy = new Policy({ mode: 'full', allowedRoots: [sandbox] });
+    const fullDecision = fullPolicy.evaluate('solidworks_create_basic_part', { output_path: uncreatedTarget });
+    assert.equal(fullDecision.allowed, false);
+    assert.equal(fullDecision.code, 'CONFIRMATION_REQUIRED', 'Internal junction target must pass root containment and ask for HIGH approval, not PATH_OUTSIDE_ALLOWED_ROOTS');
   } finally {
     try { fs.unlinkSync(junctionPath); } catch {}
     try { fs.rmdirSync(realSub); } catch {}
@@ -344,4 +353,83 @@ test('remote UNC paths are rejected fail-closed to prevent SMB NTLM hash leakage
   });
   assert.equal(result.allowed, false);
   assert.equal(result.code, 'PATH_OUTSIDE_ALLOWED_ROOTS');
+});
+
+// --- Group C regression (C-05) ----------------------------------------------
+test('an expired single-scope grant does not shadow a later session-scope grant', () => {
+  // Sequence observed in the wild: the user approves one call (single scope),
+  // then ticks "remember for this session". After the single grant expires, the
+  // grant lookup found the expired entry first and gave up, instead of falling
+  // through to the still-valid session grant — the user was re-prompted for a
+  // grant they had already given.
+  let now = 0;
+  const policy = new Policy({ mode: 'full', grantTtlMs: 1000, allowedRoots: [os.tmpdir()], now: () => now });
+  const tool = 'solidworks_export_active';
+  const args = { output_path: path.join(os.tmpdir(), 'part.step') };
+
+  policy.grant(tool, args, { scope: 'single', sessionId: 'S' });   // expires at t=1000
+  now = 900;
+  policy.grant(tool, args, { scope: 'session', sessionId: 'S' });  // expires at t=1900
+  now = 1500;
+
+  const decision = policy.evaluate(tool, args, { sessionCwd: os.tmpdir(), sessionId: 'S' });
+  assert.equal(decision.allowed, true, 'the still-valid session grant must win over the expired single grant');
+});
+
+// --- Round 2 security regressions (RT-SEC-01 / BUG-020 / R2-SEC-02 / R2-SEC-03) ---
+test('RT-SEC-01 / BUG-020: conditional persistence tools elevate to HIGH when writing to disk', () => {
+  const sandbox = os.tmpdir();
+  const outFile = path.join(sandbox, 'part.sldprt');
+  const std = new Policy({ mode: 'standard', allowedRoots: [sandbox] });
+  const full = new Policy({ mode: 'full', allowedRoots: [sandbox] });
+
+  const cases = [
+    ['solidworks_create_basic_part', { shape: 'box', output_path: outFile }, { shape: 'box' }],
+    ['design_spec_build', { spec: {}, output_path: outFile }, { spec: {} }],
+    ['solidworks_update_dimension', { dimension_name: 'D1', value: 10, save: true }, { dimension_name: 'D1', value: 10, save: false }],
+    ['solidworks_create_configuration', { name: 'cfg', save: true }, { name: 'cfg', save: false }],
+    ['solidworks_activate_configuration', { name: 'cfg', save: true }, { name: 'cfg', save: false }],
+    ['solidworks_set_custom_properties', { properties: { k: 'v' }, save: true }, { properties: { k: 'v' }, save: false }],
+  ];
+
+  for (const [tool, persistArgs, memOnlyArgs] of cases) {
+    assert.equal(std.evaluate(tool, memOnlyArgs).allowed, true, `${tool} without persistence should remain WRITE in standard`);
+    const stdBlocked = std.evaluate(tool, persistArgs);
+    assert.equal(stdBlocked.allowed, false, `${tool} with persistence must be blocked in standard`);
+    assert.equal(stdBlocked.code, 'POLICY_MODE');
+    const fullChallenge = full.evaluate(tool, persistArgs);
+    assert.equal(fullChallenge.allowed, false);
+    assert.equal(fullChallenge.code, 'CONFIRMATION_REQUIRED');
+  }
+});
+
+test('R2-SEC-02 / R2-SEC-03: session-scoped grants isolate across sessions and extended path keys enforce roots', () => {
+  const sandbox = os.tmpdir();
+  const policy = new Policy({ mode: 'full', allowedRoots: [sandbox] });
+  const argsA = { output_path: path.join(sandbox, 'a.step') };
+  const argsB = { output_path: path.join(sandbox, 'b.step') };
+
+  policy.grant('solidworks_export_step', argsA, { scope: 'session', sessionId: 'sess-A', channel: 'host-ui' });
+  policy.grant('solidworks_export_step', argsB, { scope: 'session', sessionId: 'sess-B', channel: 'host-ui' });
+
+  assert.equal(policy.evaluate('solidworks_export_step', argsA, { sessionId: 'sess-A', callId: 'c1' }).allowed, true);
+  assert.equal(policy.evaluate('solidworks_export_step', argsB, { sessionId: 'sess-B', callId: 'c2' }).allowed, true);
+  assert.equal(policy.evaluate('solidworks_export_step', argsA, { sessionId: 'sess-C', callId: 'c3' }).allowed, false);
+
+  for (const key of ['pdf_path', 'drawing_path', 'document_path', 'template_path', 'assembly_path', 'backup_dir', 'log_path', 'scene_path']) {
+    const emptyRes = policy.evaluate('solidworks_health_check', { [key]: '' });
+    assert.equal(emptyRes.allowed, false, `empty ${key} must fail closed`);
+    assert.equal(emptyRes.code, 'PATH_OUTSIDE_ALLOWED_ROOTS');
+  }
+
+  const badBare = policy.evaluate('solidworks_generate_drawing', { drawing_filename: 'CON' });
+  assert.equal(badBare.allowed, false);
+  assert.equal(badBare.code, 'PATH_OUTSIDE_ALLOWED_ROOTS');
+
+  const nestedSpec = policy.evaluate('solidworks_generate_drawing', {
+    output_dir: sandbox,
+    spec: { sourceModel: 'C:\\Windows\\System32\\outside.sldprt', templateCandidates: ['C:\\Windows\\outside.drwdot'] },
+  });
+  assert.equal(nestedSpec.allowed, false);
+  assert.equal(nestedSpec.code, 'PATH_OUTSIDE_ALLOWED_ROOTS');
 });

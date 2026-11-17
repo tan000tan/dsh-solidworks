@@ -12,7 +12,9 @@ tests/mcp_failure_cleanup_e2e_test.py
 import json
 import math
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -24,8 +26,7 @@ for p in (str(SERVER_DIR), str(SCRIPTS_DIR), str(REPO_ROOT)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-SANDBOX_DIR = REPO_ROOT / "测试代码" / "sandbox_benchmark"
-SANDBOX_DIR.mkdir(parents=True, exist_ok=True)
+SANDBOX_DIR = Path(tempfile.mkdtemp(prefix="dsh-sw-mcp-cleanup-"))
 os.environ["DSH_ALLOWED_ROOTS"] = json.dumps([str(SANDBOX_DIR)])
 
 from sw_connect import connect_solidworks, get_com_member, get_sta_worker, new_document, save_document, mm
@@ -52,16 +53,39 @@ from server import (
 )
 
 
+def safe_start_sketch(model, plane_name="前视基准面"):
+    """安全开启草图，避免跨测试模块导入污染 DSH_ALLOWED_ROOTS。"""
+    try:
+        get_com_member(model, "ClearSelection2", True)
+        from sw_part import _select_first_candidate, _get_plane_name_candidates
+        sel = _select_first_candidate(model.Extension, _get_plane_name_candidates(plane_name), "PLANE")
+        if sel:
+            get_com_member(model.SketchManager, "InsertSketch", True)
+            return sel
+    except Exception:
+        pass
+    return None
+
+
 class TestMCPFailureCleanupE2E(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        global connect_solidworks, new_document
         from sw_connect import solidworks_processes
         if not solidworks_processes():
-            raise unittest.SkipTest("未检测到运行中的 SolidWorks 进程，跳过实机物理测试以保护待机基线")
+            from tests._fake_sw_com import ensure_fake_solidworks_env
+            ensure_fake_solidworks_env()
+            import sw_connect as _swc
+            connect_solidworks = _swc.connect_solidworks
+            new_document = _swc.new_document
         cls.sw, _ = connect_solidworks(wait_seconds=5, visible=True)
         if cls.sw is None:
             raise unittest.SkipTest("未连接到本地 SolidWorks COM 实例，跳过端到端测试")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(SANDBOX_DIR, ignore_errors=True)
 
     def test_mcp_entry_new_document_failure_and_retry(self):
         """测试一：经过真实 MCP 工具入口 (solidworks_create_basic_part) 的故障回滚与重试。"""
@@ -136,7 +160,6 @@ class TestMCPFailureCleanupE2E(unittest.TestCase):
             title = get_com_member(model, "GetTitle")
 
             try:
-                from tests.failure_injection_test import safe_start_sketch
                 safe_start_sketch(model, "前视基准面")
                 sketch_rectangle(model, 0.0, 0.0, mm(100), mm(60))
                 extrude_boss(model, None, mm(20))
@@ -176,7 +199,6 @@ class TestMCPFailureCleanupE2E(unittest.TestCase):
         def run_test():
             # 1. 准备用户已有零件：长方体 80 x 50 x 25 mm，保存至磁盘
             model = new_document(sw, "part")
-            from tests.failure_injection_test import safe_start_sketch
             safe_start_sketch(model, "前视基准面")
             sketch_rectangle(model, 0.0, 0.0, mm(80), mm(50))
             extrude_boss(model, None, mm(25))

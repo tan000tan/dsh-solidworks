@@ -6,7 +6,8 @@
 # mount uses the same value).
 #
 # To enable modelling, set mode: standard. To allow save/export/close, set
-# mode: full and expect one explicit `solidworks_confirm` per call.
+# mode: full and authorize each high-risk call via host interactive approval (`ctx.approval`).
+# Self-service `solidworks_confirm` is disabled (Fail-Closed: SELF_APPROVAL_PROHIBITED).
 - insert:
     - id: dsh-solidworks
       name: dsh-solidworks

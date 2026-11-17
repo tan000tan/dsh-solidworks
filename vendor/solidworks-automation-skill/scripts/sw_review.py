@@ -314,8 +314,12 @@ def review_drawing_layout(structure, *, padding_m=0.001, preview_evidence=None) 
 
 
 def _expand_path(path):
-    """展开输出路径。"""
-    return Path(os.path.expandvars(str(path))).expanduser().resolve()
+    """Fail-closed 校验并解析路径（禁止环境变量与 ~ 展开）。"""
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    return Path(require_allowed_path(str(path), label="path"))
 
 
 def _file_info(path):
@@ -1158,8 +1162,11 @@ def write_review_report(report, output_path):
     返回:
         报告路径字符串
     """
-    output_path = _expand_path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        from .path_security import safe_ensure_parent_dir
+    except ImportError:
+        from path_security import safe_ensure_parent_dir
+    output_path = Path(safe_ensure_parent_dir(str(output_path), label="output_path"))
     with open(output_path, "w", encoding="utf-8") as file:
         json.dump(report, file, ensure_ascii=False, indent=2)
     return str(output_path)
@@ -1172,8 +1179,11 @@ def write_markdown_summary(report, output_path):
     返回:
         摘要路径字符串
     """
-    output_path = _expand_path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        from .path_security import safe_ensure_parent_dir
+    except ImportError:
+        from path_security import safe_ensure_parent_dir
+    output_path = Path(safe_ensure_parent_dir(str(output_path), label="output_path"))
     evaluation = report.get("evaluation", {})
     checks = report.get("checks", {})
     lines = [

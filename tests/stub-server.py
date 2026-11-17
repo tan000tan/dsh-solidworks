@@ -8,6 +8,7 @@ sent them flat.
 """
 import json
 import sys
+import time
 
 TOOLS = [
     {
@@ -37,6 +38,16 @@ TOOLS = [
             "type": "object",
             "properties": {"id": {"type": "string"}},
             "required": ["id"],
+            "additionalProperties": False,
+        },
+    },
+{
+        "name": "stub_slow",
+        "description": "sleeps then echoes, for cross-session concurrency regressions (C-LIFE-02)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"ms": {"type": "integer", "minimum": 0, "maximum": 5000}},
+            "required": ["ms"],
             "additionalProperties": False,
         },
     },
@@ -92,6 +103,10 @@ def handle(message):
             return
         if name == "stub_plain":
             send({"jsonrpc": "2.0", "id": message["id"], "result": {"content": [{"type": "text", "text": json.dumps(arguments)}]}})
+            return
+        if name == "stub_slow":
+            time.sleep(max(0, int(arguments.get("ms", 0))) / 1000.0)
+            send({"jsonrpc": "2.0", "id": message["id"], "result": {"content": [{"type": "text", "text": "slept %s" % arguments.get("ms")}]}})
             return
         send({"jsonrpc": "2.0", "id": message["id"], "error": {"code": -32602, "message": "unknown tool %s" % name}})
         return

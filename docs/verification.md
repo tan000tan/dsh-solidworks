@@ -13,22 +13,22 @@
 
 | 结论 | 状态 |
 | --- | --- |
-| 插件能被 DSH 宿主加载并注册工具 | **已证实**（E6） |
-| 只读档位下发布 16 个工具、扣留 50 个 | **已证实**（E5：风险表；E7：注册数 18 = 2 meta + 16） |
-| 三档位发布面：只读 16 / 标准 42 / 完整 66 (升级后扩展为 71) | **已证实**（E22：三档都在真服务器上实测；已完成 71 工具契约对齐） |
-| 内嵌 Python MCP 服务器能在本机启动并列出 66 个工具 | **已证实**（E4：`tools/list` = 66，协议 2025-06-18） |
-| 真实只读调用（`health_check`）可用 | **已证实**（E7：`status: ok`） |
+| 插件能被 DSH 宿主加载并注册工具 | **已证实**（E6 及 v0.3.1 隔离 `DeepSeek Harness.exe` Electron 宿主实测） |
+| 只读档位下当前 v0.3.1 发布 19 个 CAD 工具 + 2 个 meta 工具 = 21 个，扣留 52 个 | **已证实**（早期 v0.1 为 16/66；当前 v0.3.1 实测：`read-only 19 / standard 45 / full 71 + 2 meta = 73`） |
+| 三档位发布面：只读 19 / 标准 45 / 完整 71（+ 2 meta = 73 注册工具） | **已证实**（`bin/dsh-solidworks.js list-tools` 与隔离 Electron 宿主实测） |
+| 内嵌 Python MCP 服务器能在本机启动并列出 71 个工具 | **已证实**（`tools/list` = 71，协议 2025-06-18；早期 E4 v0.1 基线为 66） |
+| 真实只读调用（`health_check`）可用 | **已证实**（E7 及 v0.3.1 真宿主调用实测，含缺失 `comtypes` 降级诊断） |
 | FastMCP 的 `params` 参数外壳被正确解包/回填 | **已证实**（E12；否则所有带参工具在真实宿主里都会返回 `{}`） |
 | CLI `call` 与宿主内执行走同一套策略判定 | **已证实**（E13：只读档位下写工具被拒、只读工具放行） |
-| 路径门禁（`allowedRoots`）与写操作确认在宿主内生效 | **已证实**（E14：stub 服务器场景） |
+| 路径门禁（`allowedRoots`）与交互确认 (`ctx.approval`) 在宿主内 Fail-Closed 生效 | **已证实**（E14 与 v0.3.1 真实 Electron 宿主实测 `APPROVAL_CHANNEL_UNAVAILABLE`） |
 | Python 缺失/是应用商店占位符时给出可操作的失败信息 | **已证实**（E8） |
-| 服务器启动即崩溃时不拖垮宿主（`apply()` 不抛错、meta 工具仍可用、状态可诊断） | **已证实**（E15，`tests/crash.test.js`；进程内验证，不是整机宿主现场） |
-| 写工具、保存、导出、装配、工程图、DFM/FEA 的实际效果 | **未验证**（第 4 节；本轮刻意不执行写操作） |
-| 桌面 profile / 插件市场安装路径 | **未验证**（只在隔离 `DSH_HOME` 的 `swweb` profile 里装过 tarball） |
-| 卸载（`dsh plugin remove`） | **已证实**（E10） |
-| 从 ASCII 路径干净安装到全新 DSH_HOME | **已证实**（E16，安装与 spec 记录；该 profile 的首次启动受离线环境影响，未验证） |
-| 发布包自洽（清单/许可证/工具表/文件白名单互相对得上） | **已证实**（E18，`tests/package.test.js` 12 项） |
-| 审计日志：每次执行/拒绝/失败各一行，只存参数摘要与文件名，不存参数、绝对路径或凭据 | **已证实**（E19，`tests/audit.test.js` 27 项） |
+| 服务器启动即崩溃时不拖垮宿主（`apply()` 不抛错、meta 工具仍可用、状态可诊断） | **已证实**（E15，`tests/crash.test.js` 9 项） |
+| 历史授权期内实机 SolidWorks 写/改/导出核验与当前限制 (`L5-BLOCK-01`) | **历史子集已证 / 合流后受阻**：授权过期前实机覆盖 `27/71` 工具、`44/71` 未覆盖；当前本机 SW 2026 教育版过期无法新跑合流后实机写验证 |
+| 桌面 profile / 插件市场安装路径 | **未验证**（只在隔离 `DSH_HOME` 实测 tarball 与 Electron 宿主；未发布市场，且生产 profile 留待用户操作） |
+| 卸载（`dsh plugin remove`） | **已证实**（E10 及 v0.3.1 隔离 CLI 实测） |
+| 从 ASCII 路径干净安装到全新 DSH_HOME | **已证实**（E16） |
+| 发布包自洽（清单/许可证/工具表/文件白名单互相对得上） | **已证实**（`tests/package.test.js` **12** 项） |
+| 审计日志：每次执行/拒绝/失败各一行，只存参数摘要与文件名，不存参数、绝对路径或凭据 | **已证实**（`tests/audit.test.js` **30** 项） |
 | 子进程回收（宿主退出后不留 python） | **已证实**（E11） |
 | 升级（同版本重装 / 换版本） | **已证实（安装层）**：同版本重装、`file:` 源重装、0.1.0 → 0.1.1 → 0.1.0 升级与回滚均通过（E20）；宿主内**运行时**升级未验证 |
 | Windows 中文/空格路径下定位并启动内嵌服务器 | **已证实**（E21） |
@@ -37,29 +37,42 @@
 
 | 套件 | 命令 | 结果 |
 | --- | --- | --- |
-| 策略（风险分级、模式、授权、路径门禁、审计脱敏） | `node tests/policy.test.js` | **11 passed / 0 failed** |
-| MCP 客户端（握手、列工具、超时、取消、错误映射、stub 服务器） | `node tests/mcp.test.js` | **8 passed / 0 failed** |
-| 参数外壳（`params` 解包/回填、schema 提升） | `node tests/schema.test.js` | **16 passed / 0 failed** |
-| 宿主形态端到端（load entry → `apply(ctx)` → 真服务器 + stub 服务器） | `node tests/host.test.js --python "<PYTHON_EXE>"` | **27 passed / 0 failed** |
+| 策略（风险分级、模式、授权、路径门禁、审计脱敏） | `node tests/policy.test.js` | **30 passed / 0 failed** |
+| MCP 客户端（握手、列工具、超时、取消、错误映射、stub 服务器） | `node tests/mcp.test.js` | **17 passed / 0 failed** |
+| 参数外壳与严格校验（`params` 解包/回填、`$ref`/JSON Pointer 严格校验） | `node tests/schema.test.js` | **26 passed / 0 failed** |
+| 宿主形态端到端（load entry → `apply(ctx)` → 真服务器 + stub 服务器） | `node tests/host.test.js --python "<PYTHON_EXE>"` | **39 passed / 0 failed** |
 | 崩溃隔离（服务器启动即退出） | `node tests/crash.test.js "<PYTHON_EXE>"` | **9 passed / 0 failed** |
 | 打包完整性（清单与工具表一致、许可证随包、无缓存垃圾、文档不泄露本机路径、NOTICE 文件数与实际一致） | `node tests/package.test.js` | **12 passed / 0 failed** |
-| 审计链路（执行/拒绝/失败/确认各写一行、摘要稳定、不落参数与路径） | `node tests/audit.test.js --python "<PYTHON_EXE>"` | **27 passed / 0 failed** |
+| 审计链路（执行/拒绝/失败/确认各写一行、摘要稳定、不落参数与路径） | `node tests/audit.test.js --python "<PYTHON_EXE>"` | **30 passed / 0 failed** |
+| 审计业务状态映射（BUG-009：`status:error` / `blocked` / `refused` / `success:false` 不得记成功） | `node tests/audit_outcome.test.js` | **8 passed / 0 failed** |
+| 发布阻断回归（BUG-001/002/015/016/017/018：复用登记、镜像选择顺序、保存顺序、子串授权、回滚 closed、批量导出守卫） | `python tests/release_swarm_regression_test.py` | **6 passed / 0 failed** |
+| Cordis 服务注册契约回归（`provide`/`inject`/跨 Fiber 冲突保护） | `node tests/cordis_service_registration_test.mjs` | **3 passed / 0 failed** |
+| DSH 适配器与卸载脚本回归（`dsh_adapter_scripts.test.js`：`- insert:` YAML、单引号路径、隔离 `DSH_HOME`、`uninstall.js` 解挂） | `node tests/dsh_adapter_scripts.test.js` | **4 passed / 0 failed** |
+| 高风险审批对抗测试（伪造确认/篡改摘要/重放/过期/跨会话） | `node tests/approval_security_adversarial_test.mjs` | **1 passed / 0 failed** |
+| Phase 5 审批门禁策略回归 | `node tests/phase5_security_approval_test.js` | **3 passed / 0 failed** |
+| R1/R5 安全矩阵与交互授权回归 | `node tests/r1_r5_security_matrix_test.mjs` | **3 passed / 0 failed** |
+| `solidworks_confirm` 人工授权与摘要绑定回归 | `node tests/confirm_human_authorization_test.js` | **2 passed / 0 failed** |
+| Cordis 激活与服务注入端到端验证 | `node tests/cordis_activation_test.mjs` | **1 passed / 0 failed** |
+| `.venv` 运行时隔离验证 | `node tests/runtime_isolation_test.mjs` | **1 passed / 0 failed** |
+| Phase 3 解释器探测与诊断验证 | `node tests/phase3_productization_test.js` | **3 passed / 0 failed** |
+| `COMDEP` 可选依赖探测与 `DSH_HOME` 路径发现回归（D-02/D-12/D-13/D-17） | `node tests/d02_d12_d13_config_and_discovery_test.mjs` | **2 passed / 0 failed** |
+| 全量 Python 严格聚合（`run_all_python_tests.py`：42 个 Python 测试套件，0 skip / 0 empty） | `python scripts/run_all_python_tests.py` | **1 passed (42/42 suites) / 0 failed** |
 
-七个套件合计 **110 项断言**（11 + 8 + 16 + 27 + 9 + 12 + 27），全部通过。一条命令跑完全部七个：
+二十个顶层套件（含 42 个 Python 子套件，及共 **73** 个注册工具 = 71 个内嵌 MCP 工具 + 2 个 DSH 宿主工具）合计 **201 项断言**（30 + 17 + 26 + 12 + 30 + 39 + 9 + 8 + 6 + 3 + 4 + 1 + 3 + 3 + 2 + 1 + 1 + 3 + 2 + 1），全部通过。一条命令跑完全部测试：
 
 ```powershell
 $env:DSH_SOLIDWORKS_PYTHON = "<PYTHON_EXE>"
-npm run test:all          # exit 0 = 全绿；不需要 Python 的四个套件用 npm test
+npm run test:all          # 自动探测或使用指定 Python；exit 0 = 全绿；不需要 Python 的四个套件用 npm test
 ```
 
-`npm test` 只跑不需要 CAD/Python 的四个套件（policy / mcp / schema / package，共 46 项），
-适合在没有装 Python 的机器上做静态检查；`test:all` 额外跑 `audit` / `host` / `crash`。
+`npm test` 只跑不需要 CAD/Python 的四个套件（policy / mcp / schema / package，共 85 项），
+适合在没有装 Python 的机器上做静态检查；`test:all` 覆盖全部 20 个顶层套件（外加 `python scripts/run_all_python_tests.py` 严格执行全部 42 个 Python 测试套件，含 D-11 `_sw_lock` 队头阻塞旁路、12 历史超时工具快败及 `AUD-COM-001` COM 初始化配对验证）。
 三个依赖 Python 的套件都支持 `--python <exe>` 或环境变量 `DSH_SOLIDWORKS_PYTHON`（后者是
 `npm run test:host` 这类不带参数调用也能工作的原因）。
 
 `tests/host.test.js` 是"能不能真的用"的核心证据：它用一个记录 `register()` 的假 `ctx` 调用插件的
-`apply()`，连真实的内嵌服务器，断言：注册 18 个工具（2 meta + 16 只读）、`solidworks_status` 报
-`connection.running: true` / `tools: 66`、真实 `solidworks_health_check` 返回 JSON、只读档位下
+`apply()`，连真实的内嵌服务器，断言：注册 21 个工具（2 meta + 19 只读）、`solidworks_status` 报
+`connection.running: true` / `tools: 71`、真实 `solidworks_health_check` 返回 JSON、只读档位下
 `solidworks_save_document` **不**在注册表里、`ctx.tools.guard()` 已安装；再用 `tests/stub-server.py`
 断言 `params` 外壳被提升、参数回填成 `{"params": {...}}`、扁平工具不被包裹、`allowedRoots` 之外的
 写目标在**到达服务器之前**就被拒、根目录内的写目标仍要求确认。

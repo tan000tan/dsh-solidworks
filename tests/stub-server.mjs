@@ -17,6 +17,11 @@ const TOOLS = [
     description: 'never answers',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
+  {
+    name: 'stub_crash',
+    description: 'kills the stub server process, to test crash recovery',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
 ];
 
 let buffer = '';
@@ -56,6 +61,7 @@ function handle(message) {
         return;
       }
       if (name === 'stub_slow') return; // deliberately never responds
+      if (name === 'stub_crash') { process.exit(1); } // deliberately dies mid-session
       send({ jsonrpc: '2.0', id: message.id, error: { code: -32602, message: `unknown tool ${name}` } });
       return;
     }

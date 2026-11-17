@@ -297,15 +297,11 @@ def _load_brep_evidence(
     if isinstance(value, dict):
         payload = dict(value)
     else:
-        raw = Path(value).expanduser()
-        if not raw.is_absolute():
-            evidence_path = (allowed_root / raw).resolve()
-            try:
-                evidence_path.relative_to(allowed_root.resolve())
-            except ValueError as exc:
-                raise ValueError("相对 B-Rep 证据路径逃逸模型目录，已拒绝。") from exc
-        else:
-            evidence_path = raw.resolve()
+        try:
+            from .path_security import require_allowed_path
+        except ImportError:
+            from path_security import require_allowed_path
+        evidence_path = Path(require_allowed_path(value, label="brep_evidence_path"))
         if evidence_path.suffix.lower() != ".json" or not evidence_path.is_file():
             raise ValueError("B-Rep 证据必须是存在的 JSON 文件。")
         if evidence_path.stat().st_size > 4 * 1024 * 1024:
@@ -340,15 +336,11 @@ def _load_brep_evidence(
     artifact_raw = payload.get("sourceArtifact")
     if not str(artifact_raw or "").strip():
         raise ValueError("B-Rep 证据缺少 sourceArtifact。")
-    artifact_path = Path(str(artifact_raw)).expanduser()
-    if not artifact_path.is_absolute():
-        artifact_path = (allowed_root / artifact_path).resolve()
-        try:
-            artifact_path.relative_to(allowed_root.resolve())
-        except ValueError as exc:
-            raise ValueError("B-Rep sourceArtifact 路径逃逸模型目录，已拒绝。") from exc
-    else:
-        artifact_path = artifact_path.resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    artifact_path = Path(require_allowed_path(str(artifact_raw), label="brep_sourceArtifact"))
     if artifact_path.suffix.lower() not in allowed_extensions or not artifact_path.is_file():
         raise ValueError("B-Rep sourceArtifact 不存在或格式与后端不匹配。")
     expected_artifact_hash = str(payload.get("sourceSha256") or "").lower()
@@ -921,7 +913,11 @@ def build_dfm_report(
     @param profiles 可选材料、设备或供应商能力 Profile；按能力交集合并。
     @param brep_evidence 可选 SolidWorks/OCCT B-Rep 测量证据或其 JSON 路径。
     """
-    source = Path(document_path).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    source = Path(require_allowed_path(document_path, label="input_path"))
     try:
         document, source_units = _document_to_mm(_load_document(source))
     except Exception as exc:
@@ -1112,8 +1108,11 @@ def write_dfm_report(
 ) -> dict[str, Any]:
     """@brief 写出版本化 DFM 报告，并在返回值中附带 SHA-256 产物证据。"""
     report = build_dfm_report(document_path, process=process, profiles=profiles, brep_evidence=brep_evidence)
-    target = _versioned_target(Path(output_path).expanduser().resolve())
-    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        from .path_security import safe_ensure_parent_dir
+    except ImportError:
+        from path_security import safe_ensure_parent_dir
+    target = _versioned_target(Path(safe_ensure_parent_dir(output_path, label="output_path")))
     artifact = {
         "kind": "dfm_report",
         "type": "artifact",

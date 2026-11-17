@@ -383,7 +383,11 @@ def load_design_spec(path) -> Dict[str, Any]:
     返回:
         validate_design_spec 的结果，额外附带 "source_path"。
     """
-    resolved = Path(str(path)).expanduser().resolve()
+    try:
+        from .path_security import require_allowed_path
+    except ImportError:
+        from path_security import require_allowed_path
+    resolved = Path(require_allowed_path(str(path), label="spec_path"))
     if not resolved.is_file():
         return {
             "status": "error",
