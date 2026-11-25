@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Installation guide (English)
+    url: https://github.com/tan000tan/dsh-solidworks/blob/main/INSTALL.md
+    about: Prerequisites, setup, MCP registration, uninstall and recovery.
+  - name: 安装与配置说明（中文）
+    url: https://github.com/tan000tan/dsh-solidworks/blob/main/docs/INSTALL.zh.md
+    about: 中文安装、配置、卸载与恢复说明。
+  - name: Troubleshooting
+    url: https://github.com/tan000tan/dsh-solidworks/blob/main/docs/TROUBLESHOOTING.md
+    about: Python/COM/pywin32 failures, MCP service not starting, SolidWorks not connecting.
+  - name: Current verification status
+    url: https://github.com/tan000tan/dsh-solidworks/blob/main/docs/verification.md
+    about: What has been verified automatically, what has been verified on real SolidWorks, and what has not.

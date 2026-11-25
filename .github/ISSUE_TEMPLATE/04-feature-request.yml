@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a CAD capability, a client integration, or a workflow improvement.
+title: "[feature] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Requests are prioritised by real use, not by volume. Describing the workflow you are trying to complete is more useful than describing a function signature.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Part modelling (sketch, extrude, revolve, fillet, pattern…)
+        - Assembly (components, mates, interference)
+        - Drawing / export (BOM, PDF/DXF/STEP, pack-and-go)
+        - Metadata / dimensions / properties
+        - Inspection / review (mass properties, geometry review)
+        - MCP protocol / client integration (DSH, Claude Desktop, custom hosts)
+        - Installation, configuration, diagnostics
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: The workflow you want to complete
+      placeholder: "I want the assistant to open a saved part, apply a parametric change to one dimension, and re-export the PDF drawing."
+    validations:
+      required: true
+  - type: textarea
+    id: gap
+    attributes:
+      label: What stops you today?
+      description: Missing tool, wrong behaviour, unclear docs, unsupported SolidWorks version…
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution (optional)
+    validations:
+      required: false
+  - type: dropdown
+    id: contributes
+    attributes:
+      label: Are you able to contribute this?
+      options:
+        - Yes, I can implement it
+        - Yes, I can test it on real SolidWorks
+        - No, but I can provide feedback
+        - Not sure
+    validations:
+      required: false

@@ -27,8 +27,27 @@ test('D-02 / D-13 / D-17: PROBE_SOURCE reports COMDEP and entryCandidates honors
   }
 });
 
-test('D-17: explicit config.pythonPath emits COMDEP warning when optional comtypes is absent', async () => {
-  const candidates = entryCandidates(process.env, PLUGIN_ROOT);
+test('D-17: explicit config.pythonPath emits COMDEP warning when optional comtypes is absent (deterministic)', async () => {
+  const res = await discover({
+    pluginRoot: PLUGIN_ROOT,
+    config: { pythonPath: 'C:\\fake\\python.exe' },
+    env: process.env,
+    _probePython: async (candidate) => ({
+      ok: true,
+      version: '3.12.14',
+      modulePath: 'C:\\fake\\Lib\\site-packages\\mcp\\__init__.py',
+      comDeps: false,
+      command: candidate.command,
+      args: candidate.args ?? [],
+    }),
+  });
+  assert.equal(res.ok, true);
+  assert.equal(res.python.comDeps, false);
+  assert.ok(res.notes.some((n) => n.startsWith('python: ')));
+  assert.ok(res.notes.some((n) => n.includes('comtypes')), 'discover must warn about missing comtypes when COMDEP=0');
+});
+
+test('Host DSH runtime python (if present) either reports valid comDeps or fails closed with PYTHON_INVALID + setup guidance', async () => {
   const dshPy = path.join(
     process.env.USERPROFILE || '',
     '.dsh',
@@ -39,17 +58,22 @@ test('D-17: explicit config.pythonPath emits COMDEP warning when optional comtyp
     'python.exe',
   );
   if (!fs.existsSync(dshPy)) {
-    return; // Skip if local runtime python does not exist
+    return; // Skip host check when local DSH runtime does not exist
   }
   const res = await discover({
     pluginRoot: PLUGIN_ROOT,
     config: { pythonPath: dshPy },
     env: process.env,
   });
-  assert.equal(res.ok, true);
-  assert.equal(typeof res.python.comDeps, 'boolean');
-  assert.ok(res.notes.some((n) => n.startsWith('python: ')));
-  if (res.python.comDeps === false) {
-    assert.ok(res.notes.some((n) => n.includes('comtypes')), 'explicit pythonPath path must warn about missing comtypes');
+  if (res.ok) {
+    assert.equal(typeof res.python.comDeps, 'boolean');
+    assert.ok(res.notes.some((n) => n.startsWith('python: ')));
+    if (res.python.comDeps === false) {
+      assert.ok(res.notes.some((n) => n.includes('comtypes')));
+    }
+  } else {
+    assert.equal(res.code, 'PYTHON_INVALID');
+    assert.ok(res.message.includes('npm run setup'));
+    assert.ok(res.message.includes(PLUGIN_ROOT));
   }
 });

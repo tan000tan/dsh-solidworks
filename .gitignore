@@ -53,3 +53,51 @@ artifacts/
 
 # Sandbox test outputs (TASK-03/TASK-04 CAD benchmarks)
 /测试代码/sandbox_benchmark/
+
+# Root runtime configs & temporary pip artifacts
+/dsh-mcp-config.json
+/pip-*/
+*.swp
+
+# Local historical archives & legacy delivery directories (preserved on disk)
+/audit/real-test-integrated-closure/
+/audit/v032-full-release/
+/docs/audit_night_03/
+/docs/drawing_research/
+/docs/extreme_engineering/
+/docs/night_engineering_04/
+/docs/night_engineering_05/
+/docs/night_engineering_07/
+/docs/overnight/
+/docs/phase4_cad_verification_report.md
+/docs/roadmap/
+/docs/self_review_engine/
+/docs/system_audit_01/
+/docs/v030_architecture_design.md
+/docs/v030_formal_release_acceptance_report.md
+/docs/v030_old_version_environment_report.md
+/docs/v030_performance_and_ux_report.md
+/docs/v030_productization_report.md
+/docs/v030_security_and_approval_report.md
+/docs/发布前全项目文件夹清理报告.md
+/dsh-solidworks-v0.2.0-git-release-report.md
+/mcp-server-solidworks-main/adapters/claude/tests/conftest.py
+/scripts/publish_v030_github_release.py
+/scripts/submit_v030_marketplace_pr.py
+/v0.3.0-final-verification-delivery/
+/v0.3.0-multiversion-compatibility-delivery/
+/v0.3.0-multiversion-compatibility-final-delivery/
+/v0.3.0-phase1-6-delivery/
+/技术审计/
+/测试代码/
+/项目备份/
+/项目文档/
+/项目脚本/
+/验收报告/
+
+# Audit workspaces, binary backups & raw host evidence
+/audit/project-handover/
+/audit/promotion-phase/
+/audit/v033-targeted-l4/
+/audit/v033-e2e-tmp/
+/promotion/

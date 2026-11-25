@@ -1,113 +1,131 @@
-[![Release](https://img.shields.io/badge/version-0.3.2-blue.svg)](https://github.com/tan000tan/dsh-solidworks)
+[![Release](https://img.shields.io/badge/version-0.3.3-blue.svg)](https://github.com/tan000tan/dsh-solidworks/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-green.svg)](LICENSE)
-[![SolidWorks](https://img.shields.io/badge/SolidWorks-2020%7E2026-orange.svg)](docs/FEATURE_MATRIX.md)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)](docs/USER_GUIDE.md)
+[![Platform: Windows x64](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)](INSTALL.md)
+[![SolidWorks: 2026 tested](https://img.shields.io/badge/SolidWorks-2026%20tested-brightgreen.svg)](docs/verification.md)
 
 # dsh-solidworks
 
-> **dsh-solidworks** is an enterprise-grade AI CAD plugin designed for **DeepSeek Harness (DSH)** and standard MCP clients that bridges conversational AI directly to your local SolidWorks desktop session. Control SolidWorks using intuitive natural language, automate 3D parametric modeling, execute safe dimension adjustments, and enjoy atomic transaction rollbacks for risk-free CAD workflows.
+> An MCP server plus DeepSeek Harness plugin that connects an AI assistant to the SolidWorks desktop session running on your own machine: it can read models, measure them, and — in a permission mode you choose and with your confirmation — create and modify geometry.
 
-- **Plugin Package**: `dsh-solidworks` — AGPL-3.0-only
-- **Execution Engine**: `solidworks-automation-skill` Python MCP server (MIT, vendored under `vendor/`, see `NOTICE`)
-- **Chinese Documentation (中文文档)**: 详细中文技术文档与极简指南参见 [README.zh.md](./README.zh.md)。
-
----
-
-## ⚡ Key Highlights
-
-- **Zero-Friction Automated Lifecycle**: One-click setup (`npm run setup`), comprehensive diagnostics (`npm run doctor`), safe upgrade with auto-backups (`npm run upgrade`), and non-destructive uninstaller (`npm run uninstall`).
-- **Natural Language CAD**: Tell the AI what you want in plain words; it plans feature graphs, builds parametric geometry, and drives SolidWorks in real-time.
-- **Fail-Safe Shadow Backup**: Every geometric modification is safeguarded by atomic shadow backups. If an operation fails or causes a rebuild error, your model is losslessly restored in sub-second time.
-- **Double-Precision Physical Verification**: Geometry/volume checks verified in pre-expiration SolidWorks 2026 baseline runs (`<= 0.0003 mm³` / `<= 4.7e-4` relative delta across `27/71` covered tools); post-unification live SW re-run is currently blocked by local Student Edition expiration (`L5-BLOCK-01`).
-- **Zero-Trust Policy Gate**: Three runtime policy tiers (`read-only`, `standard`, `full`) with strict path confinement, host-native `ctx.approval` interactive human authorization (`solidworks_confirm` self-approval is disabled / `SELF_APPROVAL_PROHIBITED`), and `SW_LOCK_WAIT_TIMEOUT_SECONDS` fast-fail isolation against modal/Head-of-Line stalls.
+- Plugin package: `dsh-solidworks`, AGPL-3.0-only
+- Execution engine: `solidworks-automation-skill` Python MCP server (MIT, vendored under `vendor/`, see `NOTICE`)
+- Chinese documentation: [README.zh.md](./README.zh.md)
 
 ---
 
-## 🚀 Quick Start (Zero-Configuration Installation)
+## What it is
 
-No manual Python path tuning, environment variable editing, or manual DLL registration is required.
+`dsh-solidworks` runs a local MCP server that drives SolidWorks through its COM API. DeepSeek Harness (or any standard MCP client) talks to that server, so a conversational assistant can work on the CAD documents that are already open — or that it opens for you.
 
-### 1. Prerequisites
-- **Operating System**: Windows 10/11 x64
-- **SolidWorks**: Desktop versions 2020–2026 (activated and launched at least once)
-- **Node.js**: v22.12+ (`engines.node >=22.12`)
-- **Python**: 3.10+ x64 (installed on your system)
+- It is **local only**: the server runs on your Windows machine and controls the SolidWorks instance on that machine. No cloud CAD service is involved.
+- It is **not a CAD replacement**: it calls the same SolidWorks operations a script would call, with the same limits.
+- It is **not a macro recorder**: every action is an explicit MCP tool call with explicit arguments.
+- It is **not verified on every SolidWorks release** — see [Current status](#current-status) and [docs/verification.md](docs/verification.md).
 
-### 2. One-Click Setup
-Open your terminal in the plugin directory and run:
+## What you can do
+
+| Area | What is available |
+| :--- | :--- |
+| Part modelling | Documents, sketches, extrude, revolve, fillet, chamfer, shell, linear/circular pattern, mirror, holes |
+| Assemblies | Open documents, add and fix components, coincident/distance/concentric mates, interference check |
+| Drawings and export | Generate drawing, review drawing, export active document, batch export, assembly BOM, pack and go |
+| Inspection | Mass properties, bounding box, edges, native geometry inspection, configurations, motion study inspection |
+| Dimensions and metadata | Identify dimensions, dimension impact analysis, safe dimension modification, custom properties, units |
+| Review workflows | Active-document review, reviewed-body exclusion, STEP import, component replacement |
+| Diagnostics | Environment health check, plugin status, tool catalogue, policy and permission diagnostics |
+
+The registry currently exposes **71 tools** through MCP (plus 2 host meta-tools on the DSH side). Per-tool status — implemented, registered, covered by automated tests, covered on real SolidWorks, or unverified — is listed in [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md).
+
+The results are uneven, and the areas above are not equally proven. In the full-matrix real-hardware baseline inherited from v0.3.2, **33 of 71 tools were verified (7 only on their main path), 13 failed and 24 were blocked** by a missing precondition such as a Motion licence or an `ActiveDoc`. In v0.3.3 targeted re-verification on SolidWorks 2026 SP4.1, **D-01 (`connect` / CLI cold-start), D-02 (`open_document` `ActiveDoc` switching), D-03a (assembly component ownership + mate follow-up BOM/mass), D-04 (`shell`), and `solidworks_add_coincident_mate` (D-08)** were re-tested and passed; `chamfer`, `revolve`, `pattern`, `list_edges`, `compile_feature_graph` and `design_spec_validate` are registered but remain **failed** on real hardware (deferred to v0.4.0). Check the `Real SolidWorks` column before relying on a tool, and treat a successful response as evidence that the call ran, not that the geometry is correct.
+
+## Requirements
+
+| Component | Requirement |
+| :--- | :--- |
+| Operating system | Windows 10 or Windows 11, 64-bit |
+| SolidWorks | Desktop installation, launched manually at least once, licence activated |
+| DeepSeek Harness | `>=0.1.7-rc.2` |
+| Node.js | `>=22.12` |
+| Python | 3.10+ 64-bit, or the Python runtime bundled with DSH |
+
+DeepSeek Harness is the host application: the plugin runs inside it and cannot install it for you. If you arrived from the DSH plugin catalogue, the host is already installed. Otherwise install DeepSeek Harness first and confirm `dsh --version` reports `>=0.1.7-rc.2` before continuing.
+
+SolidWorks **2026 SP4.1** is the only release this project has been exercised against on real hardware. Versions 2020–2025 are *claimed* to be compatible, but there is no version gate in the code and no real-machine evidence for them; see [Current status](#current-status).
+
+**Compatibility self-check (about 3 minutes).** On your own machine: (1) run `node bin/dsh-solidworks.js doctor --json` and confirm `solidworks.installed` is `true`; (2) open one known part in SolidWorks and call `solidworks_health_check`, then `solidworks_mass_properties`; (3) compare the numbers with the values SolidWorks shows under *Evaluate → Mass Properties*. If all three steps agree, read-only access works on your release; if step 2 or 3 fails, treat your release as unverified rather than assuming it works.
+
+## Install
 
 ```cmd
 npm run setup
-```
-
-The setup script automatically:
-1. Detects system Node.js and Python 3.10+ environments.
-2. Creates an isolated local virtual environment (`.venv`).
-3. Installs all required packages (`mcp`, `pydantic`, `pywin32`, `comtypes`, etc.) silently with idempotency.
-4. Invokes `pywin32_postinstall.py` to register SolidWorks COM automation interfaces.
-5. Registers the plugin into your active DSH profile via `dsh_adapter.js` (to emit a standalone direct MCP client config only when explicitly needed, run `node scripts/generate_mcp_config.js --write-direct-config`).
-
-### 3. Run System Doctor
-Verify your environment at any time using the 12-dimensional health check:
-
-```cmd
 npm run doctor
 ```
 
-All checks will report green `[✔ PASS]` when your machine is ready to drive SolidWorks.
+The whole path is terminal-only and takes roughly 10–15 minutes on a machine that already has DSH, Node.js and SolidWorks; you need to be able to copy and paste commands. `npm run setup` prepares the plugin's own `.venv` and installs Python dependencies without modifying your system Python; when installed via DSH bundle (`dsh.profile.bundles`), `setup` skips writing duplicate `cordis.patch.yml` entries automatically. `npm run doctor` prints a JSON health report and, if `mcp`/`pywin32` are missing (including when DSH's bundled runtime lacks them), prints a copyable one-line setup command pointing to the actual plugin directory. Then enable the plugin in DSH and start a conversation.
 
----
+Full prerequisites, what setup creates, how to verify success, and how to uninstall are in [INSTALL.md](INSTALL.md). Do not tune the Python path by hand first — the usual failure is a mismatched interpreter, and `INSTALL.md` covers that case.
 
-## 🔌 Connecting to DeepSeek Harness (DSH)
+## Permissions and safety
 
-### Generate Configuration Automatically
-To seamlessly hook this plugin into your DeepSeek Harness or any standard MCP client, run:
-
-```cmd
-npm run mcp-config
-```
-
-This outputs a validated MCP configuration block tailored to your local environment.
-
-### Standard MCP Client JSON Configuration Example
-For standalone MCP hosts (such as Claude Desktop or custom agents):
-
-```json
-{
-  "mcpServers": {
-    "solidworks-cad": {
-      "command": "C:\\Users\\User\\dsh-solidworks-plugin\\.venv\\Scripts\\python.exe",
-      "args": [
-        "C:\\Users\\User\\dsh-solidworks-plugin\\vendor\\solidworks-automation-skill\\mcp-server\\server.py"
-      ],
-      "env": {
-        "DSH_ALLOWED_ROOTS": "[\"C:\\\\Users\\\\User\\\\Documents\\\\SolidWorks_Models\"]",
-        "PYTHONUNBUFFERED": "1"
-      }
-    }
-  }
-}
-```
-
----
-
-## 🛠 Command Summary
-
-| Command | Description |
+| Mode | Behaviour |
 | :--- | :--- |
-| `npm run setup` | Automatically configure virtual environment & register COM |
-| `npm run setup -- --optional` | Install optional DFM manufacturing & Office report extensions |
-| `npm run doctor` | Run comprehensive 12-point system diagnostic |
-| `npm run upgrade` | Auto-backup existing configs and perform safe incremental upgrade |
-| `npm run uninstall -- --dry-run` | Preview safe cleanup targets (never touches your CAD assets) |
-| `npm run uninstall -- --yes` | Perform non-destructive cleanup of plugin runtimes |
-| `npm test` | Run core offline test suite (85 assertions across 4 offline suites; `npm run test:all`: 201 assertions across 20 suites including 42 Python suites) |
+| `read-only` (default) | Only read and analysis tools are published (19 of 71). Create/modify/save/export tools are withheld and cannot be called. |
+| `standard` | Modelling tools are published; destructive tools such as save, close and export remain withheld. |
+| `full` | Destructive tools become callable, and each high-risk call requires interactive approval from the host application. |
 
----
+- The default is `read-only`. Changing the mode is an explicit configuration edit, not something an AI assistant can grant itself.
+- Extra arguments are not a bypass: approval and policy checks are applied to the actual call, in the plugin runtime.
+- Self-approval is disabled. `solidworks_confirm` **is** registered, as a diagnostic stub that always returns `SELF_APPROVAL_PROHIBITED`; the plugin cannot approve its own high-risk calls. See [SECURITY.md](SECURITY.md).
+- The policy gate sits in the plugin runtime, not in the MCP server. A tool connected to the server directly, bypassing DSH, bypasses this gate as well — see [docs/verification.md](docs/verification.md) §4.3.
+- The plugin confines file access to configured roots and does not write outside them unless you configure it to.
+- What this does **not** do: it does not sandbox SolidWorks itself, it does not audit every API call SolidWorks makes, and it cannot prevent a modelling operation from producing geometry you did not intend. Treat AI-driven edits like any other automated CAD edit — work on copies of important files.
 
-## 📚 Documentation Index
+## Current status
 
-- 📖 **[User Guide (普通用户指南)](docs/USER_GUIDE.md)**: Step-by-step setup and conversational CAD examples.
-- 🛠 **[Troubleshooting Guide (排障手册)](docs/TROUBLESHOOTING.md)**: Practical solutions for COM permissions, dialog blocking, and network mirrors.
-- 📊 **[Feature Matrix (功能支持矩阵)](docs/FEATURE_MATRIX.md)**: Detailed maturity roadmap across all 13 CAD features, assemblies, and drawings.
-- 📝 **[Changelog (版本变更日志)](CHANGELOG.md)**: Milestone records and historical evolution.
+| Item | Status |
+| :--- | :--- |
+| Current release | **v0.3.3** (`package.json`, fixes D-01/D-02/D-03a/D-04 & DSH bundle setup UX on top of v0.3.2 docs) |
+| DSH plugin catalogue | Entry currently serves **v0.3.2** (PR #16343 merged 2026-11-17); v0.3.3 update PR pending release approval |
+| Real SolidWorks verification | Windows 11 x64 + SolidWorks 2026 SP4.1: v0.3.3 targeted re-test (D-01/D-02/D-03a/D-04/coincident mate/BOM) + v0.3.2 full-matrix baseline in [docs/verification.md](docs/verification.md) |
+| SolidWorks 2020–2025 | **Not verified** — claimed compatibility only, no version gate in code |
+| Automated tests | `npm run test:all`: 204 assertions across 20 suites, plus 45 Python suites (341 cases); see [docs/verification.md](docs/verification.md) |
+| Drawings / DFM / FEA / motion | Registered tools that have not been exercised on real hardware to the same depth as part modelling |
+| Mock-only coverage | The fake-COM layer covers policy, schema and error paths, not real SolidWorks behaviour |
+
+Two caveats about that table. Until the v0.3.3 release asset and catalogue PR are published, the DSH catalogue continues to serve v0.3.2 and its rendered README lags this file. And the automated numbers describe the test suite, not the CAD tools: passing tests means the plugin's own code behaves as designed, not that a given SolidWorks operation succeeds.
+
+## Known limitations
+
+- Windows only. There is no macOS or Linux build, because SolidWorks has none.
+- Real-machine coverage is concentrated on SolidWorks 2026 SP4.1 and on a subset of tools; unlisted tools are `unverified`, not "working".
+- `read-only` is the default, so a new installation cannot model anything until you change the mode.
+- Shadow backups cover the dimension-modification path, not every geometry edit.
+- Long-running rebuilds and drawings can exceed the per-call timeout (default 300 s) and must be retried.
+- SolidWorks modal dialogs block COM calls; the plugin fast-fails instead of hanging, but the user must still dismiss the dialog.
+- Educational, student and network-licence editions are not systematically tested.
+- The default `read-only` tool set is not uniformly healthy: of the 19 read-only tools published by default, 9 are clean `verified`, 3 are `verified (partial)`, 3 `failed` and 4 could not be exercised (blocked) in the real-hardware pass.
+- A successful response is not a correctness guarantee. `solidworks_list_edges` returns `ok` with `null` geometry fields (D-05), and an empty assembly passes `interference_check` (D-11); a tool that reports `ok` may still have done nothing.
+
+## Documentation
+
+| Document | Contents |
+| :--- | :--- |
+| [INSTALL.md](INSTALL.md) | Prerequisites, setup, MCP registration, success checks, uninstall and recovery |
+| [docs/ADVANCED-CONFIG.md](docs/ADVANCED-CONFIG.md) | `pythonPath`, local `.venv`, mirrors, timeouts, approval TTLs, multi-profile setup |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Python, pywin32/COM, network, MCP startup and SolidWorks connection failures |
+| [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) | Tool-by-tool capability and verification matrix |
+| [docs/verification.md](docs/verification.md) | What was actually run, on which versions, and what was not |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [README.zh.md](README.zh.md) | Chinese README, plus the mirrored Chinese docs under `docs/*.zh.md` |
+
+## Feedback
+
+- Bug: open <https://github.com/tan000tan/dsh-solidworks/issues/new/choose> and pick **Bug report**; include the plugin version, DSH version, SolidWorks version and the exact tool name.
+- Installation failure: pick the **Installation problem** template at the same link and paste `doctor --json` and `doctor --profile --json` output.
+- Real-machine result: pick the **Real SolidWorks validation report** template — reports from versions other than 2026 SP4.1 are especially useful.
+- Security: do not open a public issue; follow [SECURITY.md](SECURITY.md).
+
+## License
+
+- Plugin host and glue: [AGPL-3.0-only](LICENSE).
+- Vendored automation engine under `vendor/`: MIT, see [NOTICE](NOTICE).

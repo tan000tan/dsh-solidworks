@@ -20,7 +20,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
-import { registerToDshProfile, getDshPrimaryRuntimePython, isDshDesktopInstalled, resolveSandboxDir } from './dsh_adapter.js';
+import {
+  registerToDshProfile,
+  getDshDesktopProfileDir,
+  getDshPrimaryRuntimePython,
+  isDshDesktopInstalled,
+  isInstalledAsDshBundle,
+  resolveSandboxDir,
+} from './dsh_adapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -435,24 +442,42 @@ async function main() {
   console.log('    （若确需为独立第三方 MCP 客户端生成配置，可按需运行: npm run mcp-config -- --write-direct-config）');
 
   // Step 6: 自动接入 DeepSeek Harness (DSH) 客户端
+  const profileArgIdx = process.argv.indexOf('--profile');
+  const targetProfileDir = (profileArgIdx !== -1 && process.argv[profileArgIdx + 1])
+    ? path.resolve(process.argv[profileArgIdx + 1])
+    : getDshDesktopProfileDir();
+  const forcePatch = process.argv.includes('--force-patch');
+
   console.log('\n[6/6] 自动接入 DeepSeek Harness (DSH) 宿主环境...');
-  if (isDshDesktopInstalled()) {
-    const regRes = registerToDshProfile({
-      pythonPath: activePython,
-      mode: 'read-only',
-      toolTimeoutMs: 300000,
-      pluginRoot: ROOT_DIR,
-    });
-    if (regRes.ok) {
-      console.log(`[✔] 已写入 DSH 桌面配置文件: ${regRes.patchFile}`);
-      console.log(`    条目形态: ${regRes.action ?? 'unchanged'}`);
-      if (regRes.backupPath) {
-        console.log(`    (已自动备份原始配置至: ${path.basename(regRes.backupPath)})`);
-      }
-      console.log('    注意: 桌面端 profile 由 DSH 应用自身管理，改完必须完全退出并重启 DSH 才会生效；');
-      console.log('          若插件尚未被市场安装到该 profile 的 node_modules，光有配置条目也不会加载。');
+  if (isDshDesktopInstalled(targetProfileDir)) {
+    const bundleState = isInstalledAsDshBundle(ROOT_DIR, targetProfileDir);
+    if (bundleState.isBundle && !forcePatch) {
+      console.log(`[✔] 检测到当前插件已以 DSH Bundle 模式安装于 Profile (${targetProfileDir})。`);
+      console.log('    已自动跳过向 cordis.patch.yml 写入重复插件条目（无需生成 .bak 备份），仅需重启 DSH 即可使用插件 .venv 环境。');
     } else {
-      console.warn(`[!] DSH 自动接入提示: ${regRes.reason}`);
+      const regRes = registerToDshProfile({
+        pythonPath: activePython,
+        mode: 'read-only',
+        toolTimeoutMs: 300000,
+        pluginRoot: ROOT_DIR,
+        profileDir: targetProfileDir,
+        forcePatch,
+      });
+      if (regRes.ok) {
+        if (regRes.skipped) {
+          console.log(`[✔] 检测到 DSH Bundle 模式，已跳过重写 ${regRes.patchFile}`);
+        } else {
+          console.log(`[✔] 已写入 DSH 桌面配置文件: ${regRes.patchFile}`);
+          console.log(`    条目形态: ${regRes.action ?? 'unchanged'}`);
+          if (regRes.backupPath) {
+            console.log(`    (已自动备份原始配置至: ${path.basename(regRes.backupPath)})`);
+          }
+          console.log('    注意: 桌面端 profile 由 DSH 应用自身管理，改完必须完全退出并重启 DSH 才会生效；');
+          console.log('          若插件尚未被市场安装到该 profile 的 node_modules，光有配置条目也不会加载。');
+        }
+      } else {
+        console.warn(`[!] DSH 自动接入提示: ${regRes.reason}`);
+      }
     }
   } else {
     console.log('    (未检测到本机的 DSH 桌面 profile，跳过自动挂载)');

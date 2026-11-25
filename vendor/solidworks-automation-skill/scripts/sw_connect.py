@@ -1951,7 +1951,142 @@ def new_document(sw, doc_type="part", template_path=None, *, max_documents=None)
 
 
 
-def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=False):
+def activate_document(sw, model, file_path=None, raise_on_error=False):
+
+    """激活指定 SolidWorks 文档并校验 ActiveDoc 已切换为目标文档（D-02）。"""
+
+    if sw is None or model is None:
+
+        return False
+
+    activate3 = getattr(sw, "ActivateDoc3", None)
+
+    activate2 = getattr(sw, "ActivateDoc2", None)
+
+    if not callable(activate3) and not callable(activate2):
+
+        # 兼容仅实现 GetOpenDocumentByName 的轻量单测桩对象
+
+        return True
+
+    title = ""
+
+    try:
+
+        title = str(get_com_member(model, "GetTitle") or "").strip()
+
+    except Exception:
+
+        title = ""
+
+    if not title and file_path:
+
+        title = os.path.basename(str(file_path))
+
+    if not title:
+
+        return False
+
+    errors = VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0) if (VARIANT and pythoncom) else 0
+
+    candidates = [title]
+
+    if file_path and str(file_path) not in candidates:
+
+        candidates.append(str(file_path))
+
+    activated = None
+
+    last_err = None
+
+    for candidate_name in candidates:
+
+        try:
+
+            if callable(activate3):
+
+                try:
+
+                    activated = activate3(candidate_name, False, 0, errors)
+
+                except TypeError:
+
+                    ole_object = getattr(sw, "_oleobj_", None)
+
+                    if ole_object is not None and win32com_client is not None:
+
+                        dynamic_sw = win32com_client.dynamic.DumbDispatch(ole_object, "SldWorks.Application")
+
+                        activated = dynamic_sw.ActivateDoc3(candidate_name, False, 0, errors)
+
+                    elif callable(activate2):
+
+                        activated = activate2(candidate_name, False, errors)
+
+                    else:
+
+                        raise
+
+            elif callable(activate2):
+
+                activated = activate2(candidate_name, False, errors)
+
+        except Exception as exc:
+
+            last_err = exc
+
+            continue
+
+        if activated is not None:
+
+            break
+
+    active_doc = getattr(sw, "ActiveDoc", None)
+
+    if active_doc is not None:
+
+        try:
+
+            target_p = str(get_com_member(model, "GetPathName") or "").strip()
+
+            active_p = str(get_com_member(active_doc, "GetPathName") or "").strip()
+
+            if target_p and active_p:
+
+                if os.path.normcase(os.path.abspath(target_p)) == os.path.normcase(os.path.abspath(active_p)):
+
+                    return True
+
+            else:
+
+                target_t = str(get_com_member(model, "GetTitle") or title).strip().lower()
+
+                active_t = str(get_com_member(active_doc, "GetTitle") or "").strip().lower()
+
+                if target_t and active_t and (target_t == active_t or os.path.splitext(target_t)[0] == os.path.splitext(active_t)[0]):
+
+                    return True
+
+        except Exception as exc:
+
+            last_err = exc
+
+    if activated is not None and active_doc is None:
+
+        return True
+
+    msg = f"激活文档失败: {title} (errors={getattr(errors, 'value', errors)}, last_err={last_err})"
+
+    if raise_on_error:
+
+        raise RuntimeError(msg)
+
+    print(msg)
+
+    return False
+
+
+def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=False, activate=True):
 
     """
 
@@ -1970,6 +2105,8 @@ def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=F
         silent: 是否静默打开
 
         raise_on_error: 打开失败时是否抛出异常
+
+        activate: 打开或复用后是否将目标文档激活为 ActiveDoc（默认 True）
 
 
 
@@ -2021,6 +2158,9 @@ def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=F
         if not read_only:
             register_owned_document(existing_model)
             register_owned_document(file_path)
+
+        if activate:
+            activate_document(sw, existing_model, file_path=file_path, raise_on_error=raise_on_error)
 
         return existing_model
 
@@ -2145,6 +2285,9 @@ def open_document(sw, file_path, read_only=False, silent=False, raise_on_error=F
         if not read_only:
             register_owned_document(model)
             register_owned_document(file_path)
+
+        if activate:
+            activate_document(sw, model, file_path=file_path, raise_on_error=raise_on_error)
 
     else:
 

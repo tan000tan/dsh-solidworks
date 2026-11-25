@@ -34,7 +34,22 @@ pause
 exit /b 1
 
 :FoundNode
-"%NODE_EXE%" "%~dp0scripts\uninstall.js" %*
+rem 双击运行时没有任何参数 -> 先明确确认，再以 --yes 执行；传了参数则原样转发。
+if "%~1"=="" (
+    echo 将执行：清理本插件自动生成的运行时/配置文件，并从 DSH profile 中解除挂载。
+    echo 不会删除任何 CAD 文件（.SLDPRT/.SLDASM/.SLDDRW）、模型目录或 config-backups\。
+    echo 仅预览请改用：node scripts\uninstall.js --dry-run
+    echo.
+    set /p CONFIRM=确认执行卸载清理？输入 y 回车继续，其它任意键取消：
+    if /i not "%CONFIRM%"=="y" (
+        echo 已取消，未做任何改动。
+        pause
+        exit /b 0
+    )
+    "%NODE_EXE%" "%~dp0scripts\uninstall.js" --yes
+) else (
+    "%NODE_EXE%" "%~dp0scripts\uninstall.js" %*
+)
 set UN_EXIT_CODE=%errorlevel%
 
 echo.

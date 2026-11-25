@@ -1,61 +1,184 @@
-# SolidWorks AI CAD 功能支持矩阵 (Feature Matrix)
+# Feature matrix
 
-本文档客观、严谨标定 `dsh-solidworks-plugin` 截至 **v0.3.2** 候选版本的全功能成熟度（总计 **73** 个注册工具 = 71 个内嵌 MCP 工具 + 2 个 DSH 宿主控制工具）。
+This page lists every tool the plugin registers today: **71 tools** (19 read, 26 write, 26 high risk). It is generated from the runtime registry and the source tree by
+`audit/promotion-phase/03-local-remediation/gen-feature-matrix.cjs`, so the list cannot drift from the code without the generator failing.
 
----
+Two DSH host meta-tools exist on top of these 71: `solidworks_status` and `solidworks_confirm`. They are registered by the plugin itself, not by the MCP server. `solidworks_confirm` always fails closed with `SELF_APPROVAL_PROHIBITED`; it exists so a caller can prove it cannot self-approve.
 
-## 状态等级定义
+## How to read the status column
 
-- **✔ PRODUCTION_READY（生产就绪-历史基线）**：核心源码完备，离线断言全绿，并在历史有效授权 SolidWorks 2026 物理环境中实机通过（共覆盖 **27/71** 工具子集；合流后源码因当前 `L5-BLOCK-01` 教育版到期暂未重新实机打火）。
-- **🟢 VERIFIED_IN_MOCK（仿真验证）**：具备完整业务逻辑与高覆盖率 Mock/仿真单元测试，待更多特定工况实机覆盖。
-- **🟡 EXPERIMENTAL（实验性支持）**：已具备底层 COM API 封装与 MCP 工具定义，适合进阶用户或开发者试用。
-- **⚪ PLANNED（规划中）**：已有技术设计规划或后续版本路线，当前暂不宣称直接可用。
+| Status | Meaning |
+| --- | --- |
+| `verified` | Reached the tool in a real SolidWorks 2026 SP4.1 session through real COM and the call returned without an error. A *(partial)* marker means the main path worked but one specific enum value or field still fails; the defect id is shown. |
+| `automated-test-passed` | Exercised by an offline automated suite (functional unit tests, or policy-layer tests for tools whose implementation was mocked). |
+| `mock-only` | Only covered with a fake COM layer; never touched a real session. |
+| `unverified` | No execution evidence at all. |
+| `failed` | Known to fail. |
+| `known-limitation` | Works within the documented restriction. |
+| `blocked` | Cannot be exercised in this environment. |
 
----
+The *Real SolidWorks* column carries the full 71-tool baseline recorded in
+`audit/promotion-phase/04-regression-validation/l4-real-solidworks.md` (206 MCP calls against SolidWorks 2026 SP4.1, COM revision 34.4.1):
+**33 `verified`** — of which **7 are marked *partial*** (the main path worked but one specific enum value or field still fails; the defect id is in the cell) —
+**13 `failed`**, **24 `blocked`** (the environment could not satisfy the tool's preconditions, which is not proof that the tool is broken),
+**1 `known-limitation`**, plus **14 distinct defects** written up with reproductions. Items updated by the **v0.3.3 targeted SolidWorks 2026 SP4.1 re-verification** (`audit/v033-targeted-l4/l4-results.json`: `solidworks_connect`, `solidworks_open_document`, `solidworks_add_component`, `solidworks_add_coincident_mate`, `solidworks_shell`, `solidworks_export_assembly_bom`) are explicitly tagged `(v0.3.3 targeted re-verified)`; all other rows retain their inherited v0.3.2 status. This is evidence of
+*reachability and behaviour on one machine*, not a guarantee of geometric correctness on other models.
 
-## 一、基础建模能力 (13 大特征)
+Risk levels come from `lib/policy.js` (`RISK_TABLE`): 19 read, 26 write, 26 high. The mode gate follows from the risk level:
+read tools need `read-only` or above, write tools need `standard` or above, high-risk tools need `full` and a per-call approval by the
+DSH host UI. Under the default `read-only` mode only the 19 read tools are published to the model at all.
 
-| 序号 | 建模特征能力 | 对应底层接口 / 模块 | 成熟度状态 | 真实 CAD 验证情况 / 限制说明 |
-| :---: | :--- | :--- | :---: | :--- |
-| 1 | **草图创建与图元绘制** | `sw_part.py`: `start_sketch`, `sketch_rectangle`, `sketch_circle` | **✔ PRODUCTION_READY** | 在真实 SW2026 上实测创建矩形与圆草图，自动闭合轮廓 |
-| 2 | **基准面智能选择** | `sw_part.py`: `_get_plane_name_candidates` | **✔ PRODUCTION_READY** | 支持“前视基准面 / Front Plane”等中英双语基准面映射 |
-| 3 | **拉伸凸台 (Extrude Boss)** | `sw_part.py`: `extrude_boss`, `extrude_midplane` | **✔ PRODUCTION_READY** | 实测拉伸成型 $100\times 60\times 20\text{ mm}$ 实体，包围盒零误差 |
-| 4 | **拉伸切除 (Extrude Cut)** | `sw_part.py`: `extrude_cut` | **✔ PRODUCTION_READY** | 实测反向贯穿切除 $\varnothing 20\text{ mm}$ 通孔，体积误差 $< 0.0003\text{ mm}^3$ |
-| 5 | **旋转凸台 (Revolve Boss)** | `sw_part.py`: `revolve_boss` | **🟢 VERIFIED_IN_MOCK** | 单元测试通过，支持回转轴自动识别与 360° 回转成型 |
-| 6 | **旋转切除 (Revolve Cut)** | `sw_part.py` (复合切除) | **🟡 EXPERIMENTAL** | 建议通过回转实体与布尔差集组合实现，独立单步 API 待进阶暴露 |
-| 7 | **圆角特征 (Fillet)** | `sw_part.py`: `fillet`, `advanced_fillet_strategy` | **🟢 VERIFIED_IN_MOCK** | 支持等半径圆角与凸边自动筛选，避免薄壁几何破损 |
-| 8 | **倒角特征 (Chamfer)** | `sw_part.py`: `chamfer` | **🟢 VERIFIED_IN_MOCK** | 支持距离-角度与等距离倒角 |
-| 9 | **孔特征 (Hole Features)** | `sw_hole_features.py`: `create_through_hole` 等 | **✔ PRODUCTION_READY** | 支持通孔、盲孔、沉头孔，实测孔位尺寸与深度吻合 |
-| 10 | **阵列特征 (Pattern)** | `sw_part.py`: `linear_pattern`, `circular_pattern` | **🟢 VERIFIED_IN_MOCK** | 支持沿 X/Y/Z 轴向线性矩阵阵列与绕基准轴圆周阵列 |
-| 11 | **镜像特征 (Mirror)** | `sw_part.py`: `mirror_feature` | **🟢 VERIFIED_IN_MOCK** | 支持以基准面或平表面作为对称面镜像特征 |
-| 12 | **抽壳特征 (Shell)** | `sw_part.py`: `shell` | **🟢 VERIFIED_IN_MOCK** | 支持指定壁厚与开放面抽壳 |
-| 13 | **拔模特征 (Draft)** | 规划中 | **⚪ PLANNED** | 暂未独立暴露单步拔模工具，建议在模具设计阶段使用原生特征树 |
+Automated-test coverage: 26 have functional test references, 19 only appear in policy/host-layer tests, 25 have no reference at all. A functional reference means
+the test file names the tool; it does not mean the test asserts real SolidWorks behaviour.
 
----
+### Document management (4)
 
-## 二、参数修改、事务保护与自愈系统
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_new_document` | Create a new part, assembly or drawing from a template | none | none / `doc_type`, `template_path` | `status`, `document` | **write** | standard+ | policy-layer reference only (1) | `verified` | Requires a usable document template |
+| `solidworks_open_document` | Open a document by absolute path for later tools | none | `path` / `read_only`, `silent` | `status`, `document` | **write** | standard+ | policy-layer reference only (16) | `verified` (v0.3.3 targeted re-verified: D-02 fixed) | Path must exist and stay inside the allowed roots |
+| `solidworks_close_documents` | Close documents this session owns, inside the sandbox boundary | documents opened by this session | none / `close_all`, `document_path`, `title`, `save_changes` | `status`, `closed`, `force_discard` | **high** | full + host approval | `automated-test-passed` (12 functional refs) | `verified` | HIGH: unsaved changes can be discarded when forced |
+| `solidworks_import_step_part` | Import a STEP file as a new multibody part and save a copy; the source is untouched | STEP file on disk | `expected_document_path`, `step_path`, `output_path` / none | `status`, `process_id`, `save_requested`, `manual_review_required`, `saved`, `warnings`, `bodies[]`, `document` | **high** | full + host approval | none | `failed` (D-14) | Runs a PowerShell subprocess; import options must be restored |
 
-| 能力项 | 核心模块 | 成熟度状态 | 铁证与实测表现 |
-| :--- | :--- | :---: | :--- |
-| **尺寸枚举与识别** | `dimension_manager.py: identify_dimensions` | **✔ PRODUCTION_READY** | 真机枚举草图尺寸与特征尺寸，驱动尺寸识别准确率 100% |
-| **自愈式尺寸修改** | `dimension_manager.py: modify_dimensions_safe` | **✔ PRODUCTION_READY** | 真机驱动拉伸深度 20mm $\rightarrow$ 30mm，3D实体同步重构体积 |
-| **物理影子备份** | `shadow_backup.py: ShadowBackupManager` | **✔ PRODUCTION_READY** | 事务前自动原子抓取副本，事务成功提交时零存储销毁 |
-| **双重一致性回滚** | `tests/live_cad_smoke_test.py: Step 5` | **✔ PRODUCTION_READY** | 注入非法参数触发自愈：磁盘二进制 100% 吻合 + CAD几何完全无损 |
-| **特征拓扑 DAG 排序** | `feature_graph_ir.py: FeatureGraphIR` | **✔ PRODUCTION_READY** | Kahn 算法拓扑排序，真机端到端驱动建模并通过质量属性验收 |
-| **窗口防误杀白名单** | `sw_session.py`: 弹窗识别拦截 | **✔ PRODUCTION_READY** | 精准识别 SolidWorks 模态对话框，绝不误触系统任务栏与用户主窗口 |
-| **STA 跨桌面穿透调度** | `sw_connect.py: DesktopPinnedStaWorker` | **✔ PRODUCTION_READY** | 彻底规避 COM RPC 跨线程死锁与 0x80080005 报错，单例平滑复用 |
+### Part inspection (4)
 
----
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_list_edges` | List edge geometry: length, midpoint, direction, diameter, convexity | open part | none / `axis`, `circular`, `diameter_mm`, `diameter_tolerance_mm`, `min_length_mm`, `max_length_mm`, `limit`, `include_convexity` | `status`, `edge_count`, `edges`, `errors`, `total_edge_count`, `matched_count`, `returned_count`, `truncated`, `filter`, `rejected_sample` | **read** | read-only+ | policy-layer reference only (1) | `failed` (D-05) | Truncated on models with very many edges |
+| `solidworks_document_units` | Read and change linear and angular document units | open document | none / `linear_unit`, `angular_unit`, `decimals` | `linear_unit_enum`, `angular_unit_enum`, `decimals`, `status`, `units_before`, `changes_applied`, `units_after`, `document`, `note` | **write** | standard+ | policy-layer reference only (1) | `verified` | Changing units modifies the document |
+| `solidworks_inspect_hole_features` | Read B-Rep holes, compound segments, slot arcs and optional hole checks | open part | none / `expected_holes`, `position_tolerance_mm`, `diameter_tolerance_mm` | `status`, `measurements`, `position_checks`, `document` | **read** | read-only+ | policy-layer reference only (1) | `verified` (partial: D-12) | Read-only B-Rep parsing |
+| `solidworks_inspect_native_geometry` | Read body names, bounding box, volume, errors and component transforms; never saves | none (read-only) | `expected_document_path` / none | `bodies[]`, `boundingBox`, `volume`, `errors[]`, `components[]` | **read** | read-only+ | policy-layer reference only (2) | `verified` | Uses a PowerShell subprocess plus native COM |
 
-## 三、装配体、工程图与多格式数据交换
+### Assembly (10)
 
-| 能力项 | 核心模块 | 成熟度状态 | 详情与使用指引 |
-| :--- | :--- | :---: | :--- |
-| **装配体新建与组件装配** | `sw_assembly.py` | **🟢 VERIFIED_IN_MOCK** | 支持 `add_component` 插入零件，支持固定 (Fix) 根基组件 |
-| **标准配合关系 (Mates)** | `sw_assembly.py: add_mate` | **🟢 VERIFIED_IN_MOCK** | 支持重合 (Coincident)、同心 (Concentric)、平行 (Parallel)、距离 (Distance) |
-| **工程图三视图自动生成** | `sw_drawing.py: drawing_workflow` | **🟢 VERIFIED_IN_MOCK** | 支持 A4-A0 图纸尺寸，自动投影生成主视图、俯视图、侧视图与轴测图 |
-| **工程图尺寸导入与排布** | `sw_drawing.py: drawing_workflow` | **🟢 VERIFIED_IN_MOCK** | 导入模型标注尺寸并按 `swAlignDimensionType_e` 规范均匀对齐 |
-| **通用 CAD 交换导出 (STEP)** | `sw_export.py: export_to_step` | **✔ PRODUCTION_READY** | 标准 AP203/AP214 格式无损导出 |
-| **网格与 3D 打印格式 (STL)** | `sw_export.py: export_to_stl` | **✔ PRODUCTION_READY** | 支持精细 (fine) 与粗糙 (coarse) 两档质量输出 |
-| **曲面交换格式 (IGES)** | `sw_export.py: export_to_iges` | **✔ PRODUCTION_READY** | 支持多曲面与线框标准导出 |
-| **二维图纸与报表 (PDF/DXF)** | `sw_export.py: export_to_pdf / export_to_dxf` | **✔ PRODUCTION_READY** | 工程图导出为矢量 PDF，零件轮廓直接输出 DXF |
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_interference_check` | Run interference detection on the active assembly and list every hit | open assembly with 2+ components | none / `treat_subassemblies_as_components`, `treat_coincidence_as_interference` | `status`, `interference_count`, `items`, `severity`, `manual_review_required`, `options`, `treat_subassemblies_as_components`, `treat_coincidence_as_interference`, `errors`, `path` | **read** | read-only+ | policy-layer reference only (1) | `verified` (partial: D-11) | Needs a fully loaded assembly |
+| `solidworks_add_component` | Insert an existing part or sub-assembly into the active assembly, optionally fixed | open assembly | `path` / `x_mm`, `y_mm`, `z_mm`, `config_name`, `fix_component` | `status`, `component`, `fixed`, `component_count`, `document` | **write** | standard+ | none | `verified` (v0.3.3 targeted re-verified: D-03a ownership + asm reactivation pass) | Inserts existing files only; creates no geometry |
+| `solidworks_set_component_fixed` | Fix or float assembly components matched by name substring | open assembly | `component_keyword` / `fixed` | `status`, `fixed`, `component`, `document` | **write** | standard+ | none | `blocked` — PermissionError / DEF-SEC-01 — blocked by th… | Name-substring matching can be ambiguous |
+| `solidworks_add_coincident_mate` | Add a coincident mate between two components | open assembly | `component_a_keyword`, `component_b_keyword` / `feature_a_name`, `feature_b_name`, `mate_name` | `status`, `mate_created`, `mate_name`, `added_mates`, `mate_features`, `document` | **write** | standard+ | none | `verified` (v0.3.3 targeted re-verified: D-08/D-03a pass) | Depends on named planes/features existing |
+| `solidworks_add_distance_mate` | Add a distance mate between named planes or features of two components | open assembly with named planes | `component_a_keyword`, `component_b_keyword` / `feature_a_name`, `feature_b_name`, `distance_mm`, `mate_name` | `status`, `error_code`, `mate_created`, `mate_features_before`, `mate_features_after`, `suggestion`, `mate_name`, `added_mates`, `distance_mm`, `component_a` | **write** | standard+ | none | `verified` | Depends on named planes/features existing |
+| `solidworks_add_concentric_mate` | Add a concentric mate between matching cylindrical faces of two components | open assembly with cylindrical faces | `component_a_keyword`, `component_b_keyword` / `radius_a_min_mm`, `radius_a_max_mm`, `radius_b_min_mm`, `radius_b_max_mm`, `lock_rotation`, `mate_name` | `status`, `error_code`, `mate_created`, `mate_features_before`, `mate_features_after`, `suggestion`, `mate_name`, `added_mates`, `lock_rotation`, `component_a` | **write** | standard+ | none | `blocked` — RuntimeError: Active document must be an ass… | Depends on matching cylindrical faces |
+| `solidworks_add_rotary_motor` | Create a motion study on the active assembly and add a constant-speed rotary motor | open assembly | `shaft_component_keyword`, `rotor_component_keyword` / `shaft_radius_min_mm`, `shaft_radius_max_mm`, `rotor_radius_min_mm`, `rotor_radius_max_mm`, `rpm`, `study_name`, `motor_name`, `duration_seconds`, `calculate`, `play` | `status`, `study_name`, `motor_name`, `motor_feature_created`, `calculated`, `rpm`, `shaft_component`, `rotor_component`, `document` | **write** | standard+ | none | `blocked` — The comtypes / Motion type library is missin… | Constant-speed rotary motors only |
+| `solidworks_inspect_motion_studies` | Read motion study definitions, motor and force counts and result state | open assembly | none / none | `status`, `motion`, `document` | **read** | read-only+ | policy-layer reference only (1) | `blocked` — Same as above: RuntimeError — Active documen… | Read-only |
+| `solidworks_validate_motion_study` | Validate motion study type, duration, motor count, result presence and freshness | open assembly | none / `study_name`, `expected_study_type`, `minimum_duration_seconds`, `minimum_motor_count`, `require_results` | `status`, `motion`, `document` | **read** | read-only+ | policy-layer reference only (1) | `blocked` — Same as above | Validates definitions and metadata, not physics |
+| `solidworks_replace_component_preserving_transform` | Replace a fixed component by exact instance name, preserving its transform | open assembly with exact instance name | `expected_document_path`, `component_name`, `replacement_path` / `configuration` | `status`, `components[]`, `transform_preserved`, `document` | **high** | full + host approval | none | `blocked` — native-wire precondition unmet: the target d… | PowerShell subprocess; fixed components only |
+
+### Feature tree (7)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_compile_feature_graph` | Compile a Feature Graph IR DAG into a deterministic execution plan | offline, no SolidWorks | `graph` / none | `status`, `graph_id`, `target_part_name`, `node_count`, `execution_plan` | **read** | read-only+ | `automated-test-passed` (4 functional refs) | `failed` | Compiles only; never validates geometry |
+| `solidworks_execute_feature_graph` | Execute a validated Feature Graph IR DAG in a real SolidWorks session | validated Feature Graph IR | `graph` / `output_path`, `auto_rollback`, `collect_metrics`, `close_on_finish` | `success`, `status`, `execution_id`, `graph_id`, `target_part_name`, `total_nodes`, `executed_count`, `duration_ms`, `created_document`, `succeeded`, `node_records`, `feature_type`, `feature_name`, `created_cad_entity`, `error_type`, `error_message`, `details` | **high** | full + host approval | `automated-test-passed` (6 functional refs) | `failed` | Depends on SolidWorks accepting the graph |
+| `solidworks_fillet` | Select edges by geometric filter and fillet them; supports dry_run | open part | `radius_mm` / `axis`, `min_length_mm`, `max_length_mm`, `convex_only`, `concave_only`, `dry_run` | `status`, `edge_spec`, `selected_count`, `selected_edges`, `rejected_count`, `rejected_sample`, `errors`, `suggestion`, `dry_run`, `feature_created`, `feature_name`, `document` | **write** | standard+ | `automated-test-passed` (1 functional refs) | `verified` | Only mock-verified; oversized radii self-intersect and fail |
+| `solidworks_chamfer` | Select edges by geometric filter and chamfer them | open part | `distance_mm` / `angle_deg`, `axis`, `convex_only`, `concave_only`, `dry_run` | `see tool schema` | **write** | standard+ | `automated-test-passed` (1 functional refs) | `failed` (D-06) | Only mock-verified |
+| `solidworks_shell` | Shell the active part to a uniform wall thickness | open part | `thickness_mm` / `face_to_remove` | `status`, `feature_created`, `error_code`, `suggestion`, `feature_name`, `thickness_mm`, `open_face` | **write** | standard+ | `automated-test-passed` (`v032_cad_remediation_test.py` + `v033_remediation_test.py`) | `verified` (v0.3.3 targeted re-verified: D-04 VT_VOID fixed) | Oversized/degenerate walls fail with `feature_created=false` |
+| `design_spec_build` | Build a SolidWorks part from a validated design specification | validated spec file | `spec_path` / `output_path`, `template_path`, `apply_fillets`, `verify_geometry` | `validation`, `errors`, `warnings`, `source_path`, `type`, `feature`, `ok`, `status`, `steps`, `verification`, `hole_count`, `mass_g`, `fillet_results`, `measurements` | **write** | standard+ | policy-layer reference only (2) | `failed` | Limited to what the spec schema can express |
+| `solidworks_exclude_reviewed_bodies` | Exclude named bodies with a native delete-body feature, keeping editable history | explicit body name list | `expected_document_path`, `body_names` / `feature_name` | `status`, `excluded[]`, `bodies[]`, `document` | **high** | full + host approval | none | `blocked` — Same as above: Active document target mismatch | PowerShell subprocess; deleting bodies is destructive unless unsaved |
+
+### Sketch (1)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_sketch_and_extrude` | Draw a circle, rectangle, slot or polygon on a named plane and extrude as boss or cut | open part | `depth_mm` / `plane_name`, `shape`, `center_x_mm`, `center_y_mm`, `radius_mm`, `width_mm`, `height_mm`, `corner_x2_mm`, `corner_y2_mm`, `slot_end_x_mm`, `slot_end_y_mm`, `sides`, `midplane`, `cut`, `feature_name` | `status`, `task_id`, `shape`, `feature_created`, `feature_name`, `sketch_name`, `depth_mm`, `operation`, `document`, `error_type` | **write** | standard+ | `automated-test-passed` (11 functional refs) | `verified` | Only those four profile types |
+
+### Extrude / cut / revolve (4)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_create_basic_part` | Create a simple cylinder or block part with optional colour and save path | open part | none / `shape`, `output_path`, `plane_name`, `width_mm`, `height_mm`, `radius_mm`, `depth_mm`, `color` | `status`, `task_id`, `shape`, `sketch_quality`, `rebuild_ok`, `feature_created`, `feature_name`, `appearance_ok`, `saved`, `output_path` | **write** | standard+ | `automated-test-passed` (19 functional refs) | `verified` | Cylinder or block only |
+| `solidworks_revolve` | Revolve a sketch profile around an axis into a solid | open part | `sketch_name` / `angle_deg`, `axis_sketch_name` | `status`, `feature_created`, `suggestion`, `feature_name`, `angle_deg`, `document` | **write** | standard+ | none | `failed` | Only mock-verified |
+| `solidworks_create_hole_feature` | Create constrained blind, through or compound holes, or a half-slot, on a part | open part with hole location | `feature_kind` / `center_x_mm`, `center_y_mm`, `diameter_mm`, `depth_mm`, `secondary_diameter_mm`, `secondary_depth_mm`, `included_angle_deg`, `slot_end_x_mm`, `slot_end_y_mm`, `plane_name`, `feature_name` | `status`, `feature_evidence`, `document` | **write** | standard+ | none | `verified` | Hole constraints depend on the input; not machine-verified |
+| `solidworks_build_round_sweeps` | Create native equation-path round sweeps and rectangular extrusions from a strict spec; never saves | none | `expected_document_path`, `spec_path` / `dry_run` | `ready`, `process_id`, `save_requested`, `manual_review_required`, `created[]` | **write** | standard+ | unclassified (0) | `verified` | Strict spec only; native-wire path |
+
+### Pattern / mirror (2)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_pattern` | Pattern an existing feature linearly or circularly | open part with the target feature | `feature_name` / `pattern_type`, `count`, `spacing_mm`, `direction`, `axis_name`, `angle_deg`, `equal_spacing` | `status`, `suggestion`, `feature_created`, `feature_name`, `pattern_type`, `count`, `seed_feature` | **write** | standard+ | none | `failed` (D-07) | Only mock-verified; relies on feature_name |
+| `solidworks_mirror_feature` | Mirror an existing feature about a plane | open part with feature and plane | `feature_name` / `mirror_plane_name` | `status`, `feature_created`, `suggestion`, `feature_name`, `mirror_plane`, `source_feature` | **write** | standard+ | `automated-test-passed` (2 functional refs) | `verified` | Only mock-verified |
+
+### Dimension edits (4)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_update_dimension` | Update a named dimension, rebuild and report before/after values | open document | `dimension_name`, `value_mm` / `configuration_mode`, `configuration_names`, `rebuild`, `save` | `success`, `dimension`, `configuration_mode`, `configuration_names`, `requested_mm`, `before_mm`, `after_mm`, `set_status`, `set_status_label`, `rebuild_success`, `save_requested`, `save_success` | **write** | standard+ | `automated-test-passed` (1 functional refs) | `verified` | Requires the exact dimension name |
+| `solidworks_identify_dimensions` | List every dimension in model features and sketches | open document | none / `feature_name` | `status`, `count`, `dimensions`, `name`, `feature_name`, `feature_type`, `value_mm`, `is_driven`, `dim_type`, `dimension_map`, `model_ir`, `ir_available` | **read** | read-only+ | `automated-test-passed` (6 functional refs) | `verified` (partial: D-12) | Large results on dimension-heavy models |
+| `solidworks_inspect_dimension_impact` | Analyse which downstream features a dimension change may affect | open document | `dimension_name` / none | `dimension`, `owner_feature`, `owner_feature_index`, `total_features`, `potential_impacted_features`, `impact_count` | **read** | read-only+ | `automated-test-passed` (8 functional refs) | `verified` | Static dependency analysis, not a rebuild experiment |
+| `solidworks_modify_dimension_safe` | Batch-modify dimensions with shadow backup and automatic rollback | open document | `updates` / `auto_rollback`, `rebuild`, `save`, `configuration_mode` | `status`, `rebuild_success`, `save_success`, `modified_count`, `before_values_mm`, `after_values_mm`, `applied_details`, `architecture`, `updates`, `rollback_performed`, `error` | **high** | full + host approval | `automated-test-passed` (8 functional refs) | `blocked` — PermissionError / DEF-SEC-01 (D-03) | HIGH: writes files and rebuilds; backup covers this path only |
+
+### Measurement (2)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_mass_properties` | Read mass, volume, surface area, centre of mass and inertia | open document | none / `density_kg_m3` | `units`, `mass_g`, `volume_mm3`, `surface_area_mm2`, `center_of_mass_mm`, `moment_of_inertia_kg_mm2`, `density_kg_m3`, `material`, `material_assigned`, `warnings`, `errors` | **read** | read-only+ | policy-layer reference only (9) | `verified` | Mass needs an assigned material or density |
+| `solidworks_bounding_box` | Read the millimetre bounding box to check whether dimensions are out of range | open document | none / none | `units`, `min_corner_mm`, `max_corner_mm`, `size_mm`, `diagonal_mm`, `errors` | **read** | read-only+ | policy-layer reference only (1) | `verified` | Axis-aligned box, not a minimal box |
+
+### Properties (5)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_set_appearance` | Set the appearance colour of the document or an assembly component | open document | `color` / `target`, `component_keyword` | `status`, `target`, `color`, `component`, `document` | **write** | standard+ | none | `verified` | Colour only; material untouched |
+| `solidworks_inspect_configurations` | Read configuration names and the active configuration without modifying the file | open document | none / none | `status`, `configurations`, `active_configuration`, `review_required`, `limitations` | **read** | read-only+ | policy-layer reference only (1) | `verified` | Read-only |
+| `solidworks_create_configuration` | Create a configuration, optionally activate, rebuild and save, then read it back | open document | `configuration_name` / `comment`, `alternate_name`, `options`, `if_exists`, `activate`, `rebuild`, `save` | `success`, `configuration`, `requested_configuration`, `created`, `reused`, `listed_after_create`, `configurations_before`, `options`, `activation`, `save_requested`, `save_success`, `review_required` | **write** | standard+ | `automated-test-passed` (1 functional refs) | `verified` | Changes document structure |
+| `solidworks_activate_configuration` | Activate an existing configuration and verify by reading it back | open document | `configuration_name` / `rebuild`, `save` | `success`, `configuration`, `requested_configuration`, `before`, `after`, `api_called`, `api_return`, `api_success`, `readback_verified`, `rebuild_success`, `save_requested`, `save_success`, `review_required` | **write** | standard+ | `automated-test-passed` (1 functional refs) | `verified` | Switches the active configuration |
+| `solidworks_set_custom_properties` | Set and read back file-level or configuration-level custom properties | open document | `properties` / `configuration_name`, `property_type`, `save` | `success`, `configuration`, `property_type`, `properties`, `save_requested`, `save_success`, `name`, `requested`, `add_status`, `verified`, `readback` | **write** | standard+ | `automated-test-passed` (1 functional refs) | `verified` | Writes properties; triggers no rebuild |
+
+### Export (6)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cadstudio_write_open_format` | Write STEP, IGES, BREP, STL, OBJ, GLB, DXF, SVG, PDF or PNG without starting SolidWorks | none (headless) | `input_path`, `output_dir` / `formats` | `backend`, `status`, `stage`, `artifacts`, `limitations`, `retryable`, `error_code` | **high** | full + host approval | `automated-test-passed` (2 functional refs) | `blocked` — invalid_neutral_document (missing documentId) | Headless writer; SolidWorks does not validate the result |
+| `cadstudio_build_dxf_preview_scene` | Convert an existing DXF into a whitelisted PreviewScene JSON | input DXF file | `source_path`, `output_path` / none | `status`, `backend`, `source`, `output`, `limitations` | **high** | full + host approval | none | `blocked` — Requires an existing DXF source file | Produces preview JSON, not a rendered image |
+| `solidworks_export_active` | Export the active document to STEP, STL, IGES, Parasolid, PDF or DXF | open document | `output_path`, `export_format` / `stl_quality` | `status`, `success`, `output_path`, `format`, `document` | **high** | full + host approval | policy-layer reference only (12) | `verified` (partial: D-10) | HIGH: writes export files |
+| `solidworks_batch_export_files` | Batch-export several local files and verify each artifact produced by this run | local file path list | `file_paths`, `output_dir` / `formats`, `overwrite`, `close_documents`, `stl_quality` | `success`, `api_success`, `exists`, `size_bytes`, `produced_this_run`, `output_dir`, `formats`, `documents`, `summary` | **high** | full + host approval | `automated-test-passed` (8 functional refs) | `blocked` — Refuses to export documents it does not own … | HIGH: writes many files |
+| `solidworks_export_assembly_bom` | Export a component and property BOM as CSV; the result needs native BOM review | open assembly | `output_path` / `include_excluded`, `overwrite` | `success`, `path`, `rows`, `row_count`, `quantity_total`, `size_bytes`, `sha256`, `produced_this_run`, `review_required`, `limitations` | **high** | full + host approval | `automated-test-passed` (1 functional refs) | `verified` (v0.3.3 targeted re-verified: D-02/D-03a fixed) | CSV still needs native BOM review |
+| `solidworks_review_active` | Export a preview BMP and a JSON review report for the active document | open document | `output_dir` / `basename` | `status`, `report_path`, `evaluation`, `checks`, `previews`, `sketch_quality`, `manual_review_required`, `document` | **high** | full + host approval | none | `verified` (partial: D-11) | HIGH: writes preview and report files |
+
+### Save (2)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `solidworks_save_document` | Save the active document, optionally to another path | open document owned by this session | none / `path` | `status`, `success`, `document` | **high** | full + host approval | policy-layer reference only (37) | `verified` | HIGH: writes to disk |
+| `solidworks_pack_and_go` | Collect files into a protected output directory using native Pack and Go | open assembly or document | `output_dir` / `include_drawings`, `include_simulation_results`, `include_toolbox_components`, `include_suppressed`, `flatten`, `overwrite`, `fallback_policy` | `backend`, `document_count`, `status_codes`, `outputs`, `produced_count`, `manifest`, `success`, `status`, `stage`, `error_code`, `retryable`, `manual_review_required`, `limitations`, `native_backend`, `dependencies`, `component_audit`, `associated_drawings`, `audit_matrix`, `missing_dependencies`, `fallback_used`, `fallback_errors`, `options` | **high** | full + host approval | `automated-test-passed` (1 functional refs) | `failed` (D-13) | HIGH: writes many files; the implementation is named native Pack and Go wire function |
+
+### DFM (3)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cadstudio_check_dfm` | Run whitelisted DFM checks for machining, sheet metal, laser cutting or 3D printing | structured JSON request | `input_path`, `output_path` / `process`, `profile_paths`, `brep_evidence_path` | `kind`, `type`, `format`, `path`, `exists` | **high** | full + host approval | none | `blocked` — Same as write_open_format: the NeutralCadDoc… | Whitelisted rules, not a full DFM certification |
+| `cadstudio_check_routing` | Review neutral routing topology, bend radii, clearances, supports and BOM evidence | neutral routing topology | `input_path`, `output_path` / none | `status`, `stage`, `checks`, `artifacts`, `manual_review_required`, `retryable`, `error_code` | **high** | full + host approval | none | `blocked` — routing_document_invalid, and routing prefli… | Neutral topology review, not SolidWorks Routing entities |
+| `cadstudio_routing_preflight` | Probe Routing type libraries, add-in registration and licence evidence | none | none / none | `backend`, `status`, `stage`, `solidworks`, `addins`, `blockers`, `retryable`, `error_code`, `error` | **read** | read-only+ | policy-layer reference only (1) | `verified` | Probes only; creates no routes |
+
+### FEA (4)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cadstudio_fea_preflight` | Discover approved CalculiX or Elmer solver executables; runs nothing | none | none / `solver` | `status`, `error_code`, `message` | **read** | read-only+ | policy-layer reference only (1) | `verified` | Discovers solvers only |
+| `cadstudio_prepare_fea` | Generate a versioned CalculiX .inp from a structured FEA 1.0 request | structured FEA 1.0 request | `input_path`, `output_dir` / `solver` | `status`, `stage`, `checks`, `artifacts`, `manual_review_required`, `retryable`, `error_code`, `message`, `solver` | **high** | full + host approval | none | `blocked` — ValueError: the FEA request contains a disal… | Writes .inp; solves nothing |
+| `cadstudio_run_fea` | Run a structured FEA 1.0 request through an approved local solver | approved local solver | `input_path`, `output_dir` / `timeout_seconds` | `executable`, `source`, `solver`, `manual_review_required`, `limitations` | **high** | full + host approval | none | `blocked` — fea_invalid_request | Depends on an approved solver; not machine-verified |
+| `cadstudio_run_fea_convergence` | Compare displacement and stress convergence across 3-8 CalculiX meshes | 3-8 meshes and a solver | `input_path`, `output_dir` / `timeout_seconds_per_case` | `retryable`, `message`, `id`, `status`, `error_code`, `manual_review_required`, `from`, `changes`, `artifacts`, `limitations` | **high** | full + host approval | none | `blocked` — fea_convergence_invalid_request | Slow; not machine-verified |
+
+### Other (13)
+
+| Tool | What it does | Prerequisites | Parameters (required / optional) | Returns | Risk | Mode gate | Automated test | Real SolidWorks | Known limitation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cadstudio_resolve_backend` | Resolve available languages and backends for an operation ID without executing geometry | none | `operation_id` / `available_backends`, `available_requirements`, `revision`, `exact_api` | `status`, `operation_id`, `error_code`, `reason`, `revision`, `diagnostic_backends`, `review_required`, `missing_requirements`, `backend`, `accepted` | **read** | read-only+ | policy-layer reference only (1) | `blocked` — No public capability operation_id list | Query only; executes nothing |
+| `solidworks_addin_host_status` | Check add-in assemblies, exact registration scope and blockers | none | none / `assembly_path` | `status`, `error_code`, `assembly`, `code`, `message`, `capability_level`, `addin_guid`, `assembly_exists`, `assembly_bytes`, `type_library` | **read** | read-only+ | none | `verified` | Read-only diagnostics; does not repair registration |
+| `cadstudio_review_advanced_geometry` | Validate complex surface or mould plans and report pilot or blocked prerequisites | none | `input_path`, `output_path` / none | `schemaVersion`, `status`, `stage`, `checks[]`, `artifacts`, `path`, `producedThisRun`, `sha256`, `sizeBytes`, `manual_review_required`, `retryable`, `error_code`, `planId`, `operationTypes`, `backend`, `geometryProduced`, `generatedAt`, `limitations`, `reportPath` | **high** | full + host approval | none | `blocked` — Missing required output_path and no usable r… | Source reports backend_implementation=fail; pilot or blocked only |
+| `cadstudio_create_ocp_loft` | Create a real parametric loft with OCP and reopen the artifact for acceptance | none | `input_path`, `output_dir` / none | `kind`, `artifacts`, `manual_review_required`, `limitations` | **high** | full + host approval | none | `blocked` — ocp_loft_invalid_request | Needs the OCP runtime, otherwise ocp_runtime_missing |
+| `cadstudio_create_ocp_surface` | Create loft, sweep, sew or thicken surfaces from a strict structured request | none | `input_path`, `output_dir` / none | `backend`, `manual_review_required`, `error_code` | **high** | full + host approval | none | `blocked` — ocp_surface_invalid_request (operation suppo… | Needs the OCP runtime; no arbitrary expressions |
+| `solidworks_connect` | Connect to a running SolidWorks or start one and report document state | SolidWorks installed | none / `visible`, `wait_seconds`, `start_if_needed` | `status`, `revision`, `active_document` | **write** | standard+ | `automated-test-passed` (`v033_remediation_test.py`) | `verified` (v0.3.3 targeted re-verified: D-01 fixed) | Starts a SolidWorks process under `standard`/`full`: visible side effect |
+| `solidworks_health_check` | Check Python dependencies, COM registration and an optional live connection | none | none / `start_solidworks`, `check_motion_type_library` | `status`, `checks`, `issues` | **read** | read-only+ | `automated-test-passed` (2 functional refs) | `verified` | Environment diagnostics only |
+| `solidworks_recover` | Diagnose a blocked SolidWorks session, optionally closing blocking dialogs | none | none / `dismiss_dialogs`, `probe_timeout_seconds` | `status`, `probe`, `next_step` | **high** | full + host approval | `automated-test-passed` (3 functional refs) | `known-limitation` | Can close blocking dialogs; check before use |
+| `design_spec_validate` | Validate design-spec JSON only; never touches SolidWorks | offline, no SolidWorks | `spec_path` / none | `status`, `errors`, `warnings`, `source_path` | **read** | read-only+ | policy-layer reference only (2) | `failed` (D-09) | Validates JSON structure and references only |
+| `solidworks_generate_drawing` | Create a drawing from DrawingSpec v1 with PDF, preview and a machine review report | active part/assembly plus DrawingSpec | `spec_path`, `output_dir` / `drawing_filename`, `overwrite` | `status`, `stage`, `error_code`, `message`, `manual_review_required` | **high** | full + host approval | `automated-test-passed` (11 functional refs) | `blocked` — DRAWING_SPEC_SCHEMA_INVALID: schema_version … | HIGH: writes drawing, PDF and preview files |
+| `solidworks_review_drawing` | Open a drawing and review DrawingSpec, layout, dimensions, holes, slots and PDF evidence | existing .SLDDRW plus DrawingSpec | `drawing_path`, `spec_path`, `output_dir` / `pdf_path`, `basename` | `status`, `drawingPath`, `structure`, `previews`, `review`, `manual_review_required`, `reportPath` | **high** | full + host approval | `automated-test-passed` (6 functional refs) | `blocked` — Needs an existing .SLDDRW file | HIGH: writes review evidence |
+| `solidworks_inspect_drawing` | Read drawing sheets, views, dimensions, annotations and table structure and emit preview evidence | existing .SLDDRW path | `drawing_path`, `output_dir` / `basename`, `paper_size_hint` | `status`, `drawingPath`, `structure`, `previews`, `manual_review_required`, `reportPath` | **high** | full + host approval | `automated-test-passed` (6 functional refs) | `blocked` — Needs an existing .SLDDRW file | Reads structure; the preview output is a file |
+| `cadstudio_read_artifact` | Return an inline PNG preview or hash-verified chunks for an artifact id | artifact published by another tool | `artifact_id` / `offset`, `max_bytes`, `as_preview` | `as_preview`, `sha256`, `total_bytes`, `offset`, `next_offset`, `encoding`, `data` | **read** | read-only+ | `automated-test-passed` (1 functional refs) | `blocked` — FileNotFoundError: no matching artifact in t… | Inline size limit; larger artifacts need chunking |
+
+## What is deliberately not here
+
+- No tool performs a geometric boolean on arbitrary imported bodies except where a specific tool says so; there is no universal "do anything" tool.
+- There is no sandbox around SolidWorks itself: a high-risk tool that is approved runs with the same rights as the user's SolidWorks session.
+- The matrix does not claim feature parity with the SolidWorks UI. Many everyday operations (sheet metal, weldments, surfaces beyond OCP loft/surface, CAM) have no tool at all.

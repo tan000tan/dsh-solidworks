@@ -103,6 +103,47 @@ class V032CadRemediationTests(unittest.TestCase):
 
         self.assertIsNone(sw_part.shell(FailShellModel(), 0.002))
 
+    def test_03b_shell_vt_void_none_requires_feature_tree_growth(self):
+        """D-04: sldworks.tlb 中 InsertFeatureShell 返回 VT_VOID(None)，仅特征树确有新增才成功。"""
+        f_shell = _FakeFeature("抽壳1", "Shell")
+        f_boss_only = _FakeFeature("凸台-拉伸1", "Extrusion", None)
+        f_boss_and_shell = _FakeFeature("凸台-拉伸1", "Extrusion", next_feat=f_shell)
+
+        class VtVoidShellModel:
+            def __init__(self, grow: bool):
+                self.grow = grow
+                self.rebuilt = False
+                self._after_insert = False
+
+            def ClearSelection2(self, _):
+                return True
+
+            def EditRebuild3(self):
+                self.rebuilt = True
+                return True
+
+            def FirstFeature(self):
+                if self._after_insert and self.grow:
+                    return f_boss_and_shell
+                return f_boss_only
+
+            def FeatureByName(self, name):
+                return f_shell if (self.grow and name == "抽壳1") else None
+
+            def InsertFeatureShell(self, _t, _o):
+                self._after_insert = True
+                return None  # COM VT_VOID
+
+        ok_model = VtVoidShellModel(grow=True)
+        res_ok = sw_part.shell(ok_model, 0.002)
+        self.assertTrue(ok_model.rebuilt)
+        self.assertIs(res_ok, f_shell)
+
+        fail_model = VtVoidShellModel(grow=False)
+        res_fail = sw_part.shell(fail_model, 0.025)
+        self.assertTrue(fail_model.rebuilt)
+        self.assertIsNone(res_fail)
+
     def test_04_add_mate5_checked_blocks_suspect_false_success_when_tree_unchanged(self):
         """D-02/D-03: 当 AddMate5 返回非空代理但特征树 MateGroup 数量未增加时，禁止假成功。"""
         orig_variant = sw_assembly.VARIANT

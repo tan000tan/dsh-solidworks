@@ -25,12 +25,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
-import { discover } from '../lib/discover.js';
+import { discover, formatSetupCommand } from '../lib/discover.js';
 import { McpClient } from '../lib/mcp.js';
 import { Policy } from '../lib/policy.js';
 import { unwrapParams, wrapArgs } from '../lib/schema.js';
+import { getDshDesktopProfileDir } from '../scripts/dsh_adapter.js';
 
 const PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(path.join(PLUGIN_ROOT, 'package.json'), 'utf8'));
@@ -39,7 +40,7 @@ const VERSION = pkg.version;
 const argv = process.argv.slice(2);
 
 /** Flags that consume the following token as their value (C-CLI-01). */
-const VALUE_FLAGS = new Set(['--mode', '--server', '--python', '--json-args', '--root', '--allow']);
+const VALUE_FLAGS = new Set(['--mode', '--server', '--python', '--json-args', '--root', '--allow', '--profile']);
 
 /**
  * The command is the first token that is neither a flag nor a flag's value.
@@ -66,6 +67,72 @@ const json = flags.has('--json');
 const modeArg = valueOf('--mode');
 const serverArg = valueOf('--server');
 const pythonArg = valueOf('--python');
+const profileArg = valueOf('--profile');
+const useProfile = flags.has('--profile') || Boolean(profileArg);
+
+/**
+ * Read what the DSH desktop profile actually configures for this plugin.
+ * `doctor` used to ignore the profile completely, so a dangling `pythonPath`
+ * (or a narrowed `mode`) produced "ready: yes" while the host itself refused to
+ * load the plugin. This makes the check honest: the same config the host reads.
+ */
+function readProfileConfig() {
+  const dir = profileArg ? path.resolve(profileArg) : getDshDesktopProfileDir();
+  const patchFile = path.join(dir, 'cordis.patch.yml');
+  const result = {
+    profileDir: dir,
+    patchFile,
+    installedAsBundle: false,
+    dependencySpec: null,
+    patchEntry: false,
+    mode: null,
+    pythonPath: null,
+    toolTimeoutMs: null,
+    issues: [],
+  };
+
+  // A plugin installed through DSH (market panel or `dsh plugin add`) is a *bundle*:
+  // it appears in package.json dependencies + dsh.profile.bundles and DSH applies the
+  // package's own dsh.bundle.patch. That is the normal path and needs no patch entry.
+  const pkgFile = path.join(dir, 'package.json');
+  if (existsSync(pkgFile)) {
+    try {
+      const profilePkg = JSON.parse(readFileSync(pkgFile, 'utf8'));
+      result.dependencySpec = profilePkg.dependencies?.['dsh-solidworks'] ?? null;
+      result.installedAsBundle = Boolean(profilePkg.dsh?.profile?.bundles?.includes('dsh-solidworks'));
+    } catch (err) {
+      result.issues.push(`profile package.json is not valid JSON: ${err.message}`);
+    }
+  }
+
+  if (!existsSync(patchFile)) {
+    if (!result.installedAsBundle) result.issues.push(`Neither a profile bundle nor a cordis.patch.yml entry found in ${dir}.`);
+    return result;
+  }
+  const lines = readFileSync(patchFile, 'utf8').split(/\r?\n/);
+  const indentOf = (line) => line.length - line.trimStart().length;
+  const start = lines.findIndex((line) => /^[ \t]*-[ \t]*id:[ \t]*dsh-solidworks[ \t]*$/.test(line));
+  if (start < 0) {
+    if (!result.installedAsBundle) result.issues.push('cordis.patch.yml has no "dsh-solidworks" entry and the plugin is not a profile bundle.');
+    return result;
+  }
+  result.patchEntry = true;
+  const baseIndent = indentOf(lines[start]);
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.trim() === '') continue;
+    if (indentOf(line) <= baseIndent) break;
+    const m = line.trim().match(/^(mode|pythonPath|toolTimeoutMs):[ \t]*(.+)$/);
+    if (!m) continue;
+    const raw = m[2].trim().replace(/^'(.*)'$/, '$1').replace(/^"(.*)"$/, '$1');
+    if (m[1] === 'toolTimeoutMs') result.toolTimeoutMs = Number(raw);
+    else result[m[1]] = raw;
+  }
+  if (result.pythonPath && !existsSync(result.pythonPath)) {
+    result.issues.push(`configured pythonPath does not exist: ${result.pythonPath} — the host will fail to load the plugin with PYTHON_INVALID.`);
+  }
+  return result;
+}
 
 function valueOf(flag) {
   const index = argv.indexOf(flag);
@@ -127,24 +194,50 @@ async function main() {
 }
 
 async function doctor() {
-  const config = { pythonPath: pythonArg ?? null, serverScript: serverArg ?? null };
+  const profile = useProfile ? readProfileConfig() : null;
+  const effectivePython = pythonArg ?? profile?.pythonPath ?? null;
+  const config = { pythonPath: effectivePython, serverScript: serverArg ?? null };
   const found = await discover({ pluginRoot: PLUGIN_ROOT, config, env: process.env });
   const solidworks = await solidworksInstallation();
+  const comDeps = Boolean(found.ok && found.python?.comDeps);
+  const coreReady = Boolean(found.ok && solidworks.installed);
+  const readiness = {
+    core: coreReady,
+    full: coreReady && comDeps,
+    missing: [],
+  };
+  if (coreReady && !comDeps) {
+    readiness.missing.push('comtypes (optional COM dependency) — advanced geometry/surface tools may fail without it; run: npm run setup -- --optional');
+  }
+  if (profile) {
+    for (const issue of profile.issues) readiness.missing.push(issue);
+  }
+  const effectiveConfig = {
+    source: pythonArg ? 'cli --python' : profile?.pythonPath ? 'DSH profile pythonPath' : 'auto-discovery',
+    pythonPath: effectivePython,
+    mode: profile?.mode ?? null,
+    toolTimeoutMs: profile?.toolTimeoutMs ?? null,
+  };
   const report = {
     plugin: { name: 'dsh-solidworks', version: VERSION, root: PLUGIN_ROOT },
     host: { platform: process.platform, arch: process.arch, node: process.versions.node, os: `${os.type()} ${os.release()}` },
     python: found.ok ? found.python : { state: 'error', message: found.message },
     server: found.ok ? { script: found.serverScript, cwd: found.serverCwd } : { state: 'error' },
     solidworks,
-    ready: found.ok && solidworks.installed,
-    nextSteps: nextSteps(found, solidworks),
+    profile,
+    effectiveConfig,
+    readiness,
+    ready: coreReady,
+    readyFull: readiness.full,
+    nextSteps: nextSteps(found, solidworks, readiness, profile),
   };
   const human = [
     `dsh-solidworks ${VERSION} (${process.platform}/${process.arch}, node ${process.versions.node})`,
     `python : ${found.ok ? `${found.python.command} (${found.python.version})` : `NOT USABLE — ${found.message}`}`,
+    `         config source: ${effectiveConfig.source}${effectiveConfig.mode ? `, mode: ${effectiveConfig.mode}` : ''}`,
     `server : ${found.ok ? found.serverScript : 'not resolved'}`,
     `SolidWorks: ${solidworks.installed ? `installed${solidworks.version ? ` ${solidworks.version}` : ''}` : 'NOT DETECTED'}`,
-    `ready  : ${report.ready ? 'yes' : 'no'}`,
+    `ready  : ${report.ready ? 'yes' : 'no'} (core) / ${report.readyFull ? 'yes' : 'no'} (full: COM dependencies present)`,
     ...report.nextSteps.map(step => `  -> ${step}`),
   ].join('\n');
   out(report, human);
@@ -162,7 +255,13 @@ async function listTools() {
     command: found.python.command,
     args: [...found.python.args, found.serverScript],
     cwd: found.serverCwd,
-    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
+    env: {
+      PYTHONUTF8: '1',
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONDONTWRITEBYTECODE: '1',
+      DSH_POLICY_MODE: mode,
+      DSH_ALLOW_LAUNCH_SW: '0',
+    },
   });
   let init;
   let tools;
@@ -210,7 +309,13 @@ async function selftest() {
     command: found.python.command,
     args: [...found.python.args, found.serverScript],
     cwd: found.serverCwd,
-    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
+    env: {
+      PYTHONUTF8: '1',
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONDONTWRITEBYTECODE: '1',
+      DSH_POLICY_MODE: 'read-only',
+      DSH_ALLOW_LAUNCH_SW: '0',
+    },
     timeoutMs: 120_000,
   });
   try {
@@ -286,7 +391,15 @@ async function callTool() {
     command: found.python.command,
     args: [...found.python.args, found.serverScript],
     cwd: found.serverCwd,
-    env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' },
+    env: {
+      PYTHONUTF8: '1',
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONDONTWRITEBYTECODE: '1',
+      DSH_POLICY_MODE: mode,
+      DSH_ALLOW_LAUNCH_SW: mode === 'read-only' ? '0' : '1',
+      DSH_ALLOWED_ROOTS: JSON.stringify(policy.allowedRoots ?? []),
+      DSH_DEFAULT_CWD: process.cwd(),
+    },
     timeoutMs: 300_000,
   });
   try {
@@ -340,12 +453,16 @@ function regQuery(key) {
   });
 }
 
-function nextSteps(found, solidworks) {
+function nextSteps(found, solidworks, readiness = null, profile = null) {
   const steps = [];
   if (!found.ok) {
     if (found.code === 'PYTHON_NOT_FOUND' || found.code === 'PYTHON_INVALID') {
-      steps.push('Install Python 3.10+ (python.org, 64-bit) and run: <python> -m pip install "mcp>=1.2" httpx pydantic ezdxf');
-      steps.push('Then re-run: dsh-solidworks doctor --python "C:\\path\\to\\python.exe"');
+      const setupCmd = formatSetupCommand(PLUGIN_ROOT);
+      steps.push(`请运行一键初始化命令创建插件隔离 .venv 并安装 mcp/pywin32（不修改系统 Python）/ Run one-line isolated setup: ${setupCmd}`);
+      steps.push('或手动指定已安装依赖的 64 位 Python 3.10+ / Or specify an existing interpreter: dsh-solidworks doctor --python "C:\\path\\to\\python.exe"');
+      if (profile?.pythonPath) {
+        steps.push(`The DSH profile pins pythonPath to ${profile.pythonPath}; fix or remove that pin in cordis.patch.yml, or point it at a working interpreter.`);
+      }
     } else if (found.code === 'SERVER_SCRIPT_MISSING') {
       steps.push('The bundled server is missing from this install; reinstall the plugin or set serverScript to <solidworks-automation-skill>\\mcp-server\\server.py');
     } else {
@@ -353,6 +470,9 @@ function nextSteps(found, solidworks) {
     }
   }
   if (!solidworks.installed) steps.push('Install or repair SolidWorks 2023-2026, then start it once so COM registration completes.');
+  if (readiness) {
+    for (const missing of readiness.missing) steps.push(missing);
+  }
   if (steps.length === 0) steps.push('Ready: enable mode "standard" in plugin settings to start modelling, or run dsh-solidworks selftest.');
   return steps;
 }

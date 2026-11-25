@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-11-25
+
+Productization, documentation-truth pass, and targeted blocking CAD/CLI fixes ahead of wider promotion. No tool was added or removed; the 71-tool registry is unchanged.
+
+### Fixed (Targeted v0.3.3 Remediation — Re-verified on SolidWorks 2026 SP4.1)
+- **`D-01` Cold-start SolidWorks launch propagation and gating (`bin/dsh-solidworks.js`, `server.py`)**:
+  - `bin/dsh-solidworks.js` (`callTool`, `listTools`, `selftest`) now forwards `DSH_POLICY_MODE`, `DSH_ALLOW_LAUNCH_SW`, `DSH_ALLOWED_ROOTS`, and `DSH_DEFAULT_CWD` to the spawned Python MCP server (matching `lib/index.js`).
+  - `SolidWorksConnectInput` gains `start_if_needed` (default `True`, `wait_seconds` up to `120`); `solidworks_connect` enforces fail-closed `allow_launch=False` under `read-only` or `DSH_ALLOW_LAUNCH_SW=0` and passes `allow_launch=bool(params.start_if_needed)` under `standard`/`full` (`DSH_ALLOW_LAUNCH_SW=1`). `solidworks_health_check(start_solidworks=true)` now passes `allow_launch=True, wait_seconds=15` after passing the policy gate.
+- **`D-02` `open_document` `ActiveDoc` switching (`sw_connect.py`, `sw_assembly.py`)**:
+  - Added `activate_document()` and `activate: bool = True` to `open_document()`. Reusing an already-open document (`GetOpenDocumentByName`) and opening via `OpenDoc6`/`LoadFile4` now invoke `ActivateDoc3` (with `ActivateDoc2`/dynamic proxy fallback) and verify `sw.ActiveDoc`. `sw_assembly.add_component` preloads pass `activate=False`.
+- **`D-03a` Assembly component ownership & mate follow-up activation (`server.py`)**:
+  - `solidworks_add_component` registers components residing inside `DSH_ALLOWED_ROOTS` via `register_owned_document()` and re-activates the parent assembly; `solidworks_add_coincident_mate`, `solidworks_add_distance_mate`, and `solidworks_add_concentric_mate` re-activate the parent assembly after mate solve so follow-up calls (`mass_properties`, `export_assembly_bom`) succeed on the assembly without hitting `DEF-SEC-01`. (`D-03b` cross-process CLI ledger persistence remains deferred to `v0.4.0`.)
+- **`D-04` `solidworks_shell` COM `VT_VOID` (`None`) false-failure (`sw_part.py`)**:
+  - Real SolidWorks 2026 `sldworks.tlb` defines `IModelDoc2::InsertFeatureShell` as `VT_VOID` (which returns `None` in Python COM). `sw_part.shell()` now only treats explicit `False` as immediate failure; on `None` or `True`, it runs `EditRebuild3()` and verifies `_snapshot_feature_names()` delta growth so valid shells return `feature_created=True` while failing shells (e.g. `50 mm` wall on a `40 mm` box) still return `feature_created=False`.
+- **DSH bundled Python mitigation & bundle-mode `cordis.patch.yml` guard (`lib/discover.js`, `bin/dsh-solidworks.js`, `scripts/dsh_adapter.js`, `scripts/setup.js`)**:
+  - Kept default silent `autoBootstrap` strictly disabled on load; `PYTHON_NOT_FOUND` / `PYTHON_INVALID` and `doctor` `nextSteps` now print plain bilingual instructions with a one-line copyable `cd /d "<pluginRoot>" && npm run setup` command using the actual resolved `<pluginRoot>`.
+  - Added `isInstalledAsDshBundle()` so `scripts/setup.js` skips writing redundant `cordis.patch.yml` entries when running inside a DSH bundle install (`dsh.profile.bundles` + `<profile>/node_modules/dsh-solidworks`, unless `--force-patch`).
+- **Offline test portability (`tests/d02_d12_d13_config_and_discovery_test.mjs`)**:
+  - Decoupled the `D-17` `COMDEP` test from host `.dsh` Python state via deterministic `_probePython` injection plus fail-closed `PYTHON_INVALID` handling when host runtime deps are absent.
+
+### Fixed (Stage 3 Productization)
+- **`solidworks_add_coincident_mate` was registered but unusable.** In the vendored snapshot
+  `vendor/solidworks-automation-skill/mcp-server/server.py` the `@mcp.tool(...)` decorator had
+  drifted onto the private helper `_mate_delta_payload`, so the advertised tool resolved to a
+  function with the wrong signature. The decorator is back on
+  `def solidworks_add_coincident_mate(...)` (upstream `d8b9547` layout). Regression guard:
+  `tests/tool_registry_integrity_test.py`.
+- **Re-running `setup` / `upgrade` silently dropped user security configuration.** Rewriting the
+  profile entry only kept `mode` / `pythonPath` / `toolTimeoutMs`, discarding `auditLog`,
+  `allow`, `deny`, `allowedRoots`, `grantTtlMs`, `challengeTtlMs`, `customTiers`.
+  `scripts/dsh_adapter.js` now merges the existing `config:` block and only replaces the keys it
+  manages (`BUG-0004`), covered by `tests/dsh_adapter_scripts.test.js`.
+- **`doctor` reported `ready: true` while COM dependencies were missing** and never read the
+  profile's real configuration, so a dangling `pythonPath` looked healthy while the host would
+  refuse to load the plugin (`PYTHON_INVALID`). `bin/dsh-solidworks.js` now splits
+  `readiness.core` / `readiness.full` (`readyFull`), reads the installed profile entry
+  (`--profile`, bundle list plus `cordis.patch.yml`), reports the effective configuration source,
+  and surfaces dangling paths in `nextSteps`.
+- `uninstall.bat` launched the uninstaller without confirmation when double-clicked; it now
+  prints the deletion scope and requires typing `y` (arguments are still forwarded verbatim).
+
+### Changed
+- README (EN/ZH) rewritten as a mirrored, non-marketing first screen: what it is, what it does,
+  requirements, one install entry point, permission model, current verification status, known
+  limitations, documentation map, feedback channels. The previous "enterprise-grade",
+  "Zero-Friction", "Zero-Trust", "Double-Precision Physical Verification" claims are gone.
+- New detailed docs, each with an English/Chinese pair: `INSTALL.md` / `docs/INSTALL.zh.md`,
+  `docs/ADVANCED-CONFIG.md`, `docs/USER_GUIDE.md`, `docs/TROUBLESHOOTING.md`,
+  `docs/FEATURE_MATRIX.md`, `docs/verification.md`, plus `CONTRIBUTING.md`, `SECURITY.md`,
+  `SUPPORT.md` and their `docs/*.zh.md` counterparts.
+- `dsh-plugin.json` description/presentation/permissions now state that only 19 read-only tools
+  are published under the default `read-only` mode, that the ceiling is 71 tools, and that the
+  audit log is optional; `docs/locale/en.json` and `docs/locale/zh.json` no longer tell users to
+  self-authorize through `solidworks_confirm` (it always fails closed).
+- `PROVENANCE.md` rewritten from measured facts: 193 files / 2,436,053 bytes / tree digest
+  `928e10d99b7f6f601bb21bf2f1c0a7742d91fc62b9c2de75237ba07fd5bbafed`; 0 files byte-identical
+  to upstream `d8b9547`, 146 differ only by CRLF, 28 differ in content, 19 do not exist upstream.
+  `NOTICE.md` is now an explicit "superseded" pointer to `NOTICE` instead of contradicting it.
+- Added `.github/ISSUE_TEMPLATE/` (bug report, installation problem, real SolidWorks validation
+  report, feature request) with desensitisation requirements, and a documentation consistency
+  checker at `audit/promotion-phase/04-regression-validation/doc-check.mjs`.
+- `docs/verification.md` (and the new `docs/verification.zh.md`) rewritten as a bilingual,
+  evidence-based L1–L4 record: 71 tools reached on real hardware, 33 `verified` (7 partial),
+  13 `failed`, 24 `blocked`, 1 `known-limitation`, defects D-01…D-14; 20 top-level offline
+  suites / 202 assertions plus 44 Python suites / 336 cases. The older 66-tool evidence journal
+  is kept unchanged at `docs/archive/verification-2026-11-17-legacy.md`.
+- `docs/FEATURE_MATRIX.md` and `docs/FEATURE_MATRIX.zh.md` are now generated from the runtime
+  registry plus the real-SolidWorks run, and use explicit per-tool states
+  (`verified` / `failed` / `blocked` / `known-limitation`) instead of the previous blanket
+  "PRODUCTION_READY" labels.
+- Added `docs/market-submission.md`: records the DSH catalogue entry (updated to v0.3.2 via
+  `awesome-dsh-plugin#16343`, merged 2026-11-17), the remaining asset/description lag, and
+  the fact that the marketplace UI install path is still unverified.
+- `package.json` `files` allowlist now ships `INSTALL.md`, `CONTRIBUTING.md`, `SECURITY.md`,
+  `SUPPORT.md` and `NOTICE.md`, so an install from the published tarball carries the same
+  guidance as the repository.
+
 ## [0.3.2] - 2026-11-17
 
 ### CAD Remediation & False-Success Prevention

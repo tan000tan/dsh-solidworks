@@ -1,0 +1,88 @@
+name: Installation problem
+description: Setup, registration, dependency or first-run failure.
+title: "[install] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read `INSTALL.md` and `docs/TROUBLESHOOTING.md` first — most setup failures are covered there.
+
+        **Do NOT paste** passwords, tokens, licence keys, or full personal configuration files.
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      placeholder: "0.3.2"
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DeepSeek Harness version
+      placeholder: "0.1.7-rc.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: At which step did it fail?
+      options:
+        - Installing the plugin into a DSH profile (market / manual)
+        - `npm run setup` — Python environment or dependencies
+        - `npm run setup` — pywin32 / COM registration
+        - `npm run doctor` reports FAIL or WARN
+        - DSH starts but the plugin's tools do not appear
+        - Tool appears but first call fails
+        - Uninstall / upgrade
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Which Python did the installer pick or did you configure?
+      description: Path reported by `node bin/dsh-solidworks.js doctor --json` (`python`) or the `pythonPath` setting.
+      placeholder: "C:\\Users\\me\\AppData\\...\\python.exe (3.12.14)"
+    validations:
+      required: true
+  - type: input
+    id: sw
+    attributes:
+      label: SolidWorks version, and has it been launched manually at least once?
+      placeholder: "SolidWorks 2026 SP4.1 — yes"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2 x64"
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Exact error output
+      description: Copy the failing command and its output, redacted.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `node bin/dsh-solidworks.js doctor --json`
+      description: Redact personal paths if needed.
+      render: json
+    validations:
+      required: true
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What have you already tried?
+      options:
+        - label: Read INSTALL.md
+        - label: Read docs/TROUBLESHOOTING.md
+        - label: Ran `npm run doctor`
+        - label: Set `pythonPath` to a full 64-bit Python 3.10+ interpreter
+        - label: Retried installation from a clean state

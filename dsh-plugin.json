@@ -3,7 +3,7 @@
   "manifestVersion": "0.15",
   "id": "dsh-solidworks.solidworks",
   "name": "dsh-solidworks",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "license": "AGPL-3.0-only",
   "facets": {
     "host": {
@@ -41,7 +41,7 @@
       {
         "icon": "./docs/assets/icon.png",
         "title": "dsh-solidworks",
-        "description": "Drive a local SolidWorks desktop: 71 CAD tools for parts, assemblies, drawings, DFM checks, and FEA, gated by a read-only-by-default risk policy.",
+        "description": "Drive a local SolidWorks desktop through MCP: 71 CAD tools for parts, assemblies, drawings, DFM checks, and FEA, gated by a read-only-by-default risk policy (only 19 read-only tools are published until you raise the mode).",
         "locales": [
           "docs/locale/en.json",
           "docs/locale/zh.json"
@@ -147,10 +147,10 @@
         "platforms": ["win32"],
         "architectures": ["x64", "arm64"],
         "targets": ["win32-x64"],
-        "presentation": "71 CAD tools published on load; the set narrows to read-only under the default policy",
+        "presentation": "19 read-only tools published under the default read-only policy; up to 71 tools in full mode, with high-risk calls behind interactive host approval",
         "runtime": "Python 3 interpreter with the mcp package, plus a local SolidWorks desktop session",
         "tools": [],
-        "permissions": "Read-only by default; standard enables document edits; full enables save/export/close behind interactive human approval via DSH host UI (ctx.approval); solidworks_confirm self-approval is disabled; every call is audited"
+        "permissions": "Read-only by default; standard enables document edits; full enables save/export/close behind interactive human approval via DSH host UI (ctx.approval); solidworks_confirm self-approval is disabled; an optional audit log (auditLog) records accepted, refused, and failed calls"
       }
     ]
   },

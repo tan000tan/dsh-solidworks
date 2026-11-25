@@ -175,7 +175,7 @@ def add_component(asm_model, part_path, x=0, y=0, z=0, config_name="", sw=None):
         sw = sw or _active_solidworks_app()
         if sw is not None:
             try:
-                opened = open_document(sw, component_path, read_only=False, silent=True)
+                opened = open_document(sw, component_path, read_only=False, silent=True, activate=False)
                 if opened is None:
                     errors.append("OpenDoc6: 返回 None")
                 elif _activate_model_document(sw, asm_model):

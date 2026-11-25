@@ -1,0 +1,120 @@
+name: Bug report (tools / runtime)
+description: Something in the MCP server, a tool call, or the plugin runtime does not behave as documented.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please keep it factual — the maintainers cannot verify a report that mixes different plugin versions or environment states.
+
+        **Do NOT paste** passwords, API tokens, licence keys, full personal config files, private CAD models, or unredacted logs containing local paths you do not want public.
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Output of `node bin/dsh-solidworks.js version` (or the version shown in the DSH plugin market).
+      placeholder: "0.3.2"
+    validations:
+      required: true
+  - type: input
+    id: install-source
+    attributes:
+      label: How was it installed?
+      description: DSH plugin market / local `file:` tarball / `npm install` / other.
+      placeholder: "DSH plugin market"
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DeepSeek Harness version
+      placeholder: "dsh 0.1.7-rc.2"
+    validations:
+      required: true
+  - type: input
+    id: sw-version
+    attributes:
+      label: SolidWorks version and edition
+      description: Help → About SolidWorks. State whether the licence was activated on this machine.
+      placeholder: "SolidWorks 2026 SP4.1, Student Edition, activated"
+    validations:
+      required: true
+  - type: input
+    id: os-python
+    attributes:
+      label: Windows version / Python used by the plugin
+      description: Windows build and the Python that `node bin/dsh-solidworks.js doctor --json` reports as `python`.
+      placeholder: "Windows 11 24H2; Python 3.12.14 (DSH bundled runtime)"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Permission mode in use
+      options:
+        - read-only (default)
+        - standard
+        - full
+        - not sure
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool name(s) involved
+      description: Exact registered name, e.g. `solidworks_sketch_and_extrude`. Use `node bin/dsh-solidworks.js list-tools --mode full` to confirm.
+    validations:
+      required: false
+  - type: dropdown
+    id: verification-level
+    attributes:
+      label: Verification level of this report
+      description: Be honest here — it changes how the report is triaged.
+      options:
+        - Real SolidWorks session (real document, real COM)
+        - Automated test / mock only
+        - MCP layer only (no SolidWorks session involved)
+        - Not verified — observation from reading code or docs
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include the exact error message or tool response.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Call tool ... with arguments ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized log excerpt
+      description: Redact usernames, absolute paths and licence identifiers before pasting.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: I redacted personal paths, credentials and CAD content from this report.
+          required: true
+        - label: I am not claiming this was verified on real SolidWorks unless I selected that verification level above.
+          required: true

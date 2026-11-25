@@ -33,8 +33,8 @@ function walk(dir, out = []) {
 
 test('package.json declares the identity and the bundle patch the host needs', () => {
   assert.equal(pkg.name, 'dsh-solidworks');
-  assert.equal(pkg.version, '0.3.2');
-  assert.equal(manifest.version, '0.3.2');
+  assert.equal(pkg.version, '0.3.3');
+  assert.equal(manifest.version, '0.3.3');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
@@ -167,27 +167,34 @@ test('the vendored engine is complete and carries no build junk', () => {
 
 test('user-facing docs exist and state the tool count the code actually ships', () => {
   const total = Object.keys(RISK_TABLE).length;
-  for (const rel of ['README.md', 'README.zh.md', 'docs/verification.md', 'docs/market-submission.md']) {
+  for (const rel of ['README.md', 'README.zh.md', 'docs/verification.md', 'docs/verification.zh.md', 'docs/market-submission.md']) {
     assert.ok(has(rel), `${rel} must ship`);
     assert.ok(statSync(join(ROOT, rel)).size > 2000, `${rel} looks like a stub`);
   }
-  assert.ok(read('docs/verification.md').includes(String(total)), 'verification.md must quote the real tool count');
-
-  // Every suite on disk must be described in the evidence log, and the two docs must
-  // agree on the total, so adding a suite cannot silently leave the docs behind.
   const verification = read('docs/verification.md');
+  const verificationZh = read('docs/verification.zh.md');
+  assert.ok(verification.includes(String(total)), 'verification.md must quote the real tool count');
+  assert.ok(verificationZh.includes(String(total)), 'docs/verification.zh.md must quote the real tool count');
+
+  // Every suite on disk must be described in the evidence log (both languages), and the
+  // README must agree on the total, so adding a suite cannot silently leave the docs behind.
   const suites = readdirSync(join(ROOT, 'tests')).filter((file) => file.endsWith('.test.js')).sort();
   assert.ok(suites.length >= 7, `expected the seven suites on disk, found ${suites.length}`);
   for (const suite of suites) {
     assert.ok(verification.includes(suite), `docs/verification.md must describe the ${suite} suite`);
+    assert.ok(verificationZh.includes(suite), `docs/verification.zh.md must describe the ${suite} suite`);
   }
 
   const totalFrom = (text, pattern) => {
     const match = text.match(pattern);
     return match ? Number(match[1]) : null;
   };
-  const verificationTotal = totalFrom(verification, /合计\s*\*\*(\d+)\s*项断言\*\*/);
-  const readmeTotal = totalFrom(read('README.md'), /test:all`?:\s*(\d+)\s+assertions across/);
+  const verificationTotal =
+    totalFrom(verification, /Total\s*\*\*(\d+)\s*(?:assertions|tests)\*\*/i) ??
+    totalFrom(verificationZh, /合计\s*\*\*(\d+)\s*项断言\*\*/);
+  const readmeTotal =
+    totalFrom(read('README.md'), /test:all`?:\s*(\d+)\s+assertions across/) ??
+    totalFrom(read('README.zh.md'), /test:all`?[：:]\s*(\d+)\s*项断言/);
   assert.ok(Number.isInteger(verificationTotal), 'verification.md must state the total assertion count');
   assert.equal(readmeTotal, verificationTotal, `README.md (${readmeTotal}) and verification.md (${verificationTotal}) disagree on the assertion count`);
 
@@ -246,20 +253,50 @@ test('the vendor tree matches the paths the plugin resolves at runtime', () => {
 });
 
 test('the evidence log is internally consistent', () => {
-  const doc = read('docs/verification.md');
-  const ids = [...doc.matchAll(/^\|\s*E(\d+)\s*\|/gm)].map((m) => Number(m[1]));
-  assert.ok(ids.length >= 15, `expected E1..E17, found ${ids.length} rows`);
-  assert.deepEqual(ids, ids.map((_, i) => i + 1), 'evidence ids must run E1..En without gaps');
+  // The verification record is bilingual and must stay in sync: same defect ids, same L4
+  // verdict counts, same structure. The legacy E1..E21 journal is archived and not authoritative.
+  const en = read('docs/verification.md');
+  const zh = read('docs/verification.zh.md');
+
+  const defectIds = (text) => [...text.matchAll(/^\|\s*(D-\d+)\s*\|/gm)].map((m) => m[1]);
+  const enDefects = defectIds(en);
+  const zhDefects = defectIds(zh);
+  assert.ok(enDefects.length >= 10, `expected the L4 defect table, found ${enDefects.length} rows`);
+  assert.deepEqual(
+    enDefects,
+    enDefects.map((_, i) => `D-${String(i + 1).padStart(2, '0')}`),
+    'defect ids must run D-01..D-n without gaps',
+  );
+  assert.deepEqual(zhDefects, enDefects, 'the Chinese and English pages must list the same defects');
+
+  // The headline L4 counts must agree across languages.
+  const counts = (text) => {
+    const match = text.match(/(\d+)\s*(?:个\s*)?`verified`[^\n]*?(\d+)\s*(?:个\s*)?`failed`[^\n]*?(\d+)\s*(?:个\s*)?`blocked`/);
+    return match ? match.slice(1).map(Number) : null;
+  };
+  const enCounts = counts(en);
+  assert.ok(enCounts, 'verification.md must state verified/failed/blocked counts');
+  assert.deepEqual(counts(zh), enCounts, 'the Chinese page disagrees with the English one on L4 counts');
+  assert.equal(enCounts[0] + enCounts[1] + enCounts[2], 70, 'verified + failed + blocked must account for every tool except the known-limitation one');
 
   // Every command the log quotes must exist in the package.
-  for (const [, script] of doc.matchAll(/node (tests\/[\w.-]+|bin\/[\w.-]+)/g)) {
+  for (const [, script] of en.matchAll(/node (tests\/[\w.-]+|bin\/[\w.-]+)/g)) {
     assert.ok(has(script), `verification.md runs ${script}, which is not shipped`);
   }
+
+  // The English and Chinese pages must have the same section skeleton.
+  const sections = (text) => [...text.matchAll(/^##\s+(\d+)\./gm)].map((m) => m[1]);
+  assert.deepEqual(sections(zh), sections(en), 'verification.md and verification.zh.md must share section numbering');
 });
 
 test('NOTICE states the file count the vendor tree actually has', () => {
+  // __pycache__/.git are local build artifacts, never shipped (.gitignore + package.json files
+  // allowlist exclude them), so they must not be counted against the documented file total.
   const countFiles = (dir) => readdirSync(join(ROOT, dir), { withFileTypes: true })
-    .reduce((n, e) => n + (e.isDirectory() ? countFiles(join(dir, e.name)) : 1), 0);
+    .reduce((n, e) => {
+      if (e.isDirectory()) return e.name === '__pycache__' || e.name === '.git' ? n : n + countFiles(join(dir, e.name));
+      return n + 1;
+    }, 0);
 
   const actual = countFiles('vendor/solidworks-automation-skill');
   const said = Number(read('NOTICE').match(/Files\s*:\s*(\d+)/)?.[1]);

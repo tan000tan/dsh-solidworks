@@ -201,6 +201,8 @@ def _load_automation_modules() -> None:
 
         "open_document": connect.open_document,
 
+        "activate_document": connect.activate_document,
+
         "save_document": connect.save_document,
 
         "extrude_boss": part.extrude_boss,
@@ -749,7 +751,9 @@ class SolidWorksConnectInput(BaseInput):
 
     visible: bool = Field(default=True, description="Whether a newly started SolidWorks instance should be visible.")
 
-    wait_seconds: int = Field(default=5, ge=0, le=60, description="Seconds to wait after starting SolidWorks.")
+    wait_seconds: int = Field(default=5, ge=0, le=120, description="Seconds to wait after starting SolidWorks.")
+
+    start_if_needed: bool = Field(default=True, description="Whether to launch SolidWorks if not already running (ignored/forced False in read-only mode).")
 
     response_format: ResponseFormat = Field(default=ResponseFormat.JSON, description="Return format.")
 
@@ -3889,7 +3893,19 @@ def solidworks_connect(params: SolidWorksConnectInput = SolidWorksConnectInput()
 
     def op():
 
-        sw, model = connect_solidworks(wait_seconds=params.wait_seconds, visible=params.visible)
+        policy_mode = os.environ.get("DSH_POLICY_MODE", "").strip().lower()
+        env_launch = os.environ.get("DSH_ALLOW_LAUNCH_SW", "0").strip().lower()
+        if policy_mode == "read-only" or env_launch == "0":
+            allow_launch = False
+        else:
+            launch_allowed_by_env = env_launch in {"1", "true", "yes"}
+            allow_launch = bool(params.start_if_needed) and launch_allowed_by_env
+
+        sw, model = connect_solidworks(
+            wait_seconds=params.wait_seconds,
+            visible=params.visible,
+            allow_launch=allow_launch,
+        )
 
         return {
 
@@ -3978,7 +3994,7 @@ def solidworks_health_check(params: SolidWorksHealthCheckInput = SolidWorksHealt
 
             _load_automation_modules()
 
-            sw, model = connect_solidworks(wait_seconds=1)
+            sw, model = connect_solidworks(wait_seconds=15, allow_launch=True)
 
             checks["solidworks_revision"] = get_com_member(sw, "RevisionNumber")
 
@@ -6217,6 +6233,19 @@ def solidworks_add_component(params: SolidWorksAddComponentInput) -> str:
 
         resolve_component(component)
 
+        comp_path = _expand_path(params.path)
+        if validate_path_against_allowed_roots(comp_path):
+            register_owned_document(comp_path)
+        try:
+            comp_model = get_com_member(component, "GetModelDoc2")
+            if comp_model is not None:
+                comp_model_path = str(get_com_member(comp_model, "GetPathName") or "").strip()
+                if not comp_model_path or validate_path_against_allowed_roots(comp_model_path):
+                    register_owned_document(comp_model)
+        except Exception:
+            pass
+        activate_document(sw, asm)
+
         fixed = None
 
         if params.fix_component:
@@ -6456,6 +6485,15 @@ def solidworks_close_documents(params: SolidWorksCloseDocumentsInput) -> str:
 
 
 
+def _mate_delta_payload(before_mates, after_mates):
+    before_names = [m.get("name") for m in before_mates if m.get("name")]
+    after_names = [m.get("name") for m in after_mates if m.get("name")]
+    added_names = [n for n in after_names if n not in before_names]
+    if not added_names and len(after_mates) > len(before_mates):
+        added_names = [m.get("name") for m in after_mates[len(before_mates):] if m.get("name")]
+    return added_names
+
+
 @mcp.tool(
 
     name="solidworks_add_coincident_mate",
@@ -6475,15 +6513,6 @@ def solidworks_close_documents(params: SolidWorksCloseDocumentsInput) -> str:
     },
 
 )
-
-def _mate_delta_payload(before_mates, after_mates):
-    before_names = [m.get("name") for m in before_mates if m.get("name")]
-    after_names = [m.get("name") for m in after_mates if m.get("name")]
-    added_names = [n for n in after_names if n not in before_names]
-    if not added_names and len(after_mates) > len(before_mates):
-        added_names = [m.get("name") for m in after_mates[len(before_mates):] if m.get("name")]
-    return added_names
-
 
 def solidworks_add_coincident_mate(params: SolidWorksPlaneCoincidentMateInput) -> str:
 
@@ -6516,6 +6545,8 @@ def solidworks_add_coincident_mate(params: SolidWorksPlaneCoincidentMateInput) -
             name=params.mate_name,
 
         )
+
+        activate_document(_sw, asm)
 
         after_mates = collect_mate_feature_summary(asm)
 
@@ -6620,6 +6651,8 @@ def solidworks_add_distance_mate(params: SolidWorksPlaneDistanceMateInput) -> st
             name=params.mate_name,
 
         )
+
+        activate_document(_sw, asm)
 
         after_mates = collect_mate_feature_summary(asm)
 
@@ -6726,6 +6759,8 @@ def solidworks_add_concentric_mate(params: SolidWorksConcentricMateInput) -> str
             lock_rotation=params.lock_rotation,
 
         )
+
+        activate_document(_sw, asm)
 
         after_mates = collect_mate_feature_summary(asm)
 

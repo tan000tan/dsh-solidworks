@@ -1,9 +1,9 @@
 {
   "title": "SolidWorks",
-  "description": "Drive a local SolidWorks desktop: 66 CAD tools for parts, assemblies, drawings, DFM checks, and FEA. Read-only by default; saves and exports require an explicit one-shot approval.",
+  "description": "Drive a local SolidWorks desktop through MCP: 71 CAD tools for parts, assemblies, drawings, DFM checks, and FEA. Read-only by default - only 19 read-only tools are published until you raise the plugin mode.",
   "tags": ["solidworks", "cad", "mechanical", "3d", "mcp"],
   "entry": {
-    "summary": "SolidWorks tools run against your own desktop session. Start with solidworks_status, then solidworks_connect; read-only inspection is safe, modelling needs policy mode \"standard\", and saving/exporting needs mode \"full\" plus a solidworks_confirm grant.",
-    "setup": "Requires Windows, a licensed SolidWorks 2023-2026 desktop, and a Python 3.10+ interpreter with the mcp package. Run `node bin/dsh-solidworks.js doctor` to check all three."
+    "summary": "SolidWorks tools run against your own desktop session. Under the default read-only mode only 19 read-only inspection tools are published; switch the plugin mode to \"standard\" for modelling or \"full\" for save/export/close. High-risk calls require an interactive approval prompt in the DSH host UI - the plugin cannot approve itself (solidworks_confirm is diagnostic-only and always refused).",
+    "setup": "Requires Windows x64, a licensed SolidWorks desktop (real-machine validated only on SolidWorks 2026 SP4.1; 2020-2025 are claimed but untested), and a Python 3.10+ x64 interpreter with the mcp and pywin32 packages. Run `node bin/dsh-solidworks.js doctor --json` to check the interpreter and SolidWorks; add `--profile` to also check how the plugin is configured in your installed DSH profile."
   }
 }

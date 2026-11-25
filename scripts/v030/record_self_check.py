@@ -14,7 +14,7 @@ self_check = {
     "questions": [
         {"id": 1, "q": "我是否理解本任务的目标是工程交付而非审计报告？", "a": "是。目标是完成 v0.3.0 候选版本工程开发、重构、安装产品化、实机验证与证据打包，绝不以纸面报告代替代码和构建。", "confirmed": True},
         {"id": 2, "q": "我是否理解最终用户是普通 DSH 用户，不能假设其具备开发环境？", "a": "是。最终用户仅需安装 DSH 插件并具备正版 SolidWorks，无需手动配置 Python/pip/Node/pnpm/虚拟环境/COM注册。", "confirmed": True},
-        {"id": 3, "q": "我是否核实了当前工作目录、Git 状态、分支和 upstream？", "a": "是。工作目录 D:\\Agent工作区\\DeepSeek Harness工作区\\dsh-solidworks-plugin，基于 v0.2.0 (9cd64db) 创建 feat/v0.3.0-phase1-6 分支。", "confirmed": True},
+        {"id": 3, "q": "我是否核实了当前工作目录、Git 状态、分支和 upstream？", "a": "是。工作目录 <PROJECT_ROOT>，基于 v0.2.0 (9cd64db) 创建 feat/v0.3.0-phase1-6 分支。", "confirmed": True},
         {"id": 4, "q": "我是否已建立当前状态的完整备份/快照，并验证快照可用？", "a": "是。Git baseline 已锁定在 9cd64db (v0.2.0)，所有历史验收归档保留在 audit/、audit_round2_final/ 及项目备份/ 中。", "confirmed": True},
         {"id": 5, "q": "我是否确认了绝对不能 touch 的文件和目录清单？", "a": "是。严格不 touch：audit_round2_final/、audit/、项目备份/、已发布的 v0.2.0 tag/commit、外部用户进程及工作区外非授权文件。", "confirmed": True},
         {"id": 6, "q": "我是否理解六个阶段的先后依赖关系？", "a": "是。严格遵守阶段依赖：先1(事实审计)后2(架构隔离)；先3(安装产品化)后4(CAD功能验证)；先5(安全审批)后6(性能体验优化)，阶段6完成并经过交接模拟后才声称Candidate交付。", "confirmed": True},

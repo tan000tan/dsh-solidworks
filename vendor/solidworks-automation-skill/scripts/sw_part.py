@@ -1014,20 +1014,31 @@ def shell(model, thickness, faces_to_remove=None, outward=False):
         raise AttributeError("SolidWorks 模型及 FeatureManager 均未暴露 InsertFeatureShell 接口")
 
     raw_res = insert_fn(thickness_val, bool(outward))
-    if raw_res is False or raw_res is None:
+    if raw_res is False:
         return None
 
-    # IModelDoc2.InsertFeatureShell 在真实 COM 中通常返回 bool (True)；尝试从特征树取回新建 Shell 特征对象。
-    if raw_res is True:
+    # SolidWorks 2026 sldworks.tlb: IModelDoc2.InsertFeatureShell 返回类型为 VT_VOID (Python 中为 None)；
+    # 部分旧代理或测试桩可能返回 True。仅当特征树确有新增特征时才判定为成功，否则返回 None 防止假成功。
+    if raw_res is None or raw_res is True:
+        try:
+            rebuild_fn = getattr(model, "EditRebuild3", None)
+            if callable(rebuild_fn):
+                rebuild_fn()
+        except Exception:
+            pass
         after_names = _snapshot_feature_names(model)
         if before_names is not None and after_names is not None:
-            new_names = [n for n in after_names if n not in before_names]
+            before_set = set(before_names)
+            new_names = [n for n in after_names if n not in before_set]
             if not new_names:
                 return None
             feat_obj = get_com_member(model, "FeatureByName", new_names[-1])
             if feat_obj is not None:
                 return feat_obj
-        return {"Name": "Shell", "created": True, "thickness_m": thickness_val}
+            return {"Name": new_names[-1], "created": True, "thickness_m": thickness_val}
+        if raw_res is True:
+            return {"Name": "Shell", "created": True, "thickness_m": thickness_val}
+        return None
 
     return raw_res
 

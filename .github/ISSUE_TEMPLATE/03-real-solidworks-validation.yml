@@ -1,0 +1,82 @@
+name: Real SolidWorks validation report
+description: You ran a tool against a real SolidWorks session. Help widen the verified matrix.
+title: "[validation] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is for **real** SolidWorks sessions only. If you used the mock/fake COM layer or only tested the MCP transport, use the Bug report template instead.
+
+        The project currently has real-machine evidence for a limited set of tools on a limited set of SolidWorks versions. Reports from other versions are genuinely useful — including failures.
+
+        Before posting: remove customer data, licence details and proprietary model content. A coarse description of the model ("simple extruded block with one fillet") is enough.
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      placeholder: "0.3.2"
+    validations:
+      required: true
+  - type: input
+    id: sw-version
+    attributes:
+      label: SolidWorks version, service pack and edition
+      placeholder: "SolidWorks 2024 SP2.0, Professional"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Permission mode
+      options:
+        - read-only (default)
+        - standard
+        - full
+    validations:
+      required: true
+  - type: textarea
+    id: tools
+    attributes:
+      label: Tools exercised (one per line) with outcome
+      description: Use exact registered names.
+      placeholder: |
+        solidworks_health_check        PASS  — 160 ms, status ok
+        solidworks_new_document        PASS
+        solidworks_sketch_and_extrude  PASS — volume matched expectation
+        solidworks_fillet              FAIL  — edge selection empty
+    validations:
+      required: true
+  - type: textarea
+    id: model
+    attributes:
+      label: Test document description
+      description: Type, rough complexity, whether it was a copy rather than your working file.
+      placeholder: "New part; one sketch + one extrude + one fillet. Created for this test, not a working file."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Tool responses, before/after mass properties, screenshots with no proprietary content.
+    validations:
+      required: false
+  - type: textarea
+    id: limits
+    attributes:
+      label: Problems or limitations observed
+      description: Crashes, modal dialogs, wrong geometry, slow calls, licensing prompts — anything a maintainer should know.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: This was a real SolidWorks session (not the mock COM layer).
+          required: true
+        - label: The test document contained no confidential customer data.
+          required: true
+        - label: I understand this report may be cited as real-machine evidence for the stated version only.
+          required: true

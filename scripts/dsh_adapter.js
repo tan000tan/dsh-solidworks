@@ -37,9 +37,44 @@ export function getDshPrimaryRuntimePython() {
   return existsSync(py) ? py : null;
 }
 
-export function isDshDesktopInstalled() {
-  const profileDir = getDshDesktopProfileDir();
+export function isDshDesktopInstalled(profileDir = getDshDesktopProfileDir()) {
   return existsSync(profileDir);
+}
+
+/**
+ * 检测插件是否已作为 DSH Bundle 安装在指定 profile 的 node_modules 中，
+ * 避免 setup 阶段向 cordis.patch.yml 重复写入多余的插件挂载条目。
+ */
+export function isInstalledAsDshBundle(pluginRoot, profileDir = getDshDesktopProfileDir()) {
+  if (!pluginRoot || !profileDir) {
+    return { isBundle: false, reason: 'missing pluginRoot or profileDir' };
+  }
+  const pkgFile = path.join(profileDir, 'package.json');
+  if (!existsSync(pkgFile)) {
+    return { isBundle: false, reason: 'profile package.json not found' };
+  }
+  try {
+    const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'));
+    const bundles = pkg?.dsh?.profile?.bundles;
+    if (!Array.isArray(bundles) || !bundles.includes(PLUGIN_ID)) {
+      return { isBundle: false, reason: `${PLUGIN_ID} is not listed in dsh.profile.bundles` };
+    }
+    const bundleDir = path.resolve(profileDir, 'node_modules', PLUGIN_ID);
+    const actualDir = path.resolve(pluginRoot);
+    const sameRoot = process.platform === 'win32'
+      ? bundleDir.toLowerCase() === actualDir.toLowerCase()
+      : bundleDir === actualDir;
+    if (!sameRoot) {
+      return { isBundle: false, bundleDir, reason: `pluginRoot (${actualDir}) does not match bundle dir (${bundleDir})` };
+    }
+    return {
+      isBundle: true,
+      bundleDir,
+      dependencySpec: pkg?.dependencies?.[PLUGIN_ID] ?? null,
+    };
+  } catch (err) {
+    return { isBundle: false, reason: `failed to parse profile package.json: ${err.message}` };
+  }
 }
 
 /**
@@ -139,12 +174,63 @@ function findEmptyInsertParent(lines) {
   return -1;
 }
 
-function renderEntry(indent, name, configLines) {
+// BUG-0004: 升级/重装时必须保留用户在 profile 条目里配置的其它键（auditLog、allow、
+// allowedRoots、grantTtlMs 等），否则一次 setup/upgrade 会静默关掉审计日志与自定义策略。
+function extractEntryConfig(block, entryIndent) {
+  const cfgIdx = block.findIndex((line) => indentOf(line) > entryIndent && /^[ \t]*config:[ \t]*$/.test(line));
+  if (cfgIdx < 0) return null;
+  const cfgIndent = indentOf(block[cfgIdx]);
+  const body = [];
+  for (let i = cfgIdx + 1; i < block.length; i += 1) {
+    const line = block[i];
+    if (line.trim() === '') {
+      body.push(line);
+      continue;
+    }
+    if (indentOf(line) <= cfgIndent) break;
+    body.push(line);
+  }
+  return { cfgIndent, body };
+}
+
+function renderEntry(indent, name, configLines, existing = null) {
   const pad = ' '.repeat(indent);
   const out = [`${pad}- id: ${PLUGIN_ID}`];
   if (name) out.push(`${pad}  name: ${name}`);
   out.push(`${pad}  config:`);
-  for (const line of configLines) out.push(`${pad}    ${line}`);
+
+  const managed = new Map();
+  for (const line of configLines) {
+    const m = line.match(/^([A-Za-z_][\w-]*):(.*)$/);
+    if (m) managed.set(m[1], line);
+  }
+
+  if (!existing || !existing.body.some((line) => line.trim() !== '')) {
+    for (const line of configLines) out.push(`${pad}    ${line}`);
+    return out;
+  }
+
+  const bodyIndent = indent + 4;
+  const used = new Set();
+  for (const line of existing.body) {
+    if (line.trim() === '') {
+      out.push('');
+      continue;
+    }
+    const rel = Math.max(0, indentOf(line) - existing.cfgIndent - 2);
+    const text = line.trimStart();
+    const m = text.match(/^([A-Za-z_][\w-]*):/);
+    const key = m ? m[1] : null;
+    if (key && managed.has(key)) {
+      out.push(`${' '.repeat(bodyIndent + rel)}${managed.get(key)}`);
+      used.add(key);
+    } else {
+      out.push(`${' '.repeat(bodyIndent + rel)}${text}`);
+    }
+  }
+  for (const [key, line] of managed) {
+    if (!used.has(key)) out.push(`${' '.repeat(bodyIndent)}${line}`);
+  }
   return out;
 }
 
@@ -193,9 +279,24 @@ export function registerToDshProfile({
   toolTimeoutMs = 300000,
   pluginRoot,
   profileDir = getDshDesktopProfileDir(),
+  forcePatch = false,
 } = {}) {
   if (!existsSync(profileDir)) {
     return { ok: false, reason: 'DSH desktop profile directory not found' };
+  }
+
+  if (!forcePatch && pluginRoot) {
+    const bundleState = isInstalledAsDshBundle(pluginRoot, profileDir);
+    if (bundleState.isBundle) {
+      return {
+        ok: true,
+        skipped: true,
+        bundleMode: true,
+        action: 'skipped-bundle-mode',
+        patchFile: path.join(profileDir, 'cordis.patch.yml'),
+        reason: 'Plugin is already managed as a DSH profile bundle; skipping cordis.patch.yml write to avoid duplicate entries.',
+      };
+    }
   }
 
   const patchFile = path.join(profileDir, 'cordis.patch.yml');
@@ -230,13 +331,14 @@ export function registerToDshProfile({
   if (found) {
     const end = findBlockEnd(lines, found.index, found.indent);
     const block = lines.slice(found.index, end);
+    const existing = extractEntryConfig(block, found.indent);
     const nameLine = block.find((line) => indentOf(line) > found.indent && /^[ \t]*name:[ \t]*\S/.test(line));
     const rawName = nameLine ? nameLine.replace(/^[ \t]*name:[ \t]*/, '').trim() : '';
 
     if (found.indent > 0) {
       nextLines = [
         ...lines.slice(0, found.index),
-        ...renderEntry(found.indent, rawName || PLUGIN_ID, configLines),
+        ...renderEntry(found.indent, rawName || PLUGIN_ID, configLines, existing),
         ...lines.slice(end),
       ];
       action = 'updated-in-insert';
@@ -258,7 +360,7 @@ export function registerToDshProfile({
       nextLines = [
         ...lines.slice(0, replaceFrom),
         '- insert:',
-        ...renderEntry(4, rawName || PLUGIN_ID, configLines),
+        ...renderEntry(4, rawName || PLUGIN_ID, configLines, existing),
         ...lines.slice(end),
       ];
       action = 'repaired-legacy-entry';

@@ -2,7 +2,7 @@
 scripts/v030_round2/sanitize_build_machine_paths.py
 
 清理待发布文件中的构建机特定物理绝对路径：
-将包含 D:\\Agent工作区, C:\\Users\\Khalil, D:\\SWCAD-MCP 等开发机绝对路径
+将包含开发机工作区、用户家目录与旧 MCP 测试目录的绝对路径
 泛化为相对路径或标准占位符，消除机器路径泄露并使 package.test.js 彻底通过。
 """
 
