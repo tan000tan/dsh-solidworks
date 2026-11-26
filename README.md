@@ -1,4 +1,4 @@
-[![Release](https://img.shields.io/badge/version-0.3.3-blue.svg)](https://github.com/tan000tan/dsh-solidworks/releases)
+[![Release](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/tan000tan/dsh-solidworks/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-green.svg)](LICENSE)
 [![Platform: Windows x64](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)](INSTALL.md)
 [![SolidWorks: 2026 tested](https://img.shields.io/badge/SolidWorks-2026%20tested-brightgreen.svg)](docs/verification.md)
@@ -34,9 +34,9 @@
 | Review workflows | Active-document review, reviewed-body exclusion, STEP import, component replacement |
 | Diagnostics | Environment health check, plugin status, tool catalogue, policy and permission diagnostics |
 
-The registry currently exposes **71 tools** through MCP (plus 2 host meta-tools on the DSH side). Per-tool status — implemented, registered, covered by automated tests, covered on real SolidWorks, or unverified — is listed in [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md).
+The registry currently exposes **71 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`). Per-tool status — implemented, registered, covered by automated tests, covered on real SolidWorks, or unverified — is listed in [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md).
 
-The results are uneven, and the areas above are not equally proven. In the full-matrix real-hardware baseline inherited from v0.3.2, **33 of 71 tools were verified (7 only on their main path), 13 failed and 24 were blocked** by a missing precondition such as a Motion licence or an `ActiveDoc`. In v0.3.3 targeted re-verification on SolidWorks 2026 SP4.1, **D-01 (`connect` / CLI cold-start), D-02 (`open_document` `ActiveDoc` switching), D-03a (assembly component ownership + mate follow-up BOM/mass), D-04 (`shell`), and `solidworks_add_coincident_mate` (D-08)** were re-tested and passed; `chamfer`, `revolve`, `pattern`, `list_edges`, `compile_feature_graph` and `design_spec_validate` are registered but remain **failed** on real hardware (deferred to v0.4.0). Check the `Real SolidWorks` column before relying on a tool, and treat a successful response as evidence that the call ran, not that the geometry is correct.
+The results are uneven, and the areas above are not equally proven. In the full-matrix real-hardware baseline inherited from v0.3.2, **33 of 71 tools were verified (7 only on their main path), 13 failed and 24 were blocked** by a missing precondition such as a Motion licence or an `ActiveDoc`. In v0.4.0 targeted re-verification on SolidWorks 2026 SP4.1, **D-01 (`connect` / CLI cold-start), D-02 (`open_document` `ActiveDoc` switching), D-03a/D-03b (assembly component ownership + cross-process ledger), D-04 (`shell` `VT_VOID`), D-05 (`list_edges`), D-06 (`chamfer`), D-07 (`pattern`), D-08 (`solidworks_add_coincident_mate` decorator), D-10 (`export_active` PDF), D-11 (`interference_check` empty assembly), and D-12 (dimension `ICE` mapping)** passed on real hardware; **D-09, D-13 (`pack_and_go`), and `solidworks_revolve` remain deferred to v0.5.0**. Check the `Real SolidWorks` column before relying on a tool, and treat a successful response as evidence that the call ran, not that the geometry is correct.
 
 ## Requirements
 
@@ -84,15 +84,15 @@ Full prerequisites, what setup creates, how to verify success, and how to uninst
 
 | Item | Status |
 | :--- | :--- |
-| Current release | **v0.3.3** (`package.json`, fixes D-01/D-02/D-03a/D-04 & DSH bundle setup UX on top of v0.3.2 docs) |
-| DSH plugin catalogue | Entry currently serves **v0.3.2** (PR #16343 merged 2026-11-17); v0.3.3 update PR pending release approval |
-| Real SolidWorks verification | Windows 11 x64 + SolidWorks 2026 SP4.1: v0.3.3 targeted re-test (D-01/D-02/D-03a/D-04/coincident mate/BOM) + v0.3.2 full-matrix baseline in [docs/verification.md](docs/verification.md) |
+| Current release | **v0.4.0** (`package.json`, fixes D-01..D-08, D-10..D-12, D-14, runtime setup meta-tool & cross-process ledger; D-09, D-13, `solidworks_revolve` deferred to v0.5.0) |
+| DSH plugin catalogue | Entry currently serves **v0.3.2** (PR #16343 merged 2026-11-17); v0.4.0 update PR pending release approval |
+| Real SolidWorks verification | Windows 11 x64 + SolidWorks 2026 SP4.1: v0.4.0 real hardware verification + v0.3.2 full-matrix baseline in [docs/verification.md](docs/verification.md) |
 | SolidWorks 2020–2025 | **Not verified** — claimed compatibility only, no version gate in code |
 | Automated tests | `npm run test:all`: 204 assertions across 20 suites, plus 45 Python suites (341 cases); see [docs/verification.md](docs/verification.md) |
 | Drawings / DFM / FEA / motion | Registered tools that have not been exercised on real hardware to the same depth as part modelling |
 | Mock-only coverage | The fake-COM layer covers policy, schema and error paths, not real SolidWorks behaviour |
 
-Two caveats about that table. Until the v0.3.3 release asset and catalogue PR are published, the DSH catalogue continues to serve v0.3.2 and its rendered README lags this file. And the automated numbers describe the test suite, not the CAD tools: passing tests means the plugin's own code behaves as designed, not that a given SolidWorks operation succeeds.
+Two caveats about that table. Until the v0.4.0 release asset and catalogue PR are published, the DSH catalogue continues to serve v0.3.2 and its rendered README lags this file. And the automated numbers describe the test suite, not the CAD tools: passing tests means the plugin's own code behaves as designed, not that a given SolidWorks operation succeeds.
 
 ## Known limitations
 
@@ -104,7 +104,7 @@ Two caveats about that table. Until the v0.3.3 release asset and catalogue PR ar
 - SolidWorks modal dialogs block COM calls; the plugin fast-fails instead of hanging, but the user must still dismiss the dialog.
 - Educational, student and network-licence editions are not systematically tested.
 - The default `read-only` tool set is not uniformly healthy: of the 19 read-only tools published by default, 9 are clean `verified`, 3 are `verified (partial)`, 3 `failed` and 4 could not be exercised (blocked) in the real-hardware pass.
-- A successful response is not a correctness guarantee. `solidworks_list_edges` returns `ok` with `null` geometry fields (D-05), and an empty assembly passes `interference_check` (D-11); a tool that reports `ok` may still have done nothing.
+- A successful response is not a correctness guarantee for unverified paths; `D-09` (`schema_version`), `D-13` (`pack_and_go`), and `solidworks_revolve` remain deferred to v0.5.0.
 
 ## Documentation
 

@@ -865,6 +865,11 @@ def revolve_boss(model, sketch_name, angle_rad, axis_sketch_name=None):
         axis_sketch_name: 旋转轴草图名称（None 则需预先选择轴线）
     """
     _ensure_sketch_selected(model, sketch_name)
+    if axis_sketch_name:
+        try:
+            model.Extension.SelectByID2(axis_sketch_name, "SKETCH", 0, 0, 0, True, 4, None, 0)
+        except Exception:
+            pass
     return model.FeatureManager.FeatureRevolve2(
         True, True, False,
         False, False, False,
@@ -923,10 +928,21 @@ def chamfer(model, distance, angle_deg=45):
         angle_deg: 倒角角度（度）
     """
     import math
+    if _get_selection_count(model) <= 0:
+        raise ValueError("倒角需要先选择边线。")
     angle_rad = angle_deg * math.pi / 180.0
-    return model.FeatureManager.InsertFeatureChamfer(
+    feat = model.FeatureManager.InsertFeatureChamfer(
         4, 1, distance, angle_rad, 0, 0, 0, 0
     )
+    if feat is None:
+        try:
+            model.EditRebuild3()
+            feat = model.FeatureByPositionReverse(0)
+            if feat and not any(t in str(get_com_member(feat, "GetTypeName2") or "").lower() for t in ["chamfer", "倒角"]):
+                feat = None
+        except Exception:
+            pass
+    return feat
 
 
 def linear_pattern(model, feature_name, d1_x, d1_y, d1_z, d1_spacing, d1_count,

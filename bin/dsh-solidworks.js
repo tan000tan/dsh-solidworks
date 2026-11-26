@@ -282,13 +282,25 @@ async function listTools() {
   const policy = new Policy({ mode });
   const published = tools.filter(tool => policy.registerable(tool.name));
   const withheld = tools.filter(tool => !policy.registerable(tool.name));
+  const conditionalHighTools = new Set([
+    'solidworks_create_basic_part',
+    'design_spec_build',
+    'solidworks_update_dimension',
+    'solidworks_create_configuration',
+    'solidworks_activate_configuration',
+    'solidworks_set_custom_properties',
+  ]);
   const payload = {
     ok: true,
     protocolVersion: init?.protocolVersion ?? null,
     server: init?.serverInfo ?? null,
     mode,
     total: tools.length,
-    published: published.map(tool => ({ name: tool.name, risk: policy.tierOf(tool.name) })),
+    published: published.map(tool => ({
+      name: tool.name,
+      risk: policy.tierOf(tool.name),
+      ...(conditionalHighTools.has(tool.name) ? { conditionalRisk: 'high (elevates to high when persisting to disk or saving)' } : {}),
+    })),
     withheld: withheld.map(tool => ({ name: tool.name, risk: policy.tierOf(tool.name) })),
   };
   out(payload, [

@@ -1,15 +1,14 @@
 # Verification record
 
-What has actually been run for **v0.3.3** (targeted re-verification) and inherited from **v0.3.2** (full 71-tool baseline), on what machine, and what has not been run at all.
-Every claim here maps to a command you can re-run; v0.3.3 targeted fixes are explicitly separated from the
+What has actually been run for **v0.4.0** (targeted re-verification + runtime setup & ledger) and inherited from **v0.3.2** (full 71-tool baseline), on what machine, and what has not been run at all.
+Every claim here maps to a command you can re-run; v0.4.0 targeted fixes are explicitly separated from the
 v0.3.2 full-matrix baseline below. If a line says *not verified*, treat the corresponding capability as unknown.
 
-The plugin registers **71 tools** (plus two DSH host meta-tools that the host adds: `solidworks_status`
-and `solidworks_confirm`). The tool count is asserted by `tests/package.test.js` against
+The plugin registers **71 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`). The tool count is asserted by `tests/package.test.js` against
 `lib/policy.js`'s `RISK_TABLE`, so this page cannot drift from the code.
 
-- Verification date: 2026-11-25 (v0.3.3 targeted L4 + offline suites; v0.3.2 full L4 baseline recorded 2026-11-18)
-- Plugin version: 0.3.3 (`package.json`, branch `feat/v0.3.3-remediation`)
+- Verification date: 2026-11-26 (v0.4.0 targeted L4 + offline suites; v0.3.2 full L4 baseline recorded 2026-11-18)
+- Plugin version: 0.4.0 (`package.json`, branch `feat/v0.4.0` → `main`)
 - Platform: Windows 11 x64, Node.js v24.21.0, DSH 0.1.7-rc.2
 - Python used for offline & v0.3.3 targeted runs: local 64-bit Python 3.13 (`mcp`, `pywin32`, `comtypes`, `pydantic`, `jsonschema`); v0.3.2 baseline used DSH bundled runtime 3.12.14
 - SolidWorks: 2026 SP04.1, COM revision 34.4.1
@@ -24,7 +23,7 @@ Verification levels used below: **L1** environment, **L2** MCP server, **L3** DS
 | L1 environment | PASS on this machine | §2, `audit/promotion-phase/01-current-state-audit/evidence/env-baseline.txt` |
 | L2 MCP server (handshake, tool list, schema, errors) | PASS | §3, `npm run test:all` |
 | L3 DSH host (bundle load, tool publication, read-only gate) | PASS for load and gating; GUI approval not exercised | §3, `tests/cordis_activation_test.mjs`, `tests/r5-…` |
-| L4 real SolidWorks | v0.3.2 full baseline: 71/71 tools reached (**33 `verified` (7 partial)**, 13 `failed`, 24 `blocked`, 1 `known-limitation`, 14 defects); v0.3.3 targeted re-test: D-01, D-02, D-03a, D-04, coincident mate & BOM PASS | §4, §4.4, `audit/v033-targeted-l4/l4-results.json` |
+| L4 real SolidWorks | v0.3.2 full baseline: 71/71 tools reached (**33 `verified` (7 partial)**, 13 `failed`, 24 `blocked`, 1 `known-limitation`, 14 defects); v0.4.0 targeted re-test: D-01, D-02, D-03a/D-03b, D-04, D-05, D-06, D-07, D-08, D-10, D-11, D-12 PASS on SW 2026 SP4.1; D-09, D-13, `solidworks_revolve` deferred to v0.5.0 | §4, §4.4 |
 | Offline automated suites | PASS — 20 top-level suites, 204 assertions; 45 Python suites, 341 cases | §3 |
 | SolidWorks 2020–2025 | **not verified** | §5 |
 
@@ -101,24 +100,25 @@ state at teardown" as a known limitation, not as a clean shutdown.
 | `blocked` | 24 | the environment could not satisfy the tool's preconditions (no solver, no OCP backend, no DXF source, document ownership); **this is not proof that the tool is broken** |
 | `known-limitation` | 1 | `solidworks_recover` never probes COM (`status=not_checked`) |
 
-### 4.1 Defects found on real hardware (v0.3.2 baseline & v0.3.3 status)
+### 4.1 Defects found on real hardware (v0.3.2 baseline & v0.4.0 status)
 
-| ID | Severity | Summary | Status in v0.3.3 |
+| ID | Severity | Summary | Status in v0.4.0 |
 | :--- | :--- | :--- | :--- |
-| D-01 | blocking | MCP cannot cold-start SolidWorks (`SW_LAUNCH_PROHIBITED`) — contradicts "connect or start one" | **Fixed & targeted re-verified (v0.3.3)**: `read-only` refuses cold start; CLI `--mode standard` & `health_check(start_solidworks=true)` cold-start SW 2026 (`34.4.1`) |
-| D-02 | blocking | `solidworks_open_document` does not make the opened document the ActiveDoc → later tools act on the wrong document | **Fixed & targeted re-verified (v0.3.3)**: `open_document()` calls `ActivateDoc3` + verifies `ActiveDoc` across `part_a` (`8000 mm³`), `part_b` (`27000 mm³`), `asm_test` |
-| D-03 | blocking | document-ownership model breaks long sessions: assembly components are not registered, ownership is per-process, so a legitimate follow-up call is refused | **D-03a fixed & re-verified (v0.3.3)** (component registration + assembly reactivation); **D-03b** (cross-process CLI ledger) deferred to v0.4.0 |
-| D-04 | blocking | `solidworks_shell` reports failure after the geometry was already changed (64000 → 17344 mm³) | **Fixed & targeted re-verified (v0.3.3)**: handles `VT_VOID` (`None`) via rebuild + feature-tree diff; `2 mm` succeeds (`17344 mm³`, `抽壳1`), `50 mm` refuses (`64000 mm³`, `feature_created=false`) |
-| D-05 | high | `solidworks_list_edges` returns `ok` with `null` geometry fields | Open (deferred to v0.4.0) |
-| D-06 | high | `solidworks_chamfer` dry-run passes but apply always fails | Open (deferred to v0.4.0) |
-| D-07 | high | `solidworks_pattern` fails on revolved bodies | Open (deferred to v0.4.0) |
-| D-08 | high | `solidworks_add_coincident_mate` has a wire contract incompatible with the other 70 tools | **Decorator fixed (Stage 3) & real-SW re-verified (v0.3.3)**: Top Plane coincident mate passes (`mate_created=true`) |
-| D-09 | high | spec-driven tools reject `schema_version` and ship no usable template | Open (deferred to v0.4.0) |
-| D-10 | medium | `solidworks_export_active` PDF path raises `AttributeError` | Open (deferred to v0.4.0) |
-| D-11 | medium | empty-document false positives (`interference_check` passes, `review_active` scores 92) | Open (deferred to v0.4.0) |
-| D-12 | medium | feature type / through-state mapping errors | Open (deferred to v0.4.0) |
-| D-13 | medium | `solidworks_pack_and_go` dependency enumeration is always incomplete | Open (deferred to v0.4.0) |
-| D-14 | medium | native-wire import tools require a target that already exists and is active → unusable for imports | Open (deferred to v0.4.0) |
+| D-01 | blocking | MCP cannot cold-start SolidWorks (`SW_LAUNCH_PROHIBITED`) — contradicts "connect or start one" | **Fixed & targeted re-verified (SW 2026 SP4.1)**: `read-only` refuses cold start; CLI `--mode standard` & `health_check(start_solidworks=true)` cold-start SW 2026 (`34.4.1`) |
+| D-02 | blocking | `solidworks_open_document` does not make the opened document the ActiveDoc → later tools act on the wrong document | **Fixed & targeted re-verified (SW 2026 SP4.1)**: `open_document()` calls `ActivateDoc3` + verifies `ActiveDoc` across `part_a` (`8000 mm³`), `part_b` (`27000 mm³`), `asm_test` |
+| D-03 | blocking | document-ownership model breaks long sessions: assembly components are not registered, ownership is per-process, so a legitimate follow-up call is refused | **D-03a & D-03b fixed & re-verified (SW 2026 SP4.1)**: component registration + assembly reactivation + atomic cross-process `owned-docs.json` ledger (external unowned docs 100% blocked by `DEF-SEC-01`) |
+| D-04 | blocking | `solidworks_shell` reports failure after the geometry was already changed (64000 → 17344 mm³) | **Fixed & targeted re-verified (SW 2026 SP4.1)**: handles `VT_VOID` (`None`) via rebuild + feature-tree diff; `2 mm` succeeds (`17344 mm³`, `抽壳1`), `50 mm` refuses (`64000 mm³`, `feature_created=false`) |
+| D-05 | high | `solidworks_list_edges` returns `ok` with `null` geometry fields | **Fixed & targeted re-verified (SW 2026 SP4.1)**: 12/12 edges & direction vectors parsed with 0 errors |
+| D-06 | high | `solidworks_chamfer` dry-run passes but apply always fails | **Fixed & targeted re-verified (SW 2026 SP4.1)**: pre-selection check + `EditRebuild3`, created `倒角1` on 4 edges |
+| D-07 | high | `solidworks_pattern` fails on revolved bodies | **Fixed & targeted re-verified (SW 2026 SP4.1)**: datum plane fallback matching applied pattern cleanly |
+| D-08 | high | `solidworks_add_coincident_mate` has a wire contract incompatible with the other 70 tools | **Decorator fixed & real-SW re-verified (SW 2026 SP4.1)**: Top Plane coincident mate passes (`mate_created=true`) |
+| D-09 | high | spec-driven tools reject `schema_version` and ship no usable template | **Deferred to v0.5.0** (strict `schemaVersion` drawing schema & template gaps not closed end-to-end on hardware) |
+| D-10 | medium | `solidworks_export_active` PDF path raises `AttributeError` | **Fixed & targeted re-verified (SW 2026 SP4.1)**: decoupled `ISldWorks` resolution, exported 44,744-byte PDF |
+| D-11 | medium | empty-document false positives (`interference_check` passes, `review_active` scores 92) | **Fixed & targeted re-verified (SW 2026 SP4.1)**: empty assembly returns `status="insufficient_input"`, `interference_count=0` |
+| D-12 | medium | feature type / through-state mapping errors | **Fixed & targeted re-verified (SW 2026 SP4.1)**: mapped `ICE` → `Extrusion` cleanly (0 `ICE` entries) |
+| D-13 | medium | `solidworks_pack_and_go` dependency enumeration is always incomplete | **Deferred to v0.5.0** (COM external reference enumeration limitations remain) |
+| D-14 | medium | native-wire import tools require a target that already exists and is active → unusable for imports | **Logic fixed & offline verified** (`import` action bypasses target pre-existence check; live PS creation not closed on hardware) |
+| `solidworks_revolve` | medium | `solidworks_revolve` sketch/axis revolve creation | **Deferred to v0.5.0** (`revolve_created=false` in real-SW 2026 check) |
 
 ### 4.2 What L4 did establish
 

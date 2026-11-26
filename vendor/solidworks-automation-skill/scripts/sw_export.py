@@ -59,7 +59,7 @@ def export_to_parasolid(model, output_path):
     return _export_generic(model, output_path)
 
 
-def export_to_pdf(model, output_path, sheet_names=None):
+def export_to_pdf(model, output_path, sheet_names=None, sw=None):
     """
     导出工程图为 PDF
 
@@ -67,9 +67,29 @@ def export_to_pdf(model, output_path, sheet_names=None):
         model: IModelDoc2（必须是工程图文档）
         output_path: PDF 文件路径
         sheet_names: 图纸名称列表，None=所有图纸
+        sw: 可选传入的 ISldWorks 实例
     """
-    sw = model.GetSldWorksObject()
-    pdf_data = sw.GetExportFileData(1)  # swExportPDFData
+    if sw is None:
+        try:
+            sw = get_com_member(model, "GetSldWorksObject")
+        except Exception:
+            sw = None
+    if sw is None:
+        try:
+            sw = get_com_member(model, "GetSldWorks")
+        except Exception:
+            sw = None
+    if sw is None:
+        try:
+            from .sw_connect import connect_solidworks
+        except ImportError:
+            from sw_connect import connect_solidworks
+        try:
+            sw, _ = connect_solidworks()
+        except Exception:
+            sw = None
+
+    pdf_data = get_com_member(sw, "GetExportFileData", 1) if sw else None  # swExportPDFData
 
     if sheet_names is None:
         sheet_names = get_com_member(model, "GetSheetNames")

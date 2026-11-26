@@ -1,4 +1,4 @@
-[![Release](https://img.shields.io/badge/version-0.3.3-blue.svg)](https://github.com/tan000tan/dsh-solidworks/releases)
+[![Release](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/tan000tan/dsh-solidworks/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-green.svg)](LICENSE)
 [![Platform: Windows x64](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)](docs/INSTALL.zh.md)
 [![SolidWorks: 2026 tested](https://img.shields.io/badge/SolidWorks-2026%20tested-brightgreen.svg)](docs/verification.zh.md)
@@ -34,9 +34,9 @@
 | 复核流程 | 当前文档复核、排除已复核实体、STEP 导入、零部件替换 |
 | 诊断 | 环境体检、插件状态、工具清单、策略与权限诊断 |
 
-当前经 MCP 注册 **71 个工具**（DSH 侧另有 2 个宿主 meta 工具）。逐个工具的状态——已实现、已注册、自动化测试通过、真实 SolidWorks 通过、尚未验证——见 [docs/FEATURE_MATRIX.zh.md](docs/FEATURE_MATRIX.zh.md)。
+当前经 MCP 注册 **71 个 MCP 工具 + 3 个宿主元工具**（`solidworks_status`、`solidworks_confirm`、`solidworks_setup_runtime`）。逐个工具的状态——已实现、已注册、自动化测试通过、真实 SolidWorks 通过、尚未验证——见 [docs/FEATURE_MATRIX.zh.md](docs/FEATURE_MATRIX.zh.md)。
 
-上面的能力列表并不是同等成熟。沿用自 v0.3.2 的 71 工具全量真机走查基线里，**71 个工具中 33 个 `verified`（其中 7 个只验证了主路径）、13 个 `failed`、24 个 `blocked`**（缺前置条件，例如无 Motion 许可、目标不是 ActiveDoc）。在 v0.3.3 针对 SolidWorks 2026 SP4.1 的定向真机复测中，**D-01（冷启动门禁与 `connect`）、D-02（`open_document` 切换 `ActiveDoc`）、D-03a（装配组件归属与配合后续质量/BOM 链路）、D-04（`shell` 抽壳）以及 `solidworks_add_coincident_mate`（D-08）** 均已实机复测通过；`chamfer`、`revolve`、`pattern`、`list_edges`、`compile_feature_graph`、`design_spec_validate` 虽已注册，但真机上仍处于**失败**状态（留待 v0.4.0 处理）。依赖某个工具前先看矩阵里的 `Real SolidWorks` 列；返回成功只说明调用跑到结束，不代表几何一定正确。
+上面的能力列表并不是同等成熟。沿用自 v0.3.2 的 71 工具全量真机走查基线里，**71 个工具中 33 个 `verified`（其中 7 个只验证了主路径）、13 个 `failed`、24 个 `blocked`**（缺前置条件，例如无 Motion 许可、目标不是 ActiveDoc）。在 v0.4.0 针对 SolidWorks 2026 SP4.1 的定向真机复测中，**D-01（冷启动门禁与 `connect`）、D-02（`open_document` 切换 `ActiveDoc`）、D-03a/D-03b（装配组件归属与跨进程账本）、D-04（`shell` `VT_VOID`）、D-05（`list_edges`）、D-06（`chamfer`）、D-07（`pattern`）、D-08（`solidworks_add_coincident_mate` 装饰器）、D-10（`export_active` PDF 导出）、D-11（`interference_check` 空装配体）、以及 D-12（尺寸 `ICE` 映射）** 均已实机复测通过；**D-09、D-13（`pack_and_go`）与 `solidworks_revolve` 明确延后至 v0.5.0 处理**。依赖某个工具前先看矩阵里的 `Real SolidWorks` 列；返回成功只说明调用跑到结束，不代表几何一定正确。
 
 ## 运行要求
 
@@ -84,15 +84,15 @@ npm run doctor
 
 | 项目 | 状态 |
 | :--- | :--- |
-| 当前版本 | **v0.3.3**（`package.json`，在 v0.3.2 文档治理基线上完成 D-01/D-02/D-03a/D-04 与 DSH Bundle 引导修复） |
-| DSH 插件目录 | 当前线上目录指向 **v0.3.2**（PR #16343 于 2026-11-17 合并）；v0.3.3 目录更新 PR 待发布后提交 |
-| 真机验证 | Windows 11 x64 + SolidWorks 2026 SP4.1：含 v0.3.3 定向复测项（D-01/D-02/D-03a/D-04/重合配合/BOM）与沿用 v0.3.2 全量基线，见 [docs/verification.zh.md](docs/verification.zh.md) |
+| 当前版本 | **v0.4.0**（`package.json`，完成 D-01..D-08、D-10..D-12、D-14 修复、宿主一键初始化元工具与跨进程归属账本；D-09、D-13、`solidworks_revolve` 延后至 v0.5.0） |
+| DSH 插件目录 | 当前线上目录指向 **v0.3.2**（PR #16343 于 2026-11-17 合并）；v0.4.0 目录更新 PR 待发布后提交 |
+| 真机验证 | Windows 11 x64 + SolidWorks 2026 SP4.1：含 v0.4.0 实机复测项与沿用 v0.3.2 全量基线，见 [docs/verification.zh.md](docs/verification.zh.md) |
 | SolidWorks 2020–2025 | **未验证**——仅为标称兼容，代码中无版本门控 |
 | 自动化测试 | `npm run test:all`：204 项断言，覆盖 20 个套件，另有 45 个 Python 套件（341 个用例）；具体见 [docs/verification.zh.md](docs/verification.zh.md) |
 | 工程图 / DFM / FEA / 运动 | 已注册工具，但真机验证深度不如零件建模 |
 | Mock 覆盖 | fake-COM 层只覆盖策略、schema 与错误路径，不代表真实 SolidWorks 行为 |
 
-关于这张表有两点要说明：在 v0.3.3 Release 与目录 PR 正式发布前，DSH 插件目录页仍指向 v0.3.2 且展示旧版 README；自动化测试的数字描述的是测试套件，不是 CAD 工具——测试通过只代表插件自身代码按设计运行，不代表某次 SolidWorks 操作一定成功。
+关于这张表有两点要说明：在 v0.4.0 Release 与目录 PR 正式发布前，DSH 插件目录页仍指向 v0.3.2 且展示旧版 README；自动化测试的数字描述的是测试套件，不是 CAD 工具——测试通过只代表插件自身代码按设计运行，不代表某次 SolidWorks 操作一定成功。
 
 ## 已知限制
 
@@ -104,7 +104,7 @@ npm run doctor
 - SolidWorks 的模态对话框会阻塞 COM 调用；插件会快速失败而不是一直挂住，但弹窗仍需你手动关掉。
 - 教育版、学生版、网络许可版未做系统测试。
 - 默认 `read-only` 发布的 19 项并不是同等健康：真机走查里 9 个是干净的 `verified`，3 个 `verified（部分）`，3 个 `failed`，4 个因前置不满足无法执行（blocked）。
-- 返回成功不代表结果正确。`solidworks_list_edges` 会返回 `ok` 但几何字段全是 `null`（D-05），空装配体也能通过 `interference_check`（D-11）——工具说 `ok`，也可能什么都没做成。
+- 返回成功不代表未覆盖路径的几何必然正确；`D-09`（`schema_version` 兼容）、`D-13`（`pack_and_go`）与 `solidworks_revolve` 已明确延后至 v0.5.0。
 
 ## 文档
 

@@ -442,6 +442,7 @@ async function main() {
   console.log('    （若确需为独立第三方 MCP 客户端生成配置，可按需运行: npm run mcp-config -- --write-direct-config）');
 
   // Step 6: 自动接入 DeepSeek Harness (DSH) 客户端
+  const skipProfile = process.argv.includes('--no-profile');
   const profileArgIdx = process.argv.indexOf('--profile');
   const targetProfileDir = (profileArgIdx !== -1 && process.argv[profileArgIdx + 1])
     ? path.resolve(process.argv[profileArgIdx + 1])
@@ -449,7 +450,9 @@ async function main() {
   const forcePatch = process.argv.includes('--force-patch');
 
   console.log('\n[6/6] 自动接入 DeepSeek Harness (DSH) 宿主环境...');
-  if (isDshDesktopInstalled(targetProfileDir)) {
+  if (skipProfile) {
+    console.log('    (--no-profile 指定，跳过对 DSH 桌面 profile 的任何修改)');
+  } else if (isDshDesktopInstalled(targetProfileDir)) {
     const bundleState = isInstalledAsDshBundle(ROOT_DIR, targetProfileDir);
     if (bundleState.isBundle && !forcePatch) {
       console.log(`[✔] 检测到当前插件已以 DSH Bundle 模式安装于 Profile (${targetProfileDir})。`);

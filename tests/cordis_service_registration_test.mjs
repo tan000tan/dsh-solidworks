@@ -101,6 +101,7 @@ test('Cordis export contract & frozen service surface activation', async () => {
     assert.equal(status.policy?.mode, 'full');
     assert.equal(tools.has('solidworks_status'), true);
     assert.equal(tools.has('solidworks_confirm'), true);
+    assert.equal(tools.has('solidworks_setup_runtime'), true);
   } finally {
     await cleanup?.();
     for (const fn of disposables) await fn();

@@ -14,6 +14,8 @@ elif __name__ == "scripts.sw_connect" and "sw_connect" not in sys.modules:
 
 import glob
 
+import hashlib
+
 import json
 
 import os
@@ -42,6 +44,7 @@ try:
         PROTECTED_FILENAMES_LOWER as _PROTECTED_FILENAMES_LOWER,
         get_final_path as _ps_get_final_path,
         has_forbidden_path_syntax as _has_forbidden_path_syntax,
+        parse_allowed_roots_env,
         reject_forbidden_expand,
         require_allowed_path,
         safe_ensure_parent_dir,
@@ -55,6 +58,7 @@ except ImportError:
         PROTECTED_FILENAMES_LOWER as _PROTECTED_FILENAMES_LOWER,
         get_final_path as _ps_get_final_path,
         has_forbidden_path_syntax as _has_forbidden_path_syntax,
+        parse_allowed_roots_env,
         reject_forbidden_expand,
         require_allowed_path,
         safe_ensure_parent_dir,
@@ -155,7 +159,174 @@ SW_ALWAYS_USE_DEFAULT_TEMPLATES = 111
 _SESSION_OWNED_DOCUMENTS = set()
 
 
+def _get_ledger_path() -> str:
+    override = os.environ.get("DSH_OWNED_LEDGER_PATH", "").strip()
+    if override:
+        return os.path.abspath(override)
+    local_app_data = os.environ.get("LOCALAPPDATA", "")
+    if not local_app_data:
+        local_app_data = os.path.expanduser("~")
+    base = os.path.join(local_app_data, "dsh-solidworks")
+    try:
+        os.makedirs(base, exist_ok=True)
+    except Exception:
+        pass
+    return os.path.join(base, "owned-docs.json")
 
+
+def _get_sw_instance_identity() -> tuple[int, int]:
+    """返回当前 SolidWorks 主活动进程的 (pid, create_time_sec)；若无运行实例返回 (0, 0)。"""
+    try:
+        instances = list_solidworks_instances()
+        if not instances:
+            return 0, 0
+        active = instances[0]
+        pid = int(active.get("pid") or 0)
+        if pid <= 0:
+            return 0, 0
+        # 获取创建时间作为防 PID 复用标识
+        create_time = 0
+        if os.name == "nt":
+            api = ctypes.windll.kernel32
+            handle = api.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+            if handle:
+                try:
+                    ft_create = wintypes.FILETIME()
+                    ft_exit = wintypes.FILETIME()
+                    ft_kernel = wintypes.FILETIME()
+                    ft_user = wintypes.FILETIME()
+                    if api.GetProcessTimes(handle, ctypes.byref(ft_create), ctypes.byref(ft_exit), ctypes.byref(ft_kernel), ctypes.byref(ft_user)):
+                        # 转换 100-ns 到秒级整数
+                        create_time = (ft_create.dwHighDateTime << 32) + ft_create.dwLowDateTime
+                except Exception:
+                    pass
+                finally:
+                    api.CloseHandle(handle)
+        return pid, create_time
+    except Exception:
+        return 0, 0
+
+
+def _get_roots_signature(allowed_roots=None) -> str:
+    roots = allowed_roots or parse_allowed_roots_env() or []
+    norm = sorted(list(set(os.path.normcase(os.path.abspath(r)) for r in roots if r)))
+    return hashlib.sha256(json.dumps(norm).encode("utf-8")).hexdigest()[:16]
+
+
+def _read_persistent_ledger() -> dict:
+    ledger_path = _get_ledger_path()
+    if not os.path.exists(ledger_path):
+        return {"version": 1, "records": []}
+    try:
+        with open(ledger_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict) and "records" in data and isinstance(data["records"], list):
+                return data
+    except Exception:
+        pass
+    return {"version": 1, "records": []}
+
+
+def _write_persistent_ledger(data: dict) -> None:
+    ledger_path = _get_ledger_path()
+    lock_path = ledger_path + ".lock"
+    # 简易排他文件锁
+    lock_fd = None
+    start_t = time.time()
+    while time.time() - start_t < 3.0:
+        try:
+            lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            break
+        except FileExistsError:
+            try:
+                # 检查陈旧锁 (超时 5 秒)
+                if os.path.exists(lock_path) and (time.time() - os.path.getmtime(lock_path) > 5.0):
+                    os.remove(lock_path)
+            except Exception:
+                pass
+            time.sleep(0.05)
+        except Exception:
+            break
+
+    tmp_path = ledger_path + f".tmp.{os.getpid()}.{time.time()}"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, ledger_path)
+    except Exception:
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except Exception: pass
+    finally:
+        if lock_fd is not None:
+            try: os.close(lock_fd)
+            except Exception: pass
+            try: os.remove(lock_path)
+            except Exception: pass
+
+
+def _record_to_persistent_ledger(item_str: str) -> None:
+    if not item_str:
+        return
+    sw_pid, sw_ctime = _get_sw_instance_identity()
+    roots_hash = _get_roots_signature()
+    now_ts = int(time.time())
+
+    ledger = _read_persistent_ledger()
+    records = ledger.get("records", [])
+
+    # 清理非当前 SolidWorks 实例或已退出的陈旧记录
+    cleaned = []
+    for r in records:
+        r_pid = r.get("sw_pid", 0)
+        r_ctime = r.get("sw_ctime", 0)
+        # 若系统中存在 SW 且记录的 SW PID 不匹配或 create_time 变了，则视为旧实例产生，剔除
+        if sw_pid > 0 and (r_pid != sw_pid or (sw_ctime > 0 and r_ctime > 0 and r_ctime != sw_ctime)):
+            continue
+        cleaned.append(r)
+
+    # 去重插入
+    existing = next((r for r in cleaned if r.get("item") == item_str), None)
+    if existing:
+        existing["updated_at"] = now_ts
+        existing["sw_pid"] = sw_pid
+        existing["sw_ctime"] = sw_ctime
+        existing["roots_hash"] = roots_hash
+    else:
+        cleaned.append({
+            "item": item_str,
+            "sw_pid": sw_pid,
+            "sw_ctime": sw_ctime,
+            "roots_hash": roots_hash,
+            "updated_at": now_ts,
+        })
+
+    ledger["records"] = cleaned
+    _write_persistent_ledger(ledger)
+
+
+def _check_persistent_ledger(item_str: str, allowed_roots=None) -> bool:
+    if not item_str:
+        return False
+    sw_pid, sw_ctime = _get_sw_instance_identity()
+    ledger = _read_persistent_ledger()
+    records = ledger.get("records", [])
+    now_ts = int(time.time())
+
+    for r in records:
+        if r.get("item") == item_str:
+            r_pid = r.get("sw_pid", 0)
+            r_ctime = r.get("sw_ctime", 0)
+            # 若 SW 运行中且 PID 或创建时间不匹配，则判定为已失效
+            if sw_pid > 0 and (r_pid != sw_pid or (sw_ctime > 0 and r_ctime > 0 and r_ctime != sw_ctime)):
+                continue
+            # 记录在 24 小时内有效
+            if now_ts - r.get("updated_at", 0) > 86400:
+                continue
+            return True
+    return False
 
 
 def _canonical_doc_path(p: str) -> tuple[str, str]:
@@ -167,15 +338,17 @@ def _canonical_doc_path(p: str) -> tuple[str, str]:
 def register_owned_document(doc_or_title_or_path):
     """Explicitly register a document as owned by this automation session.
 
-    FIX RT-SEC-03 / BUG-010:
+    FIX RT-SEC-03 / BUG-010 / D-03b:
     - Saved documents (non-empty path) are keyed STRICTLY by canonical path
       (abspath + realpath), NEVER by bare GetTitle / basename / stem.
     - Unsaved documents (empty GetPathName) are keyed ONLY by exact full title
       (never extension-stripped stem).
+    - Persists ownership records to cross-process ledger owned-docs.json.
     """
     if not doc_or_title_or_path:
         return
 
+    items_to_register = []
     if hasattr(doc_or_title_or_path, "GetTitle"):
         p = ""
         t = ""
@@ -191,8 +364,10 @@ def register_owned_document(doc_or_title_or_path):
             abs_p, real_p = _canonical_doc_path(p)
             _SESSION_OWNED_DOCUMENTS.add(abs_p)
             _SESSION_OWNED_DOCUMENTS.add(real_p)
+            items_to_register.extend([abs_p, real_p])
         elif t:
             _SESSION_OWNED_DOCUMENTS.add(t)
+            items_to_register.append(t)
     elif isinstance(doc_or_title_or_path, str):
         s = doc_or_title_or_path.strip()
         if not s:
@@ -201,8 +376,16 @@ def register_owned_document(doc_or_title_or_path):
             abs_p, real_p = _canonical_doc_path(s)
             _SESSION_OWNED_DOCUMENTS.add(abs_p)
             _SESSION_OWNED_DOCUMENTS.add(real_p)
+            items_to_register.extend([abs_p, real_p])
         else:
             _SESSION_OWNED_DOCUMENTS.add(s)
+            items_to_register.append(s)
+
+    for item in items_to_register:
+        try:
+            _record_to_persistent_ledger(item)
+        except Exception:
+            pass
 
 
 def is_document_owned(doc_or_title, path=None, allowed_roots=None) -> bool:
@@ -235,16 +418,21 @@ def is_document_owned(doc_or_title, path=None, allowed_roots=None) -> bool:
         else:
             title_str = raw
 
-    # DEF-SEC-01 / DEF-SEC-02 / RT-SEC-03 强化：
-    # 1. 有物理路径的文档必须严格按规范路径命中 _SESSION_OWNED_DOCUMENTS，禁止回退标题/文件名匹配。
+    # DEF-SEC-01 / DEF-SEC-02 / RT-SEC-03 / D-03b 强化：
+    # 1. 有物理路径的文档必须严格按规范路径命中 _SESSION_OWNED_DOCUMENTS 或跨进程持久账本，禁止回退标题/文件名匹配。
     # 2. 仅无路径的未保存新建文档允许按完整精确标题匹配（禁止去扩展名匹配）。
     # 3. 凡具备物理路径者必须处于 DSH_ALLOWED_ROOTS 白名单目录内。
     is_registered = False
     if path_str:
         abs_p, real_p = _canonical_doc_path(path_str)
-        is_registered = (abs_p in _SESSION_OWNED_DOCUMENTS) or (real_p in _SESSION_OWNED_DOCUMENTS)
+        is_registered = (
+            (abs_p in _SESSION_OWNED_DOCUMENTS)
+            or (real_p in _SESSION_OWNED_DOCUMENTS)
+            or _check_persistent_ledger(abs_p, allowed_roots)
+            or _check_persistent_ledger(real_p, allowed_roots)
+        )
     elif title_str:
-        is_registered = title_str in _SESSION_OWNED_DOCUMENTS
+        is_registered = (title_str in _SESSION_OWNED_DOCUMENTS) or _check_persistent_ledger(title_str, allowed_roots)
 
     if not is_registered:
         return False

@@ -69,16 +69,23 @@ def invoke_native(sw, target, action, **values):
     """仅由 MCP 在持锁期间调用；不提供任意代码或方法执行。"""
     from scripts.sw_connect import get_com_member as get
     from scripts.cad_installation import discover_installation
-    expected=Path(target)
-    if not expected.is_absolute(): raise ValueError('Absolute document path required')
-    model=get(sw,'ActiveDoc')
-    if model is None or os.path.normcase(os.path.abspath(get(model,'GetPathName')))!=os.path.normcase(os.path.abspath(str(expected))):
-        raise ValueError('Active document target mismatch')
     from scripts.sw_connect import is_document_owned, validate_path_against_allowed_roots
-    if not validate_path_against_allowed_roots(str(expected)):
-        raise PermissionError(f"Access denied: document path '{expected}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
-    if not is_document_owned(model, path=str(expected)):
-        raise PermissionError(f"DEF-SEC-01: Document '{expected}' is not owned by current automation session. Operation refused.")
+
+    expected = Path(target)
+    if not expected.is_absolute(): raise ValueError('Absolute document path required')
+
+    if action != 'import':
+        model = get(sw, 'ActiveDoc')
+        if model is None or os.path.normcase(os.path.abspath(get(model, 'GetPathName'))) != os.path.normcase(os.path.abspath(str(expected))):
+            raise ValueError('Active document target mismatch')
+        if not validate_path_against_allowed_roots(str(expected)):
+            raise PermissionError(f"Access denied: document path '{expected}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
+        if not is_document_owned(model, path=str(expected)):
+            raise PermissionError(f"DEF-SEC-01: Document '{expected}' is not owned by current automation session. Operation refused.")
+    else:
+        # D-14: 导入操作的目标文件尚不存在，仅校验沙箱路径合法性
+        if not validate_path_against_allowed_roots(str(expected)):
+            raise PermissionError(f"Access denied: document path '{expected}' is outside allowed roots (DSH_ALLOWED_ROOTS)")
     for val_key in ('spec_path', 'step_path', 'output_path', 'replacement_path'):
         if val_key in values and values[val_key]:
             vp = str(values[val_key])

@@ -1,9 +1,9 @@
 # 功能能力矩阵
 
-本页列出插件当前注册的**全部 71 个工具**（19 个 read、26 个 write、26 个 high）。本页由
+本页列出插件当前注册的**全部 71 个 MCP 工具**（19 个 read、26 个 write、26 个 high）**+ 3 个宿主元工具**。本页由
 `audit/promotion-phase/03-local-remediation/gen-feature-matrix.cjs` 从运行时注册表与源码生成，代码与文档一旦不同步，生成器就会失败。
 
-在这 71 个工具之外，插件自身还注册了两个 DSH 宿主 meta 工具：`solidworks_status` 与 `solidworks_confirm`。后者恒以
+在这 71 个工具之外，插件自身还注册了 3 个 DSH 宿主元工具：`solidworks_status`、`solidworks_confirm` 与 `solidworks_setup_runtime`。`solidworks_confirm` 恒以
 `SELF_APPROVAL_PROHIBITED` 失败关闭，存在的意义是让调用方能够证明它无法自我授权。
 
 ## 状态列怎么读
@@ -86,7 +86,7 @@ read 工具需 `read-only` 及以上，write 工具需 `standard` 及以上，hi
 | 工具 | 用途 | 前置条件 | 参数（必填 / 可选） | 返回 | 风险 | 模式门禁 | 自动化测试 | 真实 SolidWorks | 已知限制 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `solidworks_create_basic_part` | 生成简单圆柱或方块零件，可指定颜色与保存路径 | 需打开零件(.SLDPRT) | 无 / `shape`, `output_path`, `plane_name`, `width_mm`, `height_mm`, `radius_mm`, `depth_mm`, `color` | `status`, `task_id`, `shape`, `sketch_quality`, `rebuild_ok`, `feature_created`, `feature_name`, `appearance_ok`, `saved`, `output_path` | **write** | standard 及以上 | `automated-test-passed`（功能测试 19 处） | `verified` | 仅圆柱/方块两种简单形体 |
-| `solidworks_revolve` | 把草图轮廓绕轴旋转生成回转实体 | 需打开零件(.SLDPRT) | `sketch_name` / `angle_deg`, `axis_sketch_name` | `status`, `feature_created`, `suggestion`, `feature_name`, `angle_deg`, `document` | **write** | standard 及以上 | 无 | `failed` | 文档仅标 VERIFIED_IN_MOCK（FEATURE_MATRIX.md:24-32） |
+| `solidworks_revolve` | 把草图轮廓绕轴旋转生成回转实体 | 需打开零件(.SLDPRT) | `sketch_name` / `angle_deg`, `axis_sketch_name` | `status`, `feature_created`, `suggestion`, `feature_name`, `angle_deg`, `document` | **write** | standard 及以上 | 无 | `failed`（延后至 v0.5.0） | 实机旋转创建未通过，明确延后至 v0.5.0 |
 | `solidworks_create_hole_feature` | 在当前零件创建受约束的盲孔/通孔/复合孔或半圆槽 | 需打开零件(.SLDPRT) ；需在零件上定位孔位（可选已有草图/点） | `feature_kind` / `center_x_mm`, `center_y_mm`, `diameter_mm`, `depth_mm`, `secondary_diameter_mm`, `secondary_depth_mm`, `included_angle_deg`, `slot_end_x_mm`, `slot_end_y_mm`, `plane_name`, `feature_name` | `status`, `feature_evidence`, `document` | **write** | standard 及以上 | 无 | `verified` | 孔位约束依赖输入；未实机验证 |
 | `solidworks_build_round_sweeps` | 创建原生方程路径圆截面扫描及矩形拉伸（严格规格，不保存） | ready), process_id, save_requested=false, manual_review_required, created[{name,feature_type,path_length_mm,expected_length_mm,diameter_mm}\ | `expected_document_path`, `spec_path` / `dry_run` | `ready`, `process_id`, `save_requested`, `manual_review_required`, `created[]` | **write** | standard 及以上 | 未分类（0 处） | `verified` | 无（tests/ 无任何引用） |
 
@@ -139,7 +139,7 @@ read 工具需 `read-only` 及以上，write 工具需 `standard` 及以上，hi
 | 工具 | 用途 | 前置条件 | 参数（必填 / 可选） | 返回 | 风险 | 模式门禁 | 自动化测试 | 真实 SolidWorks | 已知限制 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `solidworks_save_document` | 保存当前文档，可用另存为 | 需打开文档 ；文档须由本会话拥有(DEF-SEC-01) ；需活动文档（且被本会话拥有） | 无 / `path` | `status`, `success`, `document` | **high** | full + 宿主人工确认 | 策略层引用 37 处（非功能测试） | `verified` | HIGH：可能覆盖磁盘文件，需审批 |
-| `solidworks_pack_and_go` | 调用原生 Pack and Go 收集文件到受保护输出目录 | 需打开文档 ；需活动装配体/文档 | `output_dir` / `include_drawings`, `include_simulation_results`, `include_toolbox_components`, `include_suppressed`, `flatten`, `overwrite`, `fallback_policy` | `backend`, `document_count`, `status_codes`, `outputs`, `produced_count`, `manifest`, `success`, `status`, `stage`, `error_code`, `retryable`, `manual_review_required`, `limitations`, `native_backend`, `dependencies`, `component_audit`, `associated_drawings`, `audit_matrix`, `missing_dependencies`, `fallback_used`, `fallback_errors`, `options` | **high** | full + 宿主人工确认 | `automated-test-passed`（功能测试 1 处） | `failed`（D-13） | HIGH：写多文件；依赖原生 API 可用；实现函数名为 native Pack and Go wire function（命名差异，schema 正常，无功能影响） |
+| `solidworks_pack_and_go` | 调用原生 Pack and Go 收集文件到受保护输出目录 | 需打开文档 ；需活动装配体/文档 | `output_dir` / `include_drawings`, `include_simulation_results`, `include_toolbox_components`, `include_suppressed`, `flatten`, `overwrite`, `fallback_policy` | `backend`, `document_count`, `status_codes`, `outputs`, `produced_count`, `manifest`, `success`, `status`, `stage`, `error_code`, `retryable`, `manual_review_required`, `limitations`, `native_backend`, `dependencies`, `component_audit`, `associated_drawings`, `audit_matrix`, `missing_dependencies`, `fallback_used`, `fallback_errors`, `options` | **high** | full + 宿主人工确认 | `automated-test-passed`（功能测试 1 处） | `failed`（D-13，延后至 v0.5.0） | HIGH：写多文件；复杂装配体依赖遍历受底层 COM 局限，延后至 v0.5.0 |
 
 ### DFM (3)
 
@@ -170,7 +170,7 @@ read 工具需 `read-only` 及以上，write 工具需 `standard` 及以上，hi
 | `solidworks_connect` | 连接已运行的 SolidWorks 或启动一个，返回当前文档状态 | 需 SolidWorks 已安装或可启动 | 无 / `visible`, `wait_seconds`, `start_if_needed` | `status`, `revision`, `active_document` | **write** | standard 及以上 | `automated-test-passed`（`v033_remediation_test.py`） | `verified`（v0.3.3 定向复测通过：D-01 已修复） | 在 `standard`/`full` 下可冷启动 SolidWorks 进程 |
 | `solidworks_health_check` | 检查 Python 依赖、COM 注册与可选实时连接 | 无需文档 | 无 / `start_solidworks`, `check_motion_type_library` | `status`, `checks`, `issues` | **read** | read-only 及以上 | `automated-test-passed`（功能测试 2 处） | `verified` | 仅环境诊断 |
 | `solidworks_recover` | 诊断被阻塞的 SolidWorks 会话，可选关闭阻塞弹窗 | 无需打开文档/无额外前置（源码未见 _active_*_required 调用） | 无 / `dismiss_dialogs`, `probe_timeout_seconds` | `status`, `probe`, `next_step` | **high** | full + 宿主人工确认 | `automated-test-passed`（功能测试 3 处） | `known-limitation` | 可关闭阻塞弹窗，属破坏性恢复 |
-| `design_spec_validate` | 纯校验设计规格 JSON，不接触 SolidWorks | 纯离线校验，无需 SolidWorks | `spec_path` / 无 | `status`, `errors`, `warnings`, `source_path` | **read** | read-only 及以上 | 策略层引用 2 处（非功能测试） | `failed`（D-09） | 只校验 JSON 结构/引用 |
+| `design_spec_validate` | 纯校验设计规格 JSON，不接触 SolidWorks | 纯离线校验，无需 SolidWorks | `spec_path` / 无 | `status`, `errors`, `warnings`, `source_path` | **read** | read-only 及以上 | 策略层引用 2 处（非功能测试） | `failed`（D-09，延后至 v0.5.0） | 只校验 JSON 结构/引用；多模板兼容延后至 v0.5.0 |
 | `solidworks_generate_drawing` | 按 DrawingSpec v1 创建工程图、PDF、预览与机器审视报告 | 需活动零件/装配体 + DrawingSpec | `spec_path`, `output_dir` / `drawing_filename`, `overwrite` | `status`, `stage`, `error_code`, `message`, `manual_review_required` | **high** | full + 宿主人工确认 | `automated-test-passed`（功能测试 11 处） | `blocked` — DRAWING_SPEC_SCHEMA_INVALIDschema_version 不被… | HIGH：建工程图并写 PDF/预览，未实机验证 |
 | `solidworks_review_drawing` | 打开工程图并做 DrawingSpec/布局/尺寸/孔槽/PDF 证据审视 | 需已有 .SLDDRW 与 DrawingSpec | `drawing_path`, `spec_path`, `output_dir` / `pdf_path`, `basename` | `status`, `drawingPath`, `structure`, `previews`, `review`, `manual_review_required`, `reportPath` | **high** | full + 宿主人工确认 | `automated-test-passed`（功能测试 6 处） | `blocked` — 需已存在的 .SLDDRW | HIGH：需打开并写报告；manual_review_required 恒 True |
 | `solidworks_inspect_drawing` | 只读读取工程图页、视图、尺寸、注释、表格结构并生成预览证据 | 需已有 .SLDDRW 路径 | `drawing_path`, `output_dir` / `basename`, `paper_size_hint` | `status`, `drawingPath`, `structure`, `previews`, `manual_review_required`, `reportPath` | **high** | full + 宿主人工确认 | `automated-test-passed`（功能测试 6 处） | `blocked` — 需已存在的 .SLDDRW | HIGH：写预览/报告文件 |

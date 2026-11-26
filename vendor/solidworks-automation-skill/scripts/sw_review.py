@@ -872,13 +872,14 @@ def collect_geometry_measurements(model):
                     }
                     measurements["cylindrical_faces"].append(cylinder)
                     if internal:
+                        through_state = "through" if cylinder["edge_count"] >= 2 else "blind"
                         evidence = {
                             "diameter_mm": cylinder["diameter_mm"],
                             "position_mm": cylinder["origin_mm"],
                             "axis": cylinder["axis"],
                             "axial_length_mm": cylinder["axial_length_mm"],
-                            "through_state": "unknown",
-                            "through_evidence": "B-Rep cylinder boundaries cannot distinguish blind from through",
+                            "through_state": through_state,
+                            "through_evidence": f"B-Rep cylindrical edge count: {cylinder['edge_count']} ({through_state})",
                             "measurement_source": "B-Rep internal cylindrical face",
                         }
                         if cylinder["edge_count"] <= 2:

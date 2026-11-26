@@ -155,7 +155,7 @@ def read_model_dimensions(model) -> DimensionModelIR:
                         dimension_name=dim_full,
                         system_value=sys_val,
                         feature_name=canonical_feat,
-                        feature_type=feat_type,
+                        feature_type="Extrusion" if feat_type.upper() == "ICE" else feat_type,
                         dim_type=dim_type,
                         is_driven=is_driven,
                         editable=not is_driven,

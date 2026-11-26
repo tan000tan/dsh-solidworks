@@ -80,13 +80,15 @@ check(ctx.logs.length === 0 || !ctx.logs.some(([level]) => level === 'error'), '
 console.log(`      (apply took ${startupMs} ms)`)
 
 const names = [...ctx.registered.keys()].sort()
-const mapped = names.filter(n => !n.startsWith('solidworks_') || n === 'solidworks_status' || n === 'solidworks_confirm')
-const serverTools = names.filter(n => !['solidworks_status', 'solidworks_confirm'].includes(n))
+const metaToolNames = ['solidworks_status', 'solidworks_confirm', 'solidworks_setup_runtime']
+const mapped = names.filter(n => !n.startsWith('solidworks_') || metaToolNames.includes(n))
+const serverTools = names.filter(n => !metaToolNames.includes(n))
 
 check(names.includes('solidworks_status'), 'solidworks_status is published')
 check(names.includes('solidworks_confirm'), 'solidworks_confirm is published')
+check(names.includes('solidworks_setup_runtime'), 'solidworks_setup_runtime is published')
 check(serverTools.length > 0, `mapped server tools are published (${serverTools.length})`)
-console.log(`      registered: ${names.length} tools = 2 meta + ${serverTools.length} server`)
+console.log(`      registered: ${names.length} tools = 3 meta + ${serverTools.length} server`)
 
 // The read-only mode must not publish write/high tools.
 const statusTool = ctx.registered.get('solidworks_status')
@@ -106,7 +108,7 @@ if (statusValue) {
   if (parsed.environment?.state === "error") {
     environmentBlocked = true
     console.log(`      environment error: ${parsed.environment.code} — ${parsed.environment.message}`)
-    console.log("      (pass --python <path>, or set config.pythonPath; without it only the 2 meta tools register)")
+    console.log("      (pass --python <path>, or set config.pythonPath; without it only the 3 meta tools register)")
   }
   check(parsed.connection?.running === true, 'status reports the MCP server running')
   check(parsed.connection?.tools >= 60, `status reports the server's full tool count (${parsed.connection?.tools})`)

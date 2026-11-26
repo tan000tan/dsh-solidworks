@@ -56,7 +56,25 @@ def _direction(model, vector, mark):
             selected = False
         if selected:
             return dot < 0
-    raise ValueError(f"找不到可选的阵列方向直边: {requested}")
+    # D-07 回退支持：当回转体/曲面上没有对应方向的直边时，尝试查找基准轴或基准面法向
+    plane_map = {
+        (1.0, 0.0, 0.0): ["Right Plane", "右视基准面"],
+        (0.0, 1.0, 0.0): ["Top Plane", "上视基准面"],
+        (0.0, 0.0, 1.0): ["Front Plane", "前视基准面"],
+    }
+    for dir_vec, plane_names in plane_map.items():
+        dot_p = sum(a * b for a, b in zip(requested, dir_vec))
+        if abs(dot_p) >= 1 - 1e-6:
+            for pname in plane_names:
+                try:
+                    data = get_com_member(model.SelectionManager, "CreateSelectData")
+                    data.Mark = int(mark)
+                    if bool(model.Extension.SelectByID2(pname, "PLANE", 0, 0, 0, True, int(mark), None, 0)):
+                        return dot_p < 0
+                except Exception:
+                    pass
+
+    raise ValueError(f"找不到可选的阵列方向直边或基准轴面: {requested}。对于圆柱回转体，请确保创建了对应轴线或基准面。")
 
 
 def linear_pattern(model, feature_name, first, spacing, count, second=(0, 0, 0), second_spacing=0, second_count=1):

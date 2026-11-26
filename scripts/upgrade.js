@@ -37,6 +37,7 @@ function runProc(cmd, args) {
 
 export function restoreFromBackup(backupDir, rootDir = ROOT_DIR, dshProfileDir = getDshDesktopProfileDir()) {
   const restored = [];
+  const errors = [];
   const backupCandidates = ['dsh-mcp-config.json', 'package.json', 'dsh-plugin.json'];
   for (const name of backupCandidates) {
     const bak = path.join(backupDir, name);
@@ -44,7 +45,9 @@ export function restoreFromBackup(backupDir, rootDir = ROOT_DIR, dshProfileDir =
       try {
         copyFileSync(bak, path.join(rootDir, name));
         restored.push(name);
-      } catch {}
+      } catch (err) {
+        errors.push({ file: name, error: err });
+      }
     }
   }
   const bakPatch = path.join(backupDir, 'cordis.patch.yml');
@@ -52,7 +55,12 @@ export function restoreFromBackup(backupDir, rootDir = ROOT_DIR, dshProfileDir =
     try {
       copyFileSync(bakPatch, path.join(dshProfileDir, 'cordis.patch.yml'));
       restored.push('cordis.patch.yml');
-    } catch {}
+    } catch (err) {
+      errors.push({ file: 'cordis.patch.yml', error: err });
+    }
+  }
+  if (errors.length > 0) {
+    console.error(`[!] 回滚过程中部分文件未能成功还原: ${errors.map(e => `${e.file} (${e.error?.message || e.error})`).join(', ')}`);
   }
   return restored;
 }
@@ -116,6 +124,18 @@ async function main() {
   const setupArgs = [path.join(__dirname, 'setup.js')];
   if (process.argv.includes('--optional') || process.argv.includes('--full')) {
     setupArgs.push('--optional');
+  }
+  const forwardedFlags = ['--aliyun', '--official', '--no-mirror', '--force-patch', '--no-profile'];
+  for (const flag of forwardedFlags) {
+    if (process.argv.includes(flag)) setupArgs.push(flag);
+  }
+  const pyArgIdx = process.argv.indexOf('--python');
+  if (pyArgIdx !== -1 && process.argv[pyArgIdx + 1]) {
+    setupArgs.push('--python', process.argv[pyArgIdx + 1]);
+  }
+  const profArgIdx = process.argv.indexOf('--profile');
+  if (profArgIdx !== -1 && process.argv[profArgIdx + 1]) {
+    setupArgs.push('--profile', process.argv[profArgIdx + 1]);
   }
   const setupCode = await runProc(process.execPath, setupArgs);
   if (setupCode !== 0) {

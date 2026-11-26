@@ -323,6 +323,16 @@ def inspect_interference(asm_model, treat_subassemblies_as_components=False,
         count = int(get_com_member(interference, "GetInterferenceCount"))
         if count < 0 or count != len(detected):
             raise RuntimeError(f"干涉数量与数组不一致: {count} != {len(detected)}")
+
+        # D-11: 空装配体（0 个组件）应返回 insufficient_input 而非假绿 pass
+        comp_count = int(get_com_member(asm_model, "GetComponentCount", True) or 0)
+        if comp_count == 0:
+            result["status"] = "insufficient_input"
+            result["severity"] = "none"
+            result["interference_count"] = 0
+            result["items"] = []
+            result["errors"].append("装配体中无有效组件，无法执行干涉检查。")
+            return result
         items = []
         for index, item in enumerate(detected):
             entry = {"index": index, "name": None}

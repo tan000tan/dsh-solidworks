@@ -99,5 +99,7 @@ artifacts/
 /audit/project-handover/
 /audit/promotion-phase/
 /audit/v033-targeted-l4/
+/audit/v040-targeted-l4/
 /audit/v033-e2e-tmp/
 /promotion/
+/logs/

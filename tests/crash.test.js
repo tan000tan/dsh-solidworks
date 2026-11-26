@@ -55,7 +55,8 @@ try {
 check(threw === null, 'apply() does not throw when the server dies at startup')
 check(ctx.registered.has('solidworks_status'), 'solidworks_status is still published')
 check(ctx.registered.has('solidworks_confirm'), 'solidworks_confirm is still published')
-check(ctx.registered.size === 2, `only the 2 meta tools are published (got ${ctx.registered.size})`)
+check(ctx.registered.has('solidworks_setup_runtime'), 'solidworks_setup_runtime is still published')
+check(ctx.registered.size === 3, `only the 3 meta tools are published (got ${ctx.registered.size})`)
 
 const statusTool = ctx.registered.get('solidworks_status')
 const result = await statusTool.execute({}, {})

@@ -5,7 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.3] - 2026-11-25
+## [0.4.0] - 2026-11-26
+
+Unified public release superseding the unpublished `0.3.3` staging build. Keeps the **71 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`) accounting unchanged.
+
+### Added
+- **Interactive runtime setup meta-tool (`solidworks_setup_runtime`, host meta-tool #3)**:
+  - Creates an isolated `<pluginRoot>/.venv` and installs `mcp`/`pywin32` on demand with `ctx.approval` fail-closed confirmation, re-entry lock, bounded timeout, failure rollback cleanup, and hot reload (`ensureClientSynced()`), without modifying system Python or `PATH`.
+- **Cross-process ownership ledger (`D-03b`, `sw_connect.py`)**:
+  - Persists plugin-created document ownership in `owned-docs.json` via file lock and atomic replace (`os.replace`), ensuring external documents remain 100% blocked by `DEF-SEC-01`.
+- **Installer/upgrader & CLI risk enhancements (`scripts/setup.js`, `scripts/upgrade.js`, `bin/dsh-solidworks.js`)**:
+  - Added `--no-profile` to `setup.js`, `--profile` forwarding and strict rollback errors to `upgrade.js`, and dynamic `conditionalRisk` annotations in `list-tools`.
+
+### Fixed (Re-verified on SolidWorks 2026 SP4.1 + Integrated from v0.3.3 Staging)
+- **Cold-start, ActiveDoc switching, assembly ownership & shell fixes (`D-01`, `D-02`, `D-03a`, `D-04`, `D-08`)**:
+  - `D-01` cold-start propagation & policy gating; `D-02` `open_document` `ActiveDoc` switching (`ActivateDoc3`); `D-03a` assembly component ownership & parent reactivation; `D-04` `solidworks_shell` `VT_VOID` (`None`) false-failure fix; `D-08` `solidworks_add_coincident_mate` decorator binding fix (real-SW verified).
+- **CAD & inspection remediation (`D-05`, `D-06`, `D-07`, `D-10`, `D-11`, `D-12`, `D-14`)**:
+  - `D-05` (`solidworks_list_edges`): late-bound COM member protection so edge enumeration and directions succeed without crashing.
+  - `D-06` (`solidworks_chamfer`): edge selection pre-check and `EditRebuild3` verification.
+  - `D-07` (`solidworks_pattern`): datum plane fallback matching (`Front Plane` / `Top Plane` / `Right Plane`).
+  - `D-10` (`solidworks_export_active` PDF): decoupled `ISldWorks` resolution without calling `model.GetSldWorksObject()`.
+  - `D-11` (`solidworks_interference_check`): empty assembly cleanly returns `status="insufficient_input"`.
+  - `D-12` (`dimension_reader.py`, `sw_review.py`): mapped `ICE` to `Extrusion` and inferred `through_state` from cylinder edge counts.
+  - `D-14` (`sw_native_wire.py`): relaxed target-document pre-existence requirement for `import` actions (logic/offline verified).
+
+### Known Limitations & Deferred to v0.5.0
+- **`D-09`** (`schema_version` compatibility across drawing templates), **`D-13`** (`solidworks_pack_and_go` complex assembly dependency enumeration), and **`solidworks_revolve`** (real-SW revolve axis/closed profile creation) are explicitly **deferred to v0.5.0**.
+
+## [0.3.3] - 2026-11-25 (Unpublished Staging — Superseded by v0.4.0)
 
 Productization, documentation-truth pass, and targeted blocking CAD/CLI fixes ahead of wider promotion. No tool was added or removed; the 71-tool registry is unchanged.
 

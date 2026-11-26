@@ -20,7 +20,7 @@ const pkg = json('package.json');
 const manifest = json('dsh-plugin.json');
 
 /** Meta tools published by the plugin itself; everything else comes from the MCP server. */
-const META_TOOLS = ['solidworks_status', 'solidworks_confirm'];
+const META_TOOLS = ['solidworks_status', 'solidworks_confirm', 'solidworks_setup_runtime'];
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(join(ROOT, dir), { withFileTypes: true })) {
@@ -33,8 +33,8 @@ function walk(dir, out = []) {
 
 test('package.json declares the identity and the bundle patch the host needs', () => {
   assert.equal(pkg.name, 'dsh-solidworks');
-  assert.equal(pkg.version, '0.3.3');
-  assert.equal(manifest.version, '0.3.3');
+  assert.equal(pkg.version, '0.4.0');
+  assert.equal(manifest.version, '0.4.0');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
