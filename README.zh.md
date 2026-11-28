@@ -84,7 +84,7 @@ npm run doctor
 
 | 项目 | 状态 |
 | :--- | :--- |
-| 当前版本 | **v0.5.0**（`package.json`，完成 D-01..D-08、D-10..D-12、D-14 修复、宿主一键初始化元工具与跨进程归属账本；D-09、D-13、`solidworks_revolve` 延后至 v0.5.0） |
+| 当前版本 | **v0.5.0**（`package.json`，74 个 MCP 工具 + 3 个宿主元工具；完成 D-09、D-13、D-14、`solidworks_revolve`（`0.0000%` 体积误差）、同心配合、2D 工程图出图、FeatureGraph IR 执行/回滚与 Stage 5 实机闭环） |
 | DSH 插件目录 | 当前线上目录指向 **v0.3.2**（PR #16343 于 2026-11-17 合并）；v0.5.0 目录更新 PR 待发布后提交 |
 | 真机验证 | Windows 11 x64 + SolidWorks 2026 SP4.1：含 v0.5.0 实机复测项与沿用 v0.3.2 全量基线，见 [docs/verification.zh.md](docs/verification.zh.md) |
 | SolidWorks 2020–2025 | **未验证**——仅为标称兼容，代码中无版本门控 |

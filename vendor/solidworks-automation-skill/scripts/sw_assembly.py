@@ -342,9 +342,25 @@ def select_entities_for_mate(model, entity1, entity2, mark=1):
     @return True。
     """
     model.ClearSelection2(True)
-    if not entity1.Select2(False, mark):
+    sd = None
+    try:
+        sd = model.SelectionManager.CreateSelectData()
+        sd.Mark = mark
+    except Exception:
+        sd = None
+
+    def _select_one(ent, append):
+        if sd is not None:
+            try:
+                if ent.Select4(append, sd):
+                    return True
+            except Exception:
+                pass
+        return bool(ent.Select2(append, mark))
+
+    if not _select_one(entity1, False):
         raise RuntimeError("选择第一个 Mate 实体失败")
-    if not entity2.Select2(True, mark):
+    if not _select_one(entity2, True):
         raise RuntimeError("选择第二个 Mate 实体失败")
     selected_count = model.SelectionManager.GetSelectedObjectCount2(-1)
     if selected_count != 2:

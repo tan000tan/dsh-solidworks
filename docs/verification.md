@@ -1,14 +1,14 @@
 # Verification record
 
-What has actually been run for **v0.4.0** (targeted re-verification + runtime setup & ledger) and inherited from **v0.3.2** (full 71-tool baseline), on what machine, and what has not been run at all.
-Every claim here maps to a command you can re-run; v0.4.0 targeted fixes are explicitly separated from the
+What has actually been run for **v0.5.0** (targeted re-verification + runtime setup & ledger) and inherited from **v0.3.2** (full 71-tool baseline), on what machine, and what has not been run at all.
+Every claim here maps to a command you can re-run; v0.5.0 targeted fixes are explicitly separated from the
 v0.3.2 full-matrix baseline below. If a line says *not verified*, treat the corresponding capability as unknown.
 
 The plugin registers **74 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`). The tool count is asserted by `tests/package.test.js` against
 `lib/policy.js`'s `RISK_TABLE`, so this page cannot drift from the code.
 
-- Verification date: 2026-11-26 (v0.4.0 targeted L4 + offline suites; v0.3.2 full L4 baseline recorded 2026-11-18)
-- Plugin version: 0.4.0 (`package.json`, branch `feat/v0.4.0` → `main`)
+- Verification date: 2026-11-26 (v0.5.0 targeted L4 + offline suites; v0.3.2 full L4 baseline recorded 2026-11-18)
+- Plugin version: 0.5.0 (`package.json`, branch `feat/v0.5.0` → `main`)
 - Platform: Windows 11 x64, Node.js v24.21.0, DSH 0.1.7-rc.2
 - Python used for offline & v0.3.3 targeted runs: local 64-bit Python 3.13 (`mcp`, `pywin32`, `comtypes`, `pydantic`, `jsonschema`); v0.3.2 baseline used DSH bundled runtime 3.12.14
 - SolidWorks: 2026 SP04.1, COM revision 34.4.1
@@ -23,7 +23,7 @@ Verification levels used below: **L1** environment, **L2** MCP server, **L3** DS
 | L1 environment | PASS on this machine | §2, `audit/promotion-phase/01-current-state-audit/evidence/env-baseline.txt` |
 | L2 MCP server (handshake, tool list, schema, errors) | PASS | §3, `npm run test:all` |
 | L3 DSH host (bundle load, tool publication, read-only gate) | PASS for load and gating; GUI approval not exercised | §3, `tests/cordis_activation_test.mjs`, `tests/r5-…` |
-| L4 real SolidWorks | v0.3.2 full baseline: 71/71 tools reached (**33 `verified` (7 partial)**, 13 `failed`, 24 `blocked`, 1 `known-limitation`, 14 defects); v0.4.0 targeted re-test: D-01, D-02, D-03a/D-03b, D-04, D-05, D-06, D-07, D-08, D-10, D-11, D-12 PASS on SW 2026 SP4.1; D-09, D-13, `solidworks_revolve` deferred to v0.5.0 | §4, §4.4 |
+| L4 real SolidWorks | v0.3.2 full baseline: 71/71 tools reached (**33 `verified` (7 partial)**, 13 `failed`, 24 `blocked`, 1 `known-limitation`, 14 defects); v0.5.0 targeted re-test: D-01, D-02, D-03a/D-03b, D-04, D-05, D-06, D-07, D-08, D-10, D-11, D-12 PASS on SW 2026 SP4.1; D-09, D-13, `solidworks_revolve` deferred to v0.5.0 | §4, §4.4 |
 | Offline automated suites | PASS — 20 top-level suites, 204 assertions; 45 Python suites, 341 cases | §3 |
 | SolidWorks 2020–2025 | **not verified** | §5 |
 
@@ -100,9 +100,9 @@ state at teardown" as a known limitation, not as a clean shutdown.
 | `blocked` | 24 | the environment could not satisfy the tool's preconditions (no solver, no OCP backend, no DXF source, document ownership); **this is not proof that the tool is broken** |
 | `known-limitation` | 1 | `solidworks_recover` never probes COM (`status=not_checked`) |
 
-### 4.1 Defects found on real hardware (v0.3.2 baseline & v0.4.0 status)
+### 4.1 Defects found on real hardware (v0.3.2 baseline & v0.5.0 status)
 
-| ID | Severity | Summary | Status in v0.4.0 |
+| ID | Severity | Summary | Status in v0.5.0 |
 | :--- | :--- | :--- | :--- |
 | D-01 | blocking | MCP cannot cold-start SolidWorks (`SW_LAUNCH_PROHIBITED`) — contradicts "connect or start one" | **Fixed & targeted re-verified (SW 2026 SP4.1)**: `read-only` refuses cold start; CLI `--mode standard` & `health_check(start_solidworks=true)` cold-start SW 2026 (`34.4.1`) |
 | D-02 | blocking | `solidworks_open_document` does not make the opened document the ActiveDoc → later tools act on the wrong document | **Fixed & targeted re-verified (SW 2026 SP4.1)**: `open_document()` calls `ActivateDoc3` + verifies `ActiveDoc` across `part_a` (`8000 mm³`), `part_b` (`27000 mm³`), `asm_test` |
@@ -189,3 +189,9 @@ installed SolidWorks and writes only inside its own workspace directory.
 The previous verification log (an MCP-layer evidence journal from the 66-tool era) is kept
 unchanged at [docs/archive/verification-2026-11-17-legacy.md](archive/verification-2026-11-17-legacy.md).
 It describes an older tool set and must not be quoted as current evidence.
+### 4.5 v0.5.0 Hardcore CAD Real-Hardware E2E Verification (SolidWorks 2026 SP4.1, 2026-11-28)
+- `solidworks_revolve`: created `旋转1`, measured volume `28274.3339 mm³` (`0.0000%` error).
+- `solidworks_add_concentric_mate` + `interference_check`: `Select4` fix verified (`concentric_mate_created=true`, `interference_count=0`).
+- `solidworks_generate_drawing`: generated `plate_hole.SLDDRW` (65,828 bytes) and `plate_hole.pdf` (44,748 bytes) from `minimal_drawing_spec.json`.
+- `FeatureGraph IR`: forward DAG `COMPLETED`; invalid chamfer triggered auto-rollback (`ROLLED_BACK`).
+- `Stage 5 E2E`: `plan_multi_schemes` -> `revolve_boss` -> `safe_mass_properties` -> `inspect_cad_quality` returned `pass` (`volume_error_pct: 0.0`).

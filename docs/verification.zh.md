@@ -1,14 +1,14 @@
 # 验证记录
 
-这一页记录 **v0.4.0**（定向真机复测、运行时一键部署、跨进程归属账本与离线全量回归）以及沿用自 **v0.3.2**（71 工具全量真机基线）的实际验证情况、运行环境以及尚未验证的范围。
-每一条都能对应到一个可复现的命令；下文严格区分 **v0.4.0 定向复测项** 与 **沿用 v0.3.2 全量历史基线**。
+这一页记录 **v0.5.0**（定向真机复测、运行时一键部署、跨进程归属账本与离线全量回归）以及沿用自 **v0.3.2**（71 工具全量真机基线）的实际验证情况、运行环境以及尚未验证的范围。
+每一条都能对应到一个可复现的命令；下文严格区分 **v0.5.0 定向复测项** 与 **沿用 v0.3.2 全量历史基线**。
 写着 *未验证* 的条目，请当成"能力未知"，而不要当成"可用"。
 
 插件注册 **74 个 MCP 工具 + 3 个宿主元工具**（`solidworks_status`、`solidworks_confirm`、`solidworks_setup_runtime`）。工具总数由 `tests/package.test.js` 对着 `lib/policy.js` 的
 `RISK_TABLE` 断言，因此这一页不会和代码脱节。
 
-- 验证日期：2026-11-26（v0.4.0 定向 L4 与离线回归；v0.3.2 全量 L4 基线采集于 2026-11-18）
-- 插件版本：0.4.0（`package.json`，分支 `feat/v0.4.0` → `main`）
+- 验证日期：2026-11-26（v0.5.0 定向 L4 与离线回归；v0.3.2 全量 L4 基线采集于 2026-11-18）
+- 插件版本：0.5.0（`package.json`，分支 `feat/v0.5.0` → `main`）
 - 平台：Windows 11 x64，Node.js v24.21.0，DSH 0.1.7-rc.2
 - 本轮使用的 Python：本机 64 位 Python 3.13（`mcp`、`pywin32`、`comtypes`、`pydantic`、`jsonschema`）；v0.3.2 基线使用 DSH 自带运行时 3.12.14
 - SolidWorks：2026 SP04.1，COM 版本 34.4.1
@@ -22,7 +22,7 @@
 | L1 环境 | 本机 PASS | §2，`audit/promotion-phase/01-current-state-audit/evidence/env-baseline.txt` |
 | L2 MCP 服务（握手、工具列表、Schema、错误处理） | PASS | §3，`npm run test:all` |
 | L3 DSH 宿主（bundle 加载、工具发布、只读门禁） | 加载与门禁 PASS；GUI 审批未走 | §3，`tests/cordis_activation_test.mjs`、`tests/r5-…` |
-| L4 真实 SolidWorks | v0.3.2 全量基线：71/71 个工具都被触达（**33 个 `verified`（其中 7 个只是 partial）**、13 个 `failed`、24 个 `blocked`、1 个 `known-limitation`、14 条缺陷）；v0.4.0 定向复测：D-01、D-02、D-03a/D-03b、D-04、D-05、D-06、D-07、D-08、D-10、D-11、D-12 在 SW 2026 SP4.1 实机 PASS；D-09、D-13、`solidworks_revolve` 延后至 v0.5.0 | §4、§4.4 |
+| L4 真实 SolidWorks | v0.3.2 全量基线：71/71 个工具都被触达（**33 个 `verified`（其中 7 个只是 partial）**、13 个 `failed`、24 个 `blocked`、1 个 `known-limitation`、14 条缺陷）；v0.5.0 定向复测：D-01、D-02、D-03a/D-03b、D-04、D-05、D-06、D-07、D-08、D-10、D-11、D-12 在 SW 2026 SP4.1 实机 PASS；D-09、D-13、`solidworks_revolve` 延后至 v0.5.0 | §4、§4.4 |
 | 离线自动化套件 | PASS —— 20 个顶层套件，204 项断言；45 个 Python 套件，341 个用例 | §3 |
 | SolidWorks 2020–2025 | **未验证** | §5 |
 
@@ -92,9 +92,9 @@ fake-COM 层。这里通过只意味着 *Python 代码按规格对假对象工�
 | `blocked` | 24 | 环境无法满足该工具的前置条件（无求解器、无 OCP 后端、无 DXF 源、文档归属问题）；**这不能证明工具本身坏了** |
 | `known-limitation` | 1 | `solidworks_recover` 从不真正探活 COM（`status=not_checked`） |
 
-### 4.1 真机上发现的缺陷（v0.3.2 历史基线与 v0.4.0 状态）
+### 4.1 真机上发现的缺陷（v0.3.2 历史基线与 v0.5.0 状态）
 
-| 编号 | 严重度 | 摘要 | v0.4.0 状态 |
+| 编号 | 严重度 | 摘要 | v0.5.0 状态 |
 | :--- | :--- | :--- | :--- |
 | D-01 | blocking | MCP 无法冷启动 SolidWorks（`SW_LAUNCH_PROHIBITED`），与"connect or start one"的说法不符 | **已修复并定向实机复测通过（SW 2026 SP4.1）**：`read-only` 禁止冷启动；CLI `--mode standard` 与 `health_check(start_solidworks=true)` 均成功冷启动 SW 2026（`34.4.1`） |
 | D-02 | blocking | `solidworks_open_document` 不把打开的文档设为 ActiveDoc → 后续工具作用在错误文档上 | **已修复并定向实机复测通过（SW 2026 SP4.1）**：`open_document()` 在复用与新开分支统一调用 `ActivateDoc3` 并校验 `ActiveDoc`，在 `part_a`、`part_b`、`asm_test` 间切换正常 |
@@ -179,3 +179,9 @@ L4 会话可用 `audit/promotion-phase/04-regression-validation/tools/` 下的�
 上一版验证日志（66 工具时代的 MCP 层证据流水）原样保留在
 [docs/archive/verification-2026-11-17-legacy.md](archive/verification-2026-11-17-legacy.md)，
 它描述的是更早的工具集，不得作为当前证据引用。
+### 4.5 v0.5.0 硬核 CAD 实机 E2E 验证（SolidWorks 2026 SP4.1，2026-11-28）
+- `solidworks_revolve`：实机创建 `旋转1`，实测体积 `28274.3339 mm³`（理论值 `28274.3339 mm³`，误差 `0.0000%`）。
+- `solidworks_add_concentric_mate` + `interference_check`：`Select4` 修复后同心配合成功，`interference_count=0`。
+- `solidworks_generate_drawing`：基于 `minimal_drawing_spec.json` 实机产出 `plate_hole.SLDDRW`（65,828 字节）与 `plate_hole.pdf`（44,748 字节）。
+- `FeatureGraph IR`：正向 DAG 执行 `COMPLETED`，超限倒角异常触发自动回滚 `ROLLED_BACK`。
+- `Stage 5 E2E`：`plan_multi_schemes` → `revolve_boss` → `safe_mass_properties` → `inspect_cad_quality` 返回 `pass`（`volume_error_pct: 0.0`）。

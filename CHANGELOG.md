@@ -14,11 +14,14 @@ Upgrades the registry to **74 MCP tools + 3 host meta-tools** (22 read, 26 write
 - Added minimal built-in templates (minimal_design_spec.json, minimal_drawing_spec.json).
 
 ### Fixed
-- solidworks_revolve: fixed sketch exit, SKETCHSEGMENT / centerline selection with Mark=4, and EditRebuild3.
-- D-09: normalized schema_version / schemaVersion across design_spec.py and drawing_spec.py.
-- D-13: enabled recursive GetDependencies2(Traverseflag=True) and assembly GetComponents fallback in sw_delivery.py.
+- `solidworks_revolve`: fixed sketch exit, `SKETCHSEGMENT` / centerline selection with `Mark=4`, and `EditRebuild3`; real-SW 2026 volume verified at `28274.3339 mm³` (`0.0000%` error).
+- `solidworks_add_concentric_mate`: upgraded `select_entities_for_mate` to `Select4(CreateSelectData(Mark))` with `Select2` fallback; real-SW 2026 assembly concentric mate + `interference_check` (`0` interferences) passed.
+- `solidworks_generate_drawing`: verified real-SW 2026 generation of non-empty `.SLDDRW` (`65,828` bytes) and `.PDF` (`44,748` bytes) from `minimal_drawing_spec.json`.
+- `FeatureGraph IR` & Stage 5 E2E: verified `COMPLETED` forward execution, `ROLLED_BACK` auto-rollback on invalid chamfer, and `plan_multi_schemes` → `revolve_boss` → `inspect_cad_quality` (`pass`, `0.0%` error).
+- `D-09`: normalized `schema_version` / `schemaVersion` across `design_spec.py` and `drawing_spec.py`.
+- `D-13`: enabled recursive `GetDependencies2(Traverseflag=True)` and assembly `GetComponents` fallback in `sw_delivery.py`.
 
-## [0.5.0] - 2026-11-26
+## [0.4.0] - 2026-11-26
 
 Unified public release superseding the unpublished `0.3.3` staging build. Keeps the **71 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`) accounting unchanged.
 

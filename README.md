@@ -84,7 +84,7 @@ Full prerequisites, what setup creates, how to verify success, and how to uninst
 
 | Item | Status |
 | :--- | :--- |
-| Current release | **v0.5.0** (`package.json`, fixes D-01..D-08, D-10..D-12, D-14, runtime setup meta-tool & cross-process ledger; D-09, D-13, `solidworks_revolve` deferred to v0.5.0) |
+| Current release | **v0.5.0** (`package.json`, 74 MCP tools + 3 host meta-tools; fixes D-09, D-13, D-14, `solidworks_revolve` (`0.0000%` volume error), `solidworks_add_concentric_mate`, 2D drawing export, FeatureGraph IR rollback, and Stage 5 E2E) |
 | DSH plugin catalogue | Entry currently serves **v0.3.2** (PR #16343 merged 2026-11-17); v0.5.0 update PR pending release approval |
 | Real SolidWorks verification | Windows 11 x64 + SolidWorks 2026 SP4.1: v0.5.0 real hardware verification + v0.3.2 full-matrix baseline in [docs/verification.md](docs/verification.md) |
 | SolidWorks 2020–2025 | **Not verified** — claimed compatibility only, no version gate in code |
