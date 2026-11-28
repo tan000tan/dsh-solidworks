@@ -33,8 +33,8 @@ function walk(dir, out = []) {
 
 test('package.json declares the identity and the bundle patch the host needs', () => {
   assert.equal(pkg.name, 'dsh-solidworks');
-  assert.equal(pkg.version, '0.4.0');
-  assert.equal(manifest.version, '0.4.0');
+  assert.equal(pkg.version, '0.5.0');
+  assert.equal(manifest.version, '0.5.0');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'AGPL-3.0-only');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
@@ -129,7 +129,7 @@ test('manifest tool list matches the risk table exactly', () => {
 
   const counts = { read: 0, write: 0, high: 0 };
   for (const tier of Object.values(RISK_TABLE)) counts[tier] += 1;
-  assert.deepEqual(counts, { read: 19, write: 26, high: 26 });
+  assert.deepEqual(counts, { read: 22, write: 26, high: 26 });
 });
 
 test('licence and notice travel with the package', () => {

@@ -4,7 +4,7 @@
 每一条都能对应到一个可复现的命令；下文严格区分 **v0.4.0 定向复测项** 与 **沿用 v0.3.2 全量历史基线**。
 写着 *未验证* 的条目，请当成"能力未知"，而不要当成"可用"。
 
-插件注册 **71 个 MCP 工具 + 3 个宿主元工具**（`solidworks_status`、`solidworks_confirm`、`solidworks_setup_runtime`）。工具总数由 `tests/package.test.js` 对着 `lib/policy.js` 的
+插件注册 **74 个 MCP 工具 + 3 个宿主元工具**（`solidworks_status`、`solidworks_confirm`、`solidworks_setup_runtime`）。工具总数由 `tests/package.test.js` 对着 `lib/policy.js` 的
 `RISK_TABLE` 断言，因此这一页不会和代码脱节。
 
 - 验证日期：2026-11-26（v0.4.0 定向 L4 与离线回归；v0.3.2 全量 L4 基线采集于 2026-11-18）

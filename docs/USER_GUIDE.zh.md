@@ -6,7 +6,7 @@
 
 ## 1. 这个插件做什么
 
-`dsh-solidworks` 是 DeepSeek Harness（DSH）的插件。它在本机启动一个 Python MCP 服务（`vendor/solidworks-automation-skill/mcp-server/server.py`），通过 COM 连接本机安装的 SolidWorks，并把这个服务提供的工具发布给 DSH 里的 AI 助手。当前注册 71 个 CAD 工具；DSH 宿主侧另有 2 个元工具（`solidworks_status`、`solidworks_confirm`），合计 73 个。
+`dsh-solidworks` 是 DeepSeek Harness（DSH）的插件。它在本机启动一个 Python MCP 服务（`vendor/solidworks-automation-skill/mcp-server/server.py`），通过 COM 连接本机安装的 SolidWorks，并把这个服务提供的工具发布给 DSH 里的 AI 助手。当前注册 74 个 CAD 工具；DSH 宿主侧另有 2 个元工具（`solidworks_status`、`solidworks_confirm`），合计 73 个。
 
 | 能做什么 | 不能做什么 |
 | --- | --- |
@@ -112,7 +112,7 @@ node bin/dsh-solidworks.js doctor --json
 4. 备份只覆盖尺寸修改路径，没有通用回滚；"所有修改都能回滚"不成立。
 5. 没有 GUI 自动化，也没有宏录制/回放，只通过 COM API 操作。
 6. 专业版/教育版授权差异未验证；教育版授权过期时可能遇到 `MK_E_UNAVAILABLE`。
-7. 每个工具的实机覆盖情况见 `docs/FEATURE_MATRIX.md`：v0.3.2 的真机走查里，71 个工具中 33 个 verified（7 个只验证了主路径）、13 个 failed、24 个因前置不满足 blocked。矩阵由运行日志重新生成，不要在别处复制这些数字。
+7. 每个工具的实机覆盖情况见 `docs/FEATURE_MATRIX.md`：v0.3.2 的真机走查里，74 个工具中 33 个 verified（7 个只验证了主路径）、13 个 failed、24 个因前置不满足 blocked。矩阵由运行日志重新生成，不要在别处复制这些数字。
 
 ## 9. 反馈入口
 

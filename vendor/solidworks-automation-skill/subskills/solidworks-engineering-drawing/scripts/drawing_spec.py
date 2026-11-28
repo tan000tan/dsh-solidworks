@@ -18,10 +18,19 @@ DOCUMENT_TYPES = {"part", "assembly", "sheet_metal"}
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "drawing_spec.schema.json"
 
 
+def _normalize_drawing_spec_version(payload: dict[str, Any]) -> dict[str, Any]:
+    spec = dict(payload)
+    if "schemaVersion" not in spec and "schema_version" in spec:
+        spec["schemaVersion"] = str(spec.pop("schema_version"))
+    elif "schema_version" in spec:
+        spec.pop("schema_version", None)
+    return spec
+
+
 def load_drawing_spec(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     """@brief 读取 DrawingSpec JSON 或复制内存规格。"""
     if isinstance(source, Mapping):
-        return dict(source)
+        return _normalize_drawing_spec_version(dict(source))
     path = Path(source).expanduser().resolve()
     if path.suffix.lower() != ".json" or not path.is_file():
         raise ValueError(f"DrawingSpec 必须是现有 JSON 文件: {path}")
@@ -31,7 +40,7 @@ def load_drawing_spec(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError(f"DrawingSpec JSON 无效: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError("DrawingSpec 根节点必须是对象")
-    return payload
+    return _normalize_drawing_spec_version(payload)
 
 
 def _issue(code: str, message: str, severity: str = "error", path: str = "") -> dict[str, str]:

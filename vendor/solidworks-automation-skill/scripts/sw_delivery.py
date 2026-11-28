@@ -200,19 +200,45 @@ def _collect_new_outputs(target: Path, existing_files: dict[str, tuple[int, int]
 
 
 def _document_dependency_paths(model, source_path: str) -> list[str]:
-    """@brief 读取当前文档引用路径，用于校验 Pack and Go 是否漏包。"""
-    try:
-        dependencies = get_com_member(model, "GetDependencies2", False, True, False) or []
-    except Exception:
-        return []
-    values = list(dependencies)
+    """@brief 递归读取当前文档引用路径（含装配体组件兜底），用于校验 Pack and Go 是否漏包。"""
     source_name = Path(source_path).name.casefold()
-    paths = []
-    for index in range(1, len(values), 2):
-        path = str(values[index] or "")
-        if not path or Path(path).name.casefold() == source_name:
-            continue
-        paths.append(path)
+    seen: set[str] = set()
+    paths: list[str] = []
+
+    def _add(p: str) -> None:
+        if not p:
+            return
+        name = Path(p).name.casefold()
+        if not name or name == source_name:
+            return
+        norm = os.path.normcase(os.path.normpath(p))
+        if norm not in seen:
+            seen.add(norm)
+            paths.append(p)
+
+    try:
+        # Traverseflag=True 启用递归依赖枚举
+        dependencies = get_com_member(model, "GetDependencies2", True, True, False) or []
+        values = list(dependencies)
+        for index in range(1, len(values), 2):
+            _add(str(values[index] or ""))
+    except Exception:
+        pass
+
+    # 若为装配体（docType == 2），补充遍历 GetComponents(False) 防止 GetDependencies2 遗漏
+    try:
+        doc_type = get_com_member(model, "GetType")
+        if doc_type == 2:
+            comps = get_com_member(model, "GetComponents", False) or []
+            for comp in comps:
+                try:
+                    cpath = str(get_com_member(comp, "GetPathName") or "")
+                    _add(cpath)
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
     return paths
 
 

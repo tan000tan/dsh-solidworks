@@ -1,9 +1,9 @@
 # 功能能力矩阵
 
-本页列出插件当前注册的**全部 71 个 MCP 工具**（19 个 read、26 个 write、26 个 high）**+ 3 个宿主元工具**。本页由
+本页列出插件当前注册的**全部 74 个 MCP 工具**（22 个 read、26 个 write、26 个 high）**+ 3 个宿主元工具**。本页由
 `audit/promotion-phase/03-local-remediation/gen-feature-matrix.cjs` 从运行时注册表与源码生成，代码与文档一旦不同步，生成器就会失败。
 
-在这 71 个工具之外，插件自身还注册了 3 个 DSH 宿主元工具：`solidworks_status`、`solidworks_confirm` 与 `solidworks_setup_runtime`。`solidworks_confirm` 恒以
+在这 74 个工具之外，插件自身还注册了 3 个 DSH 宿主元工具：`solidworks_status`、`solidworks_confirm` 与 `solidworks_setup_runtime`。`solidworks_confirm` 恒以
 `SELF_APPROVAL_PROHIBITED` 失败关闭，存在的意义是让调用方能够证明它无法自我授权。
 
 ## 状态列怎么读
@@ -23,9 +23,9 @@
 **13 个 `failed`**、**24 个 `blocked`**（环境无法满足该工具的前置条件，不等于工具本身损坏）、**1 个 `known-limitation`**，另有
 **14 条带复现步骤的缺陷**。在 **v0.3.3 定向真机复测**（`audit/v033-targeted-l4/l4-results.json`）中重新实测并通过的工具（`solidworks_connect`、`solidworks_open_document`、`solidworks_add_component`、`solidworks_add_coincident_mate`、`solidworks_shell`、`solidworks_export_assembly_bom`）已显式标注`（v0.3.3 定向复测通过）`，其余条目维持沿用自 v0.3.2 的历史基线状态。它证明的是"在一台机器上可达且行为符合记录"，不是其他模型上的几何正确性保证。
 
-风险等级来自 `lib/policy.js` 的 `RISK_TABLE`：19 个 read、26 个 write、26 个 high。模式门禁由风险等级推出：
+风险等级来自 `lib/policy.js` 的 `RISK_TABLE`：22 个 read、26 个 write、26 个 high。模式门禁由风险等级推出：
 read 工具需 `read-only` 及以上，write 工具需 `standard` 及以上，high 工具需 `full` 且每次调用都要 DSH 宿主界面人工确认。默认 `read-only` 模式下，
-只有 19 个 read 工具会被发布给模型。
+只有 22 个 read 工具会被发布给模型。
 
 自动化测试覆盖：26 项有功能测试引用，19 项只出现在策略/宿主层测试里，25 项无任何引用。有引用只代表
 测试文件里出现了该工具名，不代表测试断言了真实 SolidWorks 行为。

@@ -4,7 +4,7 @@ What has actually been run for **v0.4.0** (targeted re-verification + runtime se
 Every claim here maps to a command you can re-run; v0.4.0 targeted fixes are explicitly separated from the
 v0.3.2 full-matrix baseline below. If a line says *not verified*, treat the corresponding capability as unknown.
 
-The plugin registers **71 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`). The tool count is asserted by `tests/package.test.js` against
+The plugin registers **74 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`). The tool count is asserted by `tests/package.test.js` against
 `lib/policy.js`'s `RISK_TABLE`, so this page cannot drift from the code.
 
 - Verification date: 2026-11-26 (v0.4.0 targeted L4 + offline suites; v0.3.2 full L4 baseline recorded 2026-11-18)

@@ -8749,6 +8749,57 @@ def main() -> None:
 
 
 
+class _Stage5RequirementsInput(BaseModel):
+    requirements: Dict[str, Any] = Field(default_factory=dict, description="Part design requirements object.")
+    response_format: str = Field(default="json")
+
+
+class _Stage5FeatureGraphInput(BaseModel):
+    feature_graph: Dict[str, Any] = Field(default_factory=dict, description="Feature graph or node list to optimize.")
+    response_format: str = Field(default="json")
+
+
+class _Stage5QualityInput(BaseModel):
+    geometry_metrics: Dict[str, Any] = Field(default_factory=dict, description="Measured geometry and feature metrics.")
+    response_format: str = Field(default="json")
+
+
+@mcp.tool(
+    name="solidworks_plan_multi_schemes",
+    title="Plan Multi-Scheme CAD Strategies",
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+)
+def solidworks_plan_multi_schemes_tool(params: _Stage5RequirementsInput) -> str:
+    """Compare and rank candidate parametric CAD modeling schemes offline."""
+    from stage5_workflow import plan_multi_schemes
+
+    return _run_locked(lambda: plan_multi_schemes(params.requirements), params.response_format, use_lock=False)
+
+
+@mcp.tool(
+    name="solidworks_optimize_feature_tree",
+    title="Optimize Feature Tree Topology",
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+)
+def solidworks_optimize_feature_tree_tool(params: _Stage5FeatureGraphInput) -> str:
+    """Reorder and optimize a feature tree so dress-up features follow base geometry."""
+    from stage5_workflow import optimize_feature_tree
+
+    return _run_locked(lambda: optimize_feature_tree(params.feature_graph), params.response_format, use_lock=False)
+
+
+@mcp.tool(
+    name="solidworks_inspect_cad_quality",
+    title="Inspect 4D CAD Quality Metrics",
+    annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+)
+def solidworks_inspect_cad_quality_tool(params: _Stage5QualityInput) -> str:
+    """Evaluate volume accuracy, rebuild status, and quality metrics offline."""
+    from stage5_workflow import inspect_cad_quality
+
+    return _run_locked(lambda: inspect_cad_quality(params.geometry_metrics), params.response_format, use_lock=False)
+
+
 if __name__ == "__main__":
 
     main()

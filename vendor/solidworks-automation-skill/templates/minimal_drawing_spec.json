@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "sourceModel": "minimal_plate.SLDPRT",
+  "documentType": "part",
+  "standard": "GB_T",
+  "projection": "first_angle",
+  "paperSize": "A4",
+  "modelSizeMm": [60, 40, 10],
+  "views": {
+    "front": {}
+  },
+  "outputs": {
+    "slddrw": true,
+    "pdf": true,
+    "report": true
+  }
+}

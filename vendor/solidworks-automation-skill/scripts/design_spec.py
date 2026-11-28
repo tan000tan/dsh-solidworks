@@ -129,7 +129,8 @@ def validate_design_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
             "warnings": [],
         }
 
-    version = str(spec.get("schema_version", SCHEMA_VERSION))
+    raw_ver = spec.get("schema_version", spec.get("schemaVersion", SCHEMA_VERSION))
+    version = str(raw_ver)
     if version != SCHEMA_VERSION:
         warnings.append(
             f"规格 schema_version={version}，当前执行器版本为 {SCHEMA_VERSION}；"

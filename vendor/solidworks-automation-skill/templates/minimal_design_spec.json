@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "part_name": "minimal_plate",
+  "units": "mm",
+  "base": {
+    "type": "rect_plate",
+    "width": 60,
+    "height": 40,
+    "thickness": 10
+  }
+}

@@ -6,7 +6,7 @@ Applies to: plugin 0.3.2; Windows 10 / 11 x64; DSH `>=0.1.7-rc.2`; Node `>=22.12
 
 ## 1. What this plugin does
 
-`dsh-solidworks` is a DeepSeek Harness (DSH) plugin. It starts a local Python MCP service (`vendor/solidworks-automation-skill/mcp-server/server.py`), connects to the locally installed SolidWorks through COM, and publishes that service's tools to the AI assistant inside DSH. It currently registers 71 CAD tools; DSH adds 2 host-side meta tools (`solidworks_status`, `solidworks_confirm`), for 73 in total.
+`dsh-solidworks` is a DeepSeek Harness (DSH) plugin. It starts a local Python MCP service (`vendor/solidworks-automation-skill/mcp-server/server.py`), connects to the locally installed SolidWorks through COM, and publishes that service's tools to the AI assistant inside DSH. It currently registers 74 CAD tools; DSH adds 2 host-side meta tools (`solidworks_status`, `solidworks_confirm`), for 73 in total.
 
 | Can do | Cannot do |
 | --- | --- |
@@ -112,7 +112,7 @@ Start with `docs/TROUBLESHOOTING.md`. Three most common judgements:
 4. Backup covers only the dimension-edit path; there is no general rollback, and "every edit is reversible" does not hold.
 5. There is no GUI automation and no macro recording/replay; everything goes through the COM API.
 6. Professional vs. Educational licence differences are unverified; an expired educational licence can produce `MK_E_UNAVAILABLE`.
-7. Per-tool real-machine coverage is tracked in `docs/FEATURE_MATRIX.md`: in the v0.3.2 real-hardware pass, 33 of the 71 tools were verified (7 only on their main path), 13 failed and 24 were blocked by a missing precondition. The matrix is regenerated from the run log; do not copy the numbers elsewhere.
+7. Per-tool real-machine coverage is tracked in `docs/FEATURE_MATRIX.md`: in the v0.3.2 real-hardware pass, 33 of the 74 tools were verified (7 only on their main path), 13 failed and 24 were blocked by a missing precondition. The matrix is regenerated from the run log; do not copy the numbers elsewhere.
 
 ## 9. Feedback
 

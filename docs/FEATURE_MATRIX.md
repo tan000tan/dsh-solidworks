@@ -1,6 +1,6 @@
 # Feature matrix
 
-This page lists every tool the plugin registers today: **71 MCP tools** (19 read, 26 write, 26 high risk) **+ 3 host meta-tools**. It is generated from the runtime registry and the source tree by
+This page lists every tool the plugin registers today: **74 MCP tools** (22 read, 26 write, 26 high risk) **+ 3 host meta-tools**. It is generated from the runtime registry and the source tree by
 `audit/promotion-phase/03-local-remediation/gen-feature-matrix.cjs`, so the list cannot drift from the code without the generator failing.
 
 Three DSH host meta-tools exist on top of these 71: `solidworks_status`, `solidworks_confirm`, and `solidworks_setup_runtime`. They are registered by the plugin itself, not by the MCP server. `solidworks_confirm` always fails closed with `SELF_APPROVAL_PROHIBITED`; it exists so a caller can prove it cannot self-approve.
@@ -24,7 +24,7 @@ The *Real SolidWorks* column carries the full 71-tool baseline recorded in
 **1 `known-limitation`**, plus **14 distinct defects** written up with reproductions. Items updated by the **v0.3.3 targeted SolidWorks 2026 SP4.1 re-verification** (`audit/v033-targeted-l4/l4-results.json`: `solidworks_connect`, `solidworks_open_document`, `solidworks_add_component`, `solidworks_add_coincident_mate`, `solidworks_shell`, `solidworks_export_assembly_bom`) are explicitly tagged `(v0.3.3 targeted re-verified)`; all other rows retain their inherited v0.3.2 status. This is evidence of
 *reachability and behaviour on one machine*, not a guarantee of geometric correctness on other models.
 
-Risk levels come from `lib/policy.js` (`RISK_TABLE`): 19 read, 26 write, 26 high. The mode gate follows from the risk level:
+Risk levels come from `lib/policy.js` (`RISK_TABLE`): 22 read, 26 write, 26 high. The mode gate follows from the risk level:
 read tools need `read-only` or above, write tools need `standard` or above, high-risk tools need `full` and a per-call approval by the
 DSH host UI. Under the default `read-only` mode only the 19 read tools are published to the model at all.
 

@@ -862,15 +862,78 @@ def revolve_boss(model, sketch_name, angle_rad, axis_sketch_name=None):
     参数:
         sketch_name: 轮廓草图名称
         angle_rad: 旋转角度（弧度），2*pi 表示 360 度
-        axis_sketch_name: 旋转轴草图名称（None 则需预先选择轴线）
+        axis_sketch_name: 旋转轴草图名称（None 则自动查找轮廓草图内中心线或使用当前预选轴线）
     """
+    # 确保退出草图编辑态，否则 FeatureRevolve2 在部分 SolidWorks 版本会返回 None
+    try:
+        sm = getattr(model, "SketchManager", None)
+        if sm is not None and getattr(sm, "ActiveSketch", None) is not None:
+            sm.InsertSketch(True)
+    except Exception:
+        pass
+
+    try:
+        model.ClearSelection2(True)
+    except Exception:
+        pass
+
+    # 1) 选中轮廓草图 (Mark=0)
     _ensure_sketch_selected(model, sketch_name)
-    if axis_sketch_name:
+
+    # 2) 选中旋转轴线段 (Mark=4)
+    axis_selected = False
+    target_axis_sketch = axis_sketch_name or sketch_name
+    try:
+        feat = model.FeatureByName(target_axis_sketch)
+        if feat is not None:
+            sk = feat.GetSpecificFeature2()
+            if callable(sk):
+                sk = sk()
+            if sk is not None:
+                segs = sk.GetSketchSegments()
+                if callable(segs):
+                    segs = segs()
+                if segs:
+                    # 优先选择中心线/构造线 (ConstructionGeometry == True)；若指定了独立轴草图则选第一条直线段
+                    chosen_seg = None
+                    fallback_seg = None
+                    for seg in segs:
+                        is_const = False
+                        try:
+                            cg = getattr(seg, "ConstructionGeometry", False)
+                            is_const = bool(cg() if callable(cg) else cg)
+                        except Exception:
+                            pass
+                        if is_const:
+                            chosen_seg = seg
+                            break
+                        if axis_sketch_name and fallback_seg is None:
+                            fallback_seg = seg
+                    seg_to_select = chosen_seg or fallback_seg
+                    if seg_to_select is not None:
+                        try:
+                            sd = model.SelectionManager.CreateSelectData()
+                            sd.Mark = 4
+                            axis_selected = bool(seg_to_select.Select4(True, sd))
+                        except Exception:
+                            try:
+                                seg_name = getattr(seg_to_select, "GetName", lambda: "")()
+                                if seg_name:
+                                    axis_selected = bool(model.Extension.SelectByID2(
+                                        f"{seg_name}@{target_axis_sketch}", "SKETCHSEGMENT", 0, 0, 0, True, 4, None, 0
+                                    ))
+                            except Exception:
+                                pass
+    except Exception:
+        pass
+
+    if not axis_selected and axis_sketch_name:
         try:
             model.Extension.SelectByID2(axis_sketch_name, "SKETCH", 0, 0, 0, True, 4, None, 0)
         except Exception:
             pass
-    return model.FeatureManager.FeatureRevolve2(
+
+    feat = model.FeatureManager.FeatureRevolve2(
         True, True, False,
         False, False, False,
         0, 0,
@@ -879,6 +942,11 @@ def revolve_boss(model, sketch_name, angle_rad, axis_sketch_name=None):
         0.0, 0.0,
         0, 0, 0, True, True, True
     )
+    try:
+        model.EditRebuild3()
+    except Exception:
+        pass
+    return feat
 
 
 def fillet(model, radius, edges=None):

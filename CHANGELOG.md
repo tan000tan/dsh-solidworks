@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2026-11-26
+## [0.5.0] - 2026-11-28
+
+Upgrades the registry to **74 MCP tools + 3 host meta-tools** (22 read, 26 write, 26 high).
+
+### Added
+- Integrated 3 Stage 5 offline workflow tools (solidworks_plan_multi_schemes, solidworks_optimize_feature_tree, solidworks_inspect_cad_quality) under READ tier.
+- Added minimal built-in templates (minimal_design_spec.json, minimal_drawing_spec.json).
+
+### Fixed
+- solidworks_revolve: fixed sketch exit, SKETCHSEGMENT / centerline selection with Mark=4, and EditRebuild3.
+- D-09: normalized schema_version / schemaVersion across design_spec.py and drawing_spec.py.
+- D-13: enabled recursive GetDependencies2(Traverseflag=True) and assembly GetComponents fallback in sw_delivery.py.
+
+## [0.5.0] - 2026-11-26
 
 Unified public release superseding the unpublished `0.3.3` staging build. Keeps the **71 MCP tools + 3 host meta-tools** (`solidworks_status`, `solidworks_confirm`, `solidworks_setup_runtime`) accounting unchanged.
 
@@ -32,7 +45,7 @@ Unified public release superseding the unpublished `0.3.3` staging build. Keeps 
 ### Known Limitations & Deferred to v0.5.0
 - **`D-09`** (`schema_version` compatibility across drawing templates), **`D-13`** (`solidworks_pack_and_go` complex assembly dependency enumeration), and **`solidworks_revolve`** (real-SW revolve axis/closed profile creation) are explicitly **deferred to v0.5.0**.
 
-## [0.3.3] - 2026-11-25 (Unpublished Staging — Superseded by v0.4.0)
+## [0.3.3] - 2026-11-25 (Unpublished Staging — Superseded by v0.5.0)
 
 Productization, documentation-truth pass, and targeted blocking CAD/CLI fixes ahead of wider promotion. No tool was added or removed; the 71-tool registry is unchanged.
 
@@ -43,7 +56,7 @@ Productization, documentation-truth pass, and targeted blocking CAD/CLI fixes ah
 - **`D-02` `open_document` `ActiveDoc` switching (`sw_connect.py`, `sw_assembly.py`)**:
   - Added `activate_document()` and `activate: bool = True` to `open_document()`. Reusing an already-open document (`GetOpenDocumentByName`) and opening via `OpenDoc6`/`LoadFile4` now invoke `ActivateDoc3` (with `ActivateDoc2`/dynamic proxy fallback) and verify `sw.ActiveDoc`. `sw_assembly.add_component` preloads pass `activate=False`.
 - **`D-03a` Assembly component ownership & mate follow-up activation (`server.py`)**:
-  - `solidworks_add_component` registers components residing inside `DSH_ALLOWED_ROOTS` via `register_owned_document()` and re-activates the parent assembly; `solidworks_add_coincident_mate`, `solidworks_add_distance_mate`, and `solidworks_add_concentric_mate` re-activate the parent assembly after mate solve so follow-up calls (`mass_properties`, `export_assembly_bom`) succeed on the assembly without hitting `DEF-SEC-01`. (`D-03b` cross-process CLI ledger persistence remains deferred to `v0.4.0`.)
+  - `solidworks_add_component` registers components residing inside `DSH_ALLOWED_ROOTS` via `register_owned_document()` and re-activates the parent assembly; `solidworks_add_coincident_mate`, `solidworks_add_distance_mate`, and `solidworks_add_concentric_mate` re-activate the parent assembly after mate solve so follow-up calls (`mass_properties`, `export_assembly_bom`) succeed on the assembly without hitting `DEF-SEC-01`. (`D-03b` cross-process CLI ledger persistence remains deferred to `v0.5.0`.)
 - **`D-04` `solidworks_shell` COM `VT_VOID` (`None`) false-failure (`sw_part.py`)**:
   - Real SolidWorks 2026 `sldworks.tlb` defines `IModelDoc2::InsertFeatureShell` as `VT_VOID` (which returns `None` in Python COM). `sw_part.shell()` now only treats explicit `False` as immediate failure; on `None` or `True`, it runs `EditRebuild3()` and verifies `_snapshot_feature_names()` delta growth so valid shells return `feature_created=True` while failing shells (e.g. `50 mm` wall on a `40 mm` box) still return `feature_created=False`.
 - **DSH bundled Python mitigation & bundle-mode `cordis.patch.yml` guard (`lib/discover.js`, `bin/dsh-solidworks.js`, `scripts/dsh_adapter.js`, `scripts/setup.js`)**:
